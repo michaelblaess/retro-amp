@@ -255,6 +255,15 @@ retro-amp/
 - [ ] SID-Playback (C64) — AudioPlayer Protocol erweitern
 - [ ] MOD/XM/S3M-Playback (Amiga)
 
+### v0.6 — Liner Notes (Wikipedia-Info)
+- [ ] Beim Abspielen eines Songs im Hintergrund Infos sammeln (Artist, Album, Song)
+- [ ] Wikipedia-API abfragen (deutsch + englisch, Fallback)
+- [ ] Ergebnisse als Markdown speichern in `~/.retro-amp/notes/{artist}.md`
+- [ ] Cache: nur einmal pro Artist/Album abfragen, nicht bei jedem Play
+- [ ] Optional: Info-Panel in der UI anzeigen (z.B. mit Taste `I`)
+- [ ] Daten aus ID3-Tags als Suchbegriffe nutzen (Artist, Album, Title)
+- [ ] Graceful: kein Internet? Kein Problem — Feature ist rein optional
+
 ### v1.0 — Release
 - [ ] Polishing, Bugfixes
 - [ ] README mit Screenshots
