@@ -104,6 +104,41 @@ class TestPlayerService:
 
         assert service.state.is_stopped
 
+    def test_seek_forward(self, mock_player, sample_track) -> None:
+        service = PlayerService(mock_player)
+        service.play_file(sample_track)
+        mock_player.position = 10.0
+        service.update_position()
+
+        service.seek_forward(5.0)
+        assert service.state.position_seconds == 15.0
+        assert mock_player.position == 15.0
+
+    def test_seek_backward(self, mock_player, sample_track) -> None:
+        service = PlayerService(mock_player)
+        service.play_file(sample_track)
+        mock_player.position = 10.0
+        service.update_position()
+
+        service.seek_backward(5.0)
+        assert service.state.position_seconds == 5.0
+        assert mock_player.position == 5.0
+
+    def test_seek_backward_clamps_at_zero(self, mock_player, sample_track) -> None:
+        service = PlayerService(mock_player)
+        service.play_file(sample_track)
+        mock_player.position = 2.0
+        service.update_position()
+
+        service.seek_backward(5.0)
+        assert service.state.position_seconds == 0.0
+
+    def test_seek_does_nothing_when_stopped(self, mock_player, sample_track) -> None:
+        service = PlayerService(mock_player)
+        # Nicht abspielen — stopped
+        service.seek_forward(5.0)
+        assert service.state.position_seconds == 0.0
+
     def test_on_finished_callback(self, mock_player, sample_track) -> None:
         finished_called = False
 

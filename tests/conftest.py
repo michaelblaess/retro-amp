@@ -43,6 +43,9 @@ class MockAudioPlayer:
     def get_position(self) -> float:
         return self.position
 
+    def seek(self, position_seconds: float) -> None:
+        self.position = max(0.0, position_seconds)
+
     def is_busy(self) -> bool:
         return self.playing
 

@@ -98,6 +98,23 @@ class PlayerService:
         self._state.volume = max(0.0, min(1.0, volume))
         self._player.set_volume(self._state.volume)
 
+    def seek_forward(self, seconds: float = 5.0) -> None:
+        """Springt vorwaerts."""
+        if self._state.current_track and not self._state.is_stopped:
+            new_pos = min(
+                self._state.position_seconds + seconds,
+                self._state.current_track.duration_seconds,
+            )
+            self._player.seek(new_pos)
+            self._state.position_seconds = new_pos
+
+    def seek_backward(self, seconds: float = 5.0) -> None:
+        """Springt zurueck."""
+        if self._state.current_track and not self._state.is_stopped:
+            new_pos = max(self._state.position_seconds - seconds, 0.0)
+            self._player.seek(new_pos)
+            self._state.position_seconds = new_pos
+
     def volume_up(self, step: float = 0.05) -> None:
         """Erhoet die Lautstaerke."""
         self.set_volume(self._state.volume + step)

@@ -29,11 +29,13 @@ class RetroAmpApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Beenden"),
-        Binding("space", "toggle_pause", "Play/Pause"),
-        Binding("n", "next_track", "Naechster", show=False),
-        Binding("b", "previous_track", "Vorheriger", show=False),
-        Binding("plus,equal", "volume_up", "Vol +", show=False),
-        Binding("minus", "volume_down", "Vol -", show=False),
+        Binding("space", "toggle_pause", "Play/Pause", key_display="SPC"),
+        Binding("n", "next_track", "Naechster"),
+        Binding("b", "previous_track", "Vorheriger"),
+        Binding("right", "seek_forward", ">>", key_display="→"),
+        Binding("left", "seek_backward", "<<", key_display="←"),
+        Binding("plus,equal", "volume_up", "Vol+", key_display="+"),
+        Binding("minus", "volume_down", "Vol-", key_display="-"),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -107,6 +109,15 @@ class RetroAmpApp(App):
         self._scan_directory(event.path)
         self._save_last_path(event.path)
 
+    def on_directory_tree_file_selected(
+        self, event: DirectoryTree.FileSelected
+    ) -> None:
+        """Datei im Baum ausgewaehlt — abspielen."""
+        path = event.path
+        if self._metadata_service.is_audio_file(path):
+            track = self._metadata_service.read_track(path)
+            self._play_track(track)
+
     def on_file_table_track_selected(
         self, event: FileTable.TrackSelected
     ) -> None:
@@ -135,10 +146,22 @@ class RetroAmpApp(App):
         """Naechster Track."""
         self._player_service.next_track()
         self._update_transport()
+        self._highlight_current_track()
 
     def action_previous_track(self) -> None:
         """Vorheriger Track."""
         self._player_service.previous_track()
+        self._update_transport()
+        self._highlight_current_track()
+
+    def action_seek_forward(self) -> None:
+        """5 Sekunden vorwaerts springen."""
+        self._player_service.seek_forward(5.0)
+        self._update_transport()
+
+    def action_seek_backward(self) -> None:
+        """5 Sekunden zurueck springen."""
+        self._player_service.seek_backward(5.0)
         self._update_transport()
 
     def action_volume_up(self) -> None:
@@ -156,12 +179,14 @@ class RetroAmpApp(App):
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Bindings bedingt ein-/ausblenden."""
         state = self._player_service.state
+        has_track = state.current_track is not None
+
         if action == "next_track":
             return True if state.has_next else None
         if action == "previous_track":
             return True if state.has_previous else None
-        if action == "toggle_pause":
-            return True
+        if action in ("seek_forward", "seek_backward"):
+            return True if has_track and not state.is_stopped else None
         return True
 
     # --- Interne Methoden ---
@@ -184,6 +209,15 @@ class RetroAmpApp(App):
 
         self.query_one("#visualizer", Visualizer).start()
         self._update_transport()
+        self._highlight_current_track()
+        self.sub_title = track.display_name
+
+    def _highlight_current_track(self) -> None:
+        """Markiert den aktuellen Track in der Tabelle."""
+        track = self._player_service.state.current_track
+        if track:
+            file_table = self.query_one("#file-table", FileTable)
+            file_table.highlight_track(track)
 
     def _tick_position(self) -> None:
         """Timer-Callback: Position aktualisieren."""
@@ -200,6 +234,12 @@ class RetroAmpApp(App):
         self._player_service.check_auto_next()
         if self._player_service.state.is_stopped:
             self.query_one("#visualizer", Visualizer).stop()
+            self.sub_title = ""
+        else:
+            self._highlight_current_track()
+            track = self._player_service.state.current_track
+            if track:
+                self.sub_title = track.display_name
         self._update_transport()
 
     def _save_last_path(self, path: Path) -> None:

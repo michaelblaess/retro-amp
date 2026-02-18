@@ -16,7 +16,6 @@ class TransportBar(Widget):
         height: 3;
         padding: 0 1;
         border-top: solid $accent;
-        layout: vertical;
     }
     """
 
@@ -34,41 +33,67 @@ class TransportBar(Widget):
         text = Text()
         state = self._state
 
-        # Zeile 1: Status-Icon + Track-Name + Fortschrittsbalken + Zeit
+        # Zeile 1: Status-Icon + Track-Info + Fortschrittsbalken + Zeit
         if state.is_playing:
-            icon = "▶ "
+            icon = " ▶  "
+            icon_style = "bold green"
         elif state.is_paused:
-            icon = "▐▐ "
+            icon = " ▐▐ "
+            icon_style = "bold yellow"
         else:
-            icon = "■ "
+            icon = " ■  "
+            icon_style = "dim"
 
-        text.append(icon, style="bold")
+        text.append(icon, style=icon_style)
 
         if state.current_track:
-            name = state.current_track.display_name
-            if len(name) > 30:
-                name = name[:27] + "..."
-            text.append(f"{name}  ", style="bold")
+            track = state.current_track
+            # Artist - Title oder Dateiname
+            if track.artist and track.title:
+                display = f"{track.artist} - {track.title}"
+            else:
+                display = track.display_name
+            if len(display) > 40:
+                display = display[:37] + "..."
+            text.append(display, style="bold")
 
-            # Fortschrittsbalken
-            bar_width = 30
+            # Format + Bitrate
+            info_parts: list[str] = []
+            if track.format_display:
+                info_parts.append(track.format_display)
+            if track.bitrate_display:
+                info_parts.append(track.bitrate_display)
+            if info_parts:
+                text.append(f"  [{' | '.join(info_parts)}]", style="dim")
+
+            text.append("\n")
+
+            # Zeile 2: Fortschrittsbalken + Zeit + Lautstaerke
+            text.append("     ")
+            bar_width = 40
             filled = int(state.progress * bar_width)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            text.append(bar, style="dim")
+            text.append("█" * filled, style="green")
+            text.append("░" * (bar_width - filled), style="dim")
             text.append(
-                f"  {state.position_display} / {state.current_track.duration_display}"
+                f"  {state.position_display} / {track.duration_display}",
+                style="dim",
             )
+
+            # Lautstaerke rechts
+            vol_pct = int(state.volume * 100)
+            vol_bars = int(state.volume * 10)
+            text.append("    Vol: ")
+            text.append("█" * vol_bars, style="green")
+            text.append("░" * (10 - vol_bars), style="dim")
+            text.append(f" {vol_pct}%", style="dim")
         else:
-            text.append("Kein Track geladen", style="dim")
-
-        text.append("\n")
-
-        # Zeile 2: Lautstaerke
-        vol_pct = int(state.volume * 100)
-        vol_bars = int(state.volume * 10)
-        vol_display = "█" * vol_bars + "░" * (10 - vol_bars)
-        text.append("  Vol: ", style="dim")
-        text.append(vol_display)
-        text.append(f"  {vol_pct}%", style="dim")
+            text.append("Kein Track geladen — [Space] zum Starten", style="dim")
+            text.append("\n")
+            vol_pct = int(state.volume * 100)
+            vol_bars = int(state.volume * 10)
+            text.append("     Vol: ")
+            text.append("█" * vol_bars, style="green")
+            text.append("░" * (10 - vol_bars), style="dim")
+            text.append(f" {vol_pct}%", style="dim")
 
         return text

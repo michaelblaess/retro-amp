@@ -38,6 +38,10 @@ class AudioPlayer(Protocol):
         """Gibt die aktuelle Position in Sekunden zurueck."""
         ...
 
+    def seek(self, position_seconds: float) -> None:
+        """Springt zu einer bestimmten Position in Sekunden."""
+        ...
+
     def is_busy(self) -> bool:
         """Prueft ob gerade abgespielt wird."""
         ...

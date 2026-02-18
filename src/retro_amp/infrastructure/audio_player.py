@@ -24,6 +24,7 @@ class PygameAudioPlayer:
         self._frequency = frequency
         self._buffer_size = buffer_size
         self._current_path: Path | None = None
+        self._seek_offset: float = 0.0
         self._init_mixer()
 
     def _init_mixer(self) -> None:
@@ -52,6 +53,7 @@ class PygameAudioPlayer:
             pygame.mixer.music.load(str(path))
             pygame.mixer.music.play()
             self._current_path = path
+            self._seek_offset = 0.0
         except Exception:
             logger.exception("Fehler beim Abspielen von %s", path)
 
@@ -83,7 +85,18 @@ class PygameAudioPlayer:
         pos_ms = pygame.mixer.music.get_pos()
         if pos_ms < 0:
             return 0.0
-        return pos_ms / 1000.0
+        return self._seek_offset + pos_ms / 1000.0
+
+    def seek(self, position_seconds: float) -> None:
+        """Springt zu einer bestimmten Position in Sekunden."""
+        if not self._initialized:
+            return
+        try:
+            pos = max(0.0, position_seconds)
+            pygame.mixer.music.set_pos(pos)
+            self._seek_offset = pos
+        except Exception:
+            logger.debug("Seek nicht unterstuetzt fuer dieses Format")
 
     def is_busy(self) -> bool:
         """Prueft ob gerade abgespielt wird."""
