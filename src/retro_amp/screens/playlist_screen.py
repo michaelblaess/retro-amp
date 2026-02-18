@@ -4,7 +4,7 @@ from __future__ import annotations
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Label, Static
 
@@ -38,25 +38,22 @@ class PlaylistScreen(ModalScreen[str | None]):
         max-height: 15;
         margin-bottom: 1;
     }
-    PlaylistScreen #new-playlist-row {
-        layout: horizontal;
-        height: 3;
-        margin-bottom: 1;
-    }
     PlaylistScreen #new-name {
         width: 1fr;
+        margin-bottom: 1;
     }
-    PlaylistScreen #btn-create {
-        width: auto;
-        min-width: 12;
+    PlaylistScreen #button-row {
+        layout: horizontal;
+        height: 3;
+        align: center middle;
     }
-    PlaylistScreen #btn-close {
-        width: 100%;
+    PlaylistScreen #btn-save {
+        margin-right: 2;
     }
     """
 
     BINDINGS = [
-        Binding("escape", "close", "Schliessen"),
+        Binding("escape,q", "close", "Abbrechen"),
     ]
 
     def __init__(self, playlists: list[str], current_track_name: str = "") -> None:
@@ -74,41 +71,58 @@ class PlaylistScreen(ModalScreen[str | None]):
             else:
                 yield Label("Playlists", id="dialog-title")
 
-            yield DataTable(id="playlist-table", cursor_type="row")
+            if self._playlists:
+                yield DataTable(id="playlist-table", cursor_type="row")
 
-            with Vertical(id="new-playlist-row"):
-                yield Input(
-                    placeholder="Neue Playlist erstellen...",
-                    id="new-name",
-                )
+            yield Input(
+                placeholder="Neue Playlist erstellen...",
+                id="new-name",
+            )
 
-            yield Button("Schliessen [ESC]", id="btn-close", variant="default")
+            with Horizontal(id="button-row"):
+                yield Button("Speichern (Enter)", id="btn-save", variant="primary")
+                yield Button("Abbrechen (q)", id="btn-close", variant="default")
 
     def on_mount(self) -> None:
         """Tabelle mit Playlists fuellen."""
-        table = self.query_one("#playlist-table", DataTable)
-        table.add_columns("Playlist", "Aktion")
-        for name in self._playlists:
-            table.add_row(name, "Hinzufuegen", key=name)
+        try:
+            table = self.query_one("#playlist-table", DataTable)
+            table.add_columns("Playlist")
+            for name in self._playlists:
+                table.add_row(name, key=name)
+        except Exception:
+            pass  # Keine Tabelle wenn keine Playlists
 
     @on(DataTable.RowSelected, "#playlist-table")
     def _on_playlist_selected(self, event: DataTable.RowSelected) -> None:
-        """Playlist ausgewaehlt — Name zurueckgeben."""
+        """Bestehende Playlist ausgewaehlt."""
         if event.row_key and event.row_key.value:
             self.dismiss(event.row_key.value)
 
     @on(Input.Submitted, "#new-name")
-    def _on_new_playlist(self, event: Input.Submitted) -> None:
-        """Neue Playlist erstellen und auswaehlen."""
-        name = event.value.strip()
-        if name:
-            self.dismiss(name)
+    def _on_input_submitted(self, event: Input.Submitted) -> None:
+        """Enter im Input-Feld — neue Playlist erstellen."""
+        self._save()
+
+    @on(Button.Pressed, "#btn-save")
+    def _on_save(self) -> None:
+        """Speichern-Button gedrueckt."""
+        self._save()
 
     @on(Button.Pressed, "#btn-close")
     def _on_close(self) -> None:
-        """Dialog schliessen."""
+        """Abbrechen-Button gedrueckt."""
         self.dismiss(None)
 
+    def _save(self) -> None:
+        """Neue Playlist erstellen oder ausgewaehlte verwenden."""
+        name_input = self.query_one("#new-name", Input)
+        name = name_input.value.strip()
+        if name:
+            self.dismiss(name)
+        else:
+            self.notify("Bitte einen Namen eingeben", severity="warning")
+
     def action_close(self) -> None:
-        """ESC gedrueckt."""
+        """ESC oder q gedrueckt."""
         self.dismiss(None)
