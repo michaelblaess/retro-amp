@@ -13,9 +13,11 @@ from . import __version__
 from .domain.models import AudioTrack, PlaybackState
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
+from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
+from .services.playlist_service import PlaylistService
 from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
 from .widgets.transport_bar import TransportBar
@@ -37,6 +39,8 @@ class RetroAmpApp(App):
         Binding("left", "seek_backward", "<<", key_display="←"),
         Binding("plus,equal", "volume_up", "Vol+", key_display="+"),
         Binding("minus", "volume_down", "Vol-", key_display="-"),
+        Binding("f", "toggle_favorite", "Favorit"),
+        Binding("p", "show_playlists", "Playlists"),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -46,10 +50,12 @@ class RetroAmpApp(App):
         self._audio_player = PygameAudioPlayer()
         self._metadata_reader = MutagenMetadataReader()
         self._settings_store = JsonSettingsStore()
+        self._playlist_store = MarkdownPlaylistStore()
 
         # Services
         self._player_service = PlayerService(self._audio_player)
         self._metadata_service = MetadataService(self._metadata_reader)
+        self._playlist_service = PlaylistService(self._playlist_store)
 
         # Settings laden
         settings = self._settings_store.load()
@@ -180,6 +186,68 @@ class RetroAmpApp(App):
         self._update_transport()
         self._save_volume()
 
+    def action_toggle_favorite(self) -> None:
+        """Aktuellen Track als Favorit toggeln."""
+        track = self._player_service.state.current_track
+        if not track:
+            self.notify("Kein Track ausgewaehlt", severity="warning")
+            return
+
+        is_fav = self._playlist_service.toggle_favorite(track.path)
+        if is_fav:
+            self.notify(f"★ {track.display_name} zu Favoriten hinzugefuegt")
+        else:
+            self.notify(f"☆ {track.display_name} aus Favoriten entfernt")
+
+    def action_show_playlists(self) -> None:
+        """Playlist-Dialog oeffnen."""
+        from .screens.playlist_screen import PlaylistScreen  # Lazy import
+
+        track = self._player_service.state.current_track
+        track_name = track.display_name if track else ""
+        playlists = self._playlist_service.list_playlists()
+
+        self.push_screen(
+            PlaylistScreen(playlists, current_track_name=track_name),
+            callback=self._on_playlist_selected,
+        )
+
+    def _on_playlist_selected(self, playlist_name: str | None) -> None:
+        """Callback wenn eine Playlist im Dialog gewaehlt wurde."""
+        if not playlist_name:
+            return
+
+        track = self._player_service.state.current_track
+        if track:
+            # Track zur gewaehlten Playlist hinzufuegen
+            added = self._playlist_service.add_to_playlist(playlist_name, track.path)
+            if added:
+                self.notify(f"♪ {track.display_name} → {playlist_name}")
+            else:
+                self.notify(f"Bereits in {playlist_name}", severity="information")
+        else:
+            # Keine Wiedergabe — Playlist laden und abspielen
+            track_paths = self._playlist_service.load_playlist_tracks(playlist_name)
+            if track_paths:
+                tracks = [
+                    self._metadata_service.read_track(p)
+                    for p in track_paths
+                    if p.is_file()
+                ]
+                if tracks:
+                    self._current_tracks = tracks
+                    file_table = self.query_one("#file-table", FileTable)
+                    file_table.update_tracks(tracks)
+                    self._player_service.load_tracks(tracks)
+                    self._player_service.play_track(0)
+                    self.query_one("#visualizer", Visualizer).start()
+                    self._update_transport()
+                    self.notify(f"♪ Playlist: {playlist_name} ({len(tracks)} Tracks)")
+                else:
+                    self.notify("Playlist ist leer oder Dateien fehlen", severity="warning")
+            else:
+                self.notify(f"Playlist '{playlist_name}' ist leer", severity="information")
+
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Bindings bedingt ein-/ausblenden."""
         state = self._player_service.state
@@ -191,6 +259,8 @@ class RetroAmpApp(App):
             return True if state.has_previous else None
         if action in ("seek_forward", "seek_backward"):
             return True if has_track and not state.is_stopped else None
+        if action == "toggle_favorite":
+            return True if has_track else None
         return True
 
     # --- Interne Methoden ---
