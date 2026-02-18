@@ -7,6 +7,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DirectoryTree, Footer, Header
+from textual.work import work
 
 from . import __version__
 from .domain.models import AudioTrack, PlaybackState
@@ -194,9 +195,15 @@ class RetroAmpApp(App):
 
     # --- Interne Methoden ---
 
+    @work(exclusive=True, group="scan", thread=True)
     def _scan_directory(self, directory: Path) -> None:
-        """Scannt ein Verzeichnis und zeigt Dateien in der Tabelle."""
-        self._current_tracks = self._metadata_service.scan_directory(directory)
+        """Scannt ein Verzeichnis im Background-Thread."""
+        tracks = self._metadata_service.scan_directory(directory)
+        self.call_from_thread(self._apply_scan_result, tracks)
+
+    def _apply_scan_result(self, tracks: list[AudioTrack]) -> None:
+        """Wendet Scan-Ergebnis auf die UI an (im Main-Thread)."""
+        self._current_tracks = tracks
         file_table = self.query_one("#file-table", FileTable)
         file_table.update_tracks(self._current_tracks)
 

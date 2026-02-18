@@ -19,7 +19,7 @@ class PygameAudioPlayer:
     Implementiert das AudioPlayer-Protocol aus domain/protocols.py.
     """
 
-    def __init__(self, frequency: int = 44100, buffer_size: int = 2048) -> None:
+    def __init__(self, frequency: int = 44100, buffer_size: int = 4096) -> None:
         self._initialized = False
         self._frequency = frequency
         self._buffer_size = buffer_size
