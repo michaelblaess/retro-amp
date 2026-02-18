@@ -6,7 +6,7 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Footer, Header
+from textual.widgets import DirectoryTree, Footer, Header
 
 from . import __version__
 from .domain.models import AudioTrack, PlaybackState
@@ -58,7 +58,16 @@ class RetroAmpApp(App):
         elif settings.get("last_path"):
             self._start_path = Path(str(settings["last_path"]))
         else:
-            self._start_path = Path.home() / "Music"
+            # Standard-Musikordner: Dropbox, dann Home/Music, dann Home
+            for candidate in [
+                Path("D:/Dropbox/MUSIK"),
+                Path.home() / "Music",
+            ]:
+                if candidate.is_dir():
+                    self._start_path = candidate
+                    break
+            else:
+                self._start_path = Path.home()
 
         if not self._start_path.is_dir():
             self._start_path = Path.home()
@@ -91,8 +100,8 @@ class RetroAmpApp(App):
 
     # --- Event-Handler fuer Widget-Messages ---
 
-    def on_folder_browser_directory_selected(
-        self, event: FolderBrowser.DirectorySelected
+    def on_directory_tree_directory_selected(
+        self, event: DirectoryTree.DirectorySelected
     ) -> None:
         """Ordner im Baum ausgewaehlt — rechtes Panel aktualisieren."""
         self._scan_directory(event.path)
