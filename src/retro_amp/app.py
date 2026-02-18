@@ -54,25 +54,28 @@ class RetroAmpApp(App):
         settings = self._settings_store.load()
         self._player_service.set_volume(float(settings.get("volume", 0.8)))
 
-        # Startpfad bestimmen
+        # Baumwurzel bestimmen (immer der Musik-Root, nicht der letzte Ordner)
         if start_path:
-            self._start_path = Path(start_path).expanduser().resolve()
-        elif settings.get("last_path"):
-            self._start_path = Path(str(settings["last_path"]))
+            self._tree_root = Path(start_path).expanduser().resolve()
         else:
-            # Standard-Musikordner: Dropbox, dann Home/Music, dann Home
             for candidate in [
                 Path("D:/Dropbox/MUSIK"),
                 Path.home() / "Music",
             ]:
                 if candidate.is_dir():
-                    self._start_path = candidate
+                    self._tree_root = candidate
                     break
             else:
-                self._start_path = Path.home()
+                self._tree_root = Path.home()
 
-        if not self._start_path.is_dir():
-            self._start_path = Path.home()
+        if not self._tree_root.is_dir():
+            self._tree_root = Path.home()
+
+        # Letzter besuchter Ordner (fuer rechte Tabelle beim Start)
+        last_path_str = str(settings.get("last_path", ""))
+        self._initial_scan_path = Path(last_path_str) if last_path_str else self._tree_root
+        if not self._initial_scan_path.is_dir():
+            self._initial_scan_path = self._tree_root
 
         # Timer-Handle fuer Position-Updates
         self._position_timer: object | None = None
@@ -84,7 +87,7 @@ class RetroAmpApp(App):
         yield Header()
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
-                yield FolderBrowser(str(self._start_path), id="folder-browser")
+                yield FolderBrowser(str(self._tree_root), id="folder-browser")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
         yield Visualizer(id="visualizer")
@@ -97,8 +100,8 @@ class RetroAmpApp(App):
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
         )
-        # Initial: Startverzeichnis scannen
-        self._scan_directory(self._start_path)
+        # Initial: letzten Ordner in Tabelle laden
+        self._scan_directory(self._initial_scan_path)
 
     # --- Event-Handler fuer Widget-Messages ---
 
