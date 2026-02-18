@@ -7,7 +7,8 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DirectoryTree, Footer, Header
-from textual.work import work
+
+from textual import work
 
 from . import __version__
 from .domain.models import AudioTrack, PlaybackState
