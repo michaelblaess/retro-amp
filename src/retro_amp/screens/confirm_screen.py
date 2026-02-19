@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from pathlib import Path
 
 from textual import on
@@ -18,6 +19,7 @@ class ConfirmScreen(ModalScreen[Path | None]):
     """Modal-Dialog fuer Loeschbestaetigung.
 
     Gibt den geloeschten Path zurueck oder None bei Abbruch.
+    Loescht Dateien per unlink() und Ordner per shutil.rmtree().
     """
 
     DEFAULT_CSS = """
@@ -25,7 +27,7 @@ class ConfirmScreen(ModalScreen[Path | None]):
         align: center middle;
     }
     ConfirmScreen #dialog {
-        width: 50;
+        width: 60;
         height: auto;
         border: solid $error;
         background: $surface;
@@ -61,10 +63,12 @@ class ConfirmScreen(ModalScreen[Path | None]):
         super().__init__()
         self._message = message
         self._file_path = file_path
+        self._is_dir = file_path.is_dir()
 
     def compose(self) -> ComposeResult:
+        title = "Ordner loeschen" if self._is_dir else "Datei loeschen"
         with Vertical(id="dialog"):
-            yield Label("Loeschen", id="dialog-title")
+            yield Label(title, id="dialog-title")
             yield Label(self._message, id="message")
             with Horizontal(id="button-row"):
                 yield Button(
@@ -81,9 +85,12 @@ class ConfirmScreen(ModalScreen[Path | None]):
         self.dismiss(None)
 
     def _delete(self) -> None:
-        """Datei loeschen."""
+        """Datei oder Ordner loeschen."""
         try:
-            self._file_path.unlink()
+            if self._is_dir:
+                shutil.rmtree(self._file_path)
+            else:
+                self._file_path.unlink()
             self.dismiss(self._file_path)
         except OSError as e:
             logger.exception("Fehler beim Loeschen")

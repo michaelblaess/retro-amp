@@ -372,9 +372,39 @@ class RetroAmpApp(App):
         self.notify(f"Umbenannt: {new_path.name}")
 
     def action_delete_file(self) -> None:
-        """Datei loeschen — Bestaetigungsdialog oeffnen."""
+        """Datei oder Ordner loeschen — Bestaetigungsdialog oeffnen."""
         from .screens.confirm_screen import ConfirmScreen  # Lazy import
 
+        # Kontextabhaengig: Fokus auf Baum → Ordner/Datei im Baum loeschen
+        folder_browser = self.query_one("#folder-browser", FolderBrowser)
+        if folder_browser.has_focus or folder_browser.has_focus_within:
+            node = folder_browser.cursor_node
+            if node and node.data:
+                target = node.data.path
+                if target == self._tree_root:
+                    self.notify("Wurzelordner kann nicht geloescht werden",
+                                severity="warning")
+                    return
+                if target.is_dir():
+                    # Dateien im Ordner zaehlen
+                    try:
+                        count = sum(1 for _ in target.rglob("*") if _.is_file())
+                    except PermissionError:
+                        count = 0
+                    msg = (
+                        f"Ordner wirklich loeschen?\n\n"
+                        f"{target.name}\n"
+                        f"({count} Dateien)"
+                    )
+                else:
+                    msg = f"Datei wirklich loeschen?\n\n{target.name}"
+                self.push_screen(
+                    ConfirmScreen(msg, file_path=target),
+                    callback=self._on_delete_result,
+                )
+                return
+
+        # Fallback: markierte Datei in der Tabelle
         file_table = self.query_one("#file-table", FileTable)
         track = file_table.highlighted_track
         if not track:
@@ -394,9 +424,12 @@ class RetroAmpApp(App):
         if not deleted_path:
             return
 
+        was_dir = not deleted_path.exists() or deleted_path.is_dir()
+
         # Pruefen ob der geloeschte Track gerade spielt
         playing = self._player_service.state.current_track
-        if playing and playing.path == deleted_path:
+        if playing and (playing.path == deleted_path
+                        or str(playing.path).startswith(str(deleted_path))):
             if self._player_service.state.has_next:
                 self._player_service.next_track()
             else:
@@ -408,7 +441,13 @@ class RetroAmpApp(App):
         # Verzeichnis neu scannen
         directory = deleted_path.parent
         self._scan_directory(directory)
-        self.notify(f"Geloescht: {deleted_path.name}")
+
+        # Baum aktualisieren
+        folder_browser = self.query_one("#folder-browser", FolderBrowser)
+        folder_browser.reload()
+
+        label = "Ordner" if was_dir else "Datei"
+        self.notify(f"{label} geloescht: {deleted_path.name}")
 
     def _on_playlist_selected(self, playlist_name: str | None) -> None:
         """Callback wenn eine Playlist im Dialog gewaehlt wurde."""

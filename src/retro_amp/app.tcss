@@ -26,17 +26,13 @@ Screen {
 }
 
 #global-search {
-    dock: top;
-    height: 1;
-    margin: 0;
+    height: 3;
     padding: 0 1;
-    border: none;
     background: $surface;
     color: $text;
 }
 
 #global-search:focus {
-    border: none;
     background: $surface-darken-1;
 }
 
