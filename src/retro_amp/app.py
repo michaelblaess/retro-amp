@@ -11,11 +11,13 @@ from textual.widgets import DirectoryTree, Footer, Header
 from textual import work
 
 from . import __version__
-from .domain.models import AudioTrack, PlaybackState
+from .domain.models import AudioTrack
+from .themes import RETRO_THEMES, RETRO_THEME_NAMES, THEME_DISPLAY_NAMES
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
+from .infrastructure.spectrum import SpectrumAnalyzer
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
@@ -33,25 +35,33 @@ class RetroAmpApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Beenden"),
-        Binding("space", "toggle_pause", "Play/Pause", key_display="SPC"),
-        Binding("n", "next_track", "Naechster"),
-        Binding("b", "previous_track", "Vorheriger"),
-        Binding("right", "seek_forward", ">>", key_display="→"),
-        Binding("left", "seek_backward", "<<", key_display="←"),
-        Binding("plus,equal", "volume_up", "Vol+", key_display="+"),
-        Binding("minus", "volume_down", "Vol-", key_display="-"),
-        Binding("f", "toggle_favorite", "Favorit"),
-        Binding("p", "show_playlists", "Playlists"),
+        Binding("space", "toggle_pause", "Play/Pause", key_display="SPC", priority=True),
+        Binding("n", "next_track", "Naechster", priority=True),
+        Binding("b", "previous_track", "Vorheriger", priority=True),
+        Binding("right", "seek_forward", ">>", key_display="→", priority=True),
+        Binding("left", "seek_backward", "<<", key_display="←", priority=True),
+        Binding("plus,equal", "volume_up", "Vol+", key_display="+", priority=True),
+        Binding("minus", "volume_down", "Vol-", key_display="-", priority=True),
+        Binding("f", "toggle_favorite", "Favorit", priority=True),
+        Binding("p", "show_playlists", "Playlists", priority=True),
+        Binding("u", "rename_file", "Umbenennen", priority=True),
+        Binding("delete", "delete_file", "Loeschen", key_display="DEL", priority=True),
+        Binding("t", "cycle_theme", "Theme", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
         super().__init__()
+
+        # Retro-Themes registrieren
+        for retro_theme in RETRO_THEMES:
+            self.register_theme(retro_theme)
 
         # Infrastructure (Composition Root — hier wird verdrahtet)
         self._audio_player = PygameAudioPlayer()
         self._metadata_reader = MutagenMetadataReader()
         self._settings_store = JsonSettingsStore()
         self._playlist_store = MarkdownPlaylistStore()
+        self._spectrum_analyzer = SpectrumAnalyzer()
 
         # Services
         self._player_service = PlayerService(self._audio_player)
@@ -61,6 +71,13 @@ class RetroAmpApp(App):
         # Settings laden
         settings = self._settings_store.load()
         self._player_service.set_volume(float(settings.get("volume", 0.8)))
+
+        # Gespeichertes Theme anwenden (Default: C64)
+        saved_theme = str(settings.get("theme", "c64"))
+        if saved_theme in RETRO_THEME_NAMES:
+            self.theme = saved_theme
+        else:
+            self.theme = "c64"
 
         # Baumwurzel bestimmen (immer der Musik-Root, nicht der letzte Ordner)
         if start_path:
@@ -108,6 +125,9 @@ class RetroAmpApp(App):
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
         )
+        # Theme-Name in Titelleiste
+        display = THEME_DISPLAY_NAMES.get(self.theme, self.theme)
+        self.sub_title = f"♪ {display}"
         # Initial: letzten Ordner in Tabelle laden
         self._scan_directory(self._initial_scan_path)
 
@@ -144,24 +164,22 @@ class RetroAmpApp(App):
             # Nichts laeuft — ersten Track starten
             self._player_service.load_tracks(self._current_tracks)
             self._player_service.play_track(0)
-            self.query_one("#visualizer", Visualizer).start()
         else:
             self._player_service.toggle_pause()
-            if state.is_paused:
-                self.query_one("#visualizer", Visualizer).stop()
-            else:
-                self.query_one("#visualizer", Visualizer).start()
+        self._sync_visualizer()
         self._update_transport()
 
     def action_next_track(self) -> None:
         """Naechster Track."""
         self._player_service.next_track()
+        self._sync_visualizer()
         self._update_transport()
         self._highlight_current_track()
 
     def action_previous_track(self) -> None:
         """Vorheriger Track."""
         self._player_service.previous_track()
+        self._sync_visualizer()
         self._update_transport()
         self._highlight_current_track()
 
@@ -213,6 +231,88 @@ class RetroAmpApp(App):
             callback=self._on_playlist_selected,
         )
 
+    def action_cycle_theme(self) -> None:
+        """Wechselt zum naechsten Retro-Theme."""
+        current = self.theme
+        try:
+            idx = RETRO_THEME_NAMES.index(current)
+        except ValueError:
+            idx = -1
+        next_idx = (idx + 1) % len(RETRO_THEME_NAMES)
+        next_theme = RETRO_THEME_NAMES[next_idx]
+        self.theme = next_theme
+        display = THEME_DISPLAY_NAMES.get(next_theme, next_theme)
+        self.notify(f"Theme: {display}")
+        self._save_theme(next_theme)
+
+    def action_rename_file(self) -> None:
+        """Datei umbenennen — Dialog oeffnen."""
+        from .screens.rename_screen import RenameScreen  # Lazy import
+
+        file_table = self.query_one("#file-table", FileTable)
+        track = file_table.highlighted_track
+        if not track:
+            self.notify("Kein Track ausgewaehlt", severity="warning")
+            return
+
+        self.push_screen(
+            RenameScreen(track.path),
+            callback=self._on_rename_result,
+        )
+
+    def _on_rename_result(self, new_path: Path | None) -> None:
+        """Callback nach Umbenennen-Dialog."""
+        if not new_path:
+            return
+
+        # Wenn der umbenannte Track gerade spielt, merken
+        playing = self._player_service.state.current_track
+        was_playing = playing and playing.path != new_path
+
+        # Verzeichnis neu scannen
+        directory = new_path.parent
+        self._scan_directory(directory)
+        self.notify(f"Umbenannt: {new_path.name}")
+
+    def action_delete_file(self) -> None:
+        """Datei loeschen — Bestaetigungsdialog oeffnen."""
+        from .screens.confirm_screen import ConfirmScreen  # Lazy import
+
+        file_table = self.query_one("#file-table", FileTable)
+        track = file_table.highlighted_track
+        if not track:
+            self.notify("Kein Track ausgewaehlt", severity="warning")
+            return
+
+        self.push_screen(
+            ConfirmScreen(
+                f"Datei wirklich loeschen?\n\n{track.name}",
+                file_path=track.path,
+            ),
+            callback=self._on_delete_result,
+        )
+
+    def _on_delete_result(self, deleted_path: Path | None) -> None:
+        """Callback nach Loeschen-Bestaetigung."""
+        if not deleted_path:
+            return
+
+        # Pruefen ob der geloeschte Track gerade spielt
+        playing = self._player_service.state.current_track
+        if playing and playing.path == deleted_path:
+            if self._player_service.state.has_next:
+                self._player_service.next_track()
+            else:
+                self._player_service.stop()
+            self._sync_visualizer()
+            self._highlight_current_track()
+            self._update_transport()
+
+        # Verzeichnis neu scannen
+        directory = deleted_path.parent
+        self._scan_directory(directory)
+        self.notify(f"Geloescht: {deleted_path.name}")
+
     def _on_playlist_selected(self, playlist_name: str | None) -> None:
         """Callback wenn eine Playlist im Dialog gewaehlt wurde."""
         if not playlist_name:
@@ -241,7 +341,7 @@ class RetroAmpApp(App):
                     file_table.update_tracks(tracks)
                     self._player_service.load_tracks(tracks)
                     self._player_service.play_track(0)
-                    self.query_one("#visualizer", Visualizer).start()
+                    self._sync_visualizer()
                     self._update_transport()
                     self.notify(f"♪ Playlist: {playlist_name} ({len(tracks)} Tracks)")
                 else:
@@ -262,6 +362,9 @@ class RetroAmpApp(App):
             return True if has_track and not state.is_stopped else None
         if action == "toggle_favorite":
             return True if has_track else None
+        if action in ("rename_file", "delete_file"):
+            file_table = self.query_one("#file-table", FileTable)
+            return True if file_table.highlighted_track else None
         return True
 
     # --- Interne Methoden ---
@@ -288,22 +391,45 @@ class RetroAmpApp(App):
         else:
             self._player_service.play_file(track)
 
-        self.query_one("#visualizer", Visualizer).start()
+        self._sync_visualizer()
         self._update_transport()
         self._highlight_current_track()
         self.sub_title = track.display_name
 
     def _highlight_current_track(self) -> None:
-        """Markiert den aktuellen Track in der Tabelle."""
+        """Markiert den aktuellen Track in der Tabelle (Cursor + visuell)."""
         track = self._player_service.state.current_track
+        file_table = self.query_one("#file-table", FileTable)
+        file_table.mark_playing(track.path if track else None)
         if track:
-            file_table = self.query_one("#file-table", FileTable)
             file_table.highlight_track(track)
 
     def _tick_position(self) -> None:
         """Timer-Callback: Position aktualisieren."""
         self._player_service.update_position()
         self._update_transport()
+
+    def _sync_visualizer(self) -> None:
+        """Synchronisiert Visualizer mit Player-State."""
+        vis = self.query_one("#visualizer", Visualizer)
+        if self._player_service.state.is_playing:
+            track = self._player_service.state.current_track
+            if track:
+                self._load_spectrum(track.path)
+                vis.set_spectrum_source(
+                    lambda: self._spectrum_analyzer.get_bands(
+                        self._player_service.state.position_seconds
+                    )
+                )
+            vis.start()
+        else:
+            vis.set_spectrum_source(None)
+            vis.stop()
+
+    @work(exclusive=True, group="spectrum", thread=True)
+    def _load_spectrum(self, path: Path) -> None:
+        """Laedt Spektrum-Daten im Hintergrund-Thread."""
+        self._spectrum_analyzer.load(path)
 
     def _update_transport(self) -> None:
         """Transport-Leiste mit aktuellem State aktualisieren."""
@@ -313,8 +439,8 @@ class RetroAmpApp(App):
     def _on_track_finished(self) -> None:
         """Callback wenn ein Track fertig ist."""
         self._player_service.check_auto_next()
+        self._sync_visualizer()
         if self._player_service.state.is_stopped:
-            self.query_one("#visualizer", Visualizer).stop()
             self.sub_title = ""
         else:
             self._highlight_current_track()
@@ -335,6 +461,13 @@ class RetroAmpApp(App):
         settings["volume"] = self._player_service.state.volume
         self._settings_store.save(settings)
 
+    def _save_theme(self, theme_name: str) -> None:
+        """Speichert das gewaehlte Theme in Settings."""
+        settings = self._settings_store.load()
+        settings["theme"] = theme_name
+        self._settings_store.save(settings)
+
     def on_unmount(self) -> None:
         """Cleanup beim Beenden."""
+        self._spectrum_analyzer.unload()
         self._audio_player.cleanup()

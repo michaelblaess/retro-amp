@@ -1,6 +1,10 @@
 """Datei-Tabelle Widget — zeigt Audio-Dateien im aktuellen Ordner."""
 from __future__ import annotations
 
+from pathlib import Path
+
+from rich.text import Text
+
 from textual import on
 from textual.message import Message
 from textual.widget import Widget
@@ -45,6 +49,8 @@ class FileTable(Widget):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._tracks: list[AudioTrack] = []
+        self._playing_path: Path | None = None
+        self._name_col_key: object | None = None
 
     def compose(self):  # type: ignore[override]
         yield Static("Keine Dateien", id="file-count")
@@ -53,7 +59,8 @@ class FileTable(Widget):
     def on_mount(self) -> None:
         """Initialisiert die Tabellen-Spalten."""
         table = self.query_one("#file-data", DataTable)
-        table.add_columns("Name", "Format", "Bitrate", "Dauer")
+        col_keys = table.add_columns("Name", "Format", "Bitrate", "Dauer")
+        self._name_col_key = col_keys[0]
 
     def update_tracks(self, tracks: list[AudioTrack]) -> None:
         """Aktualisiert die Tabelle mit neuen Tracks."""
@@ -62,8 +69,9 @@ class FileTable(Widget):
         table.clear()
 
         for track in tracks:
+            name_cell = self._format_name(track)
             table.add_row(
-                track.display_name,
+                name_cell,
                 track.format_display,
                 track.bitrate_display,
                 track.duration_display,
@@ -78,6 +86,46 @@ class FileTable(Widget):
             count_label.update("1 Datei")
         else:
             count_label.update(f"{count} Dateien")
+
+    def mark_playing(self, path: Path | None) -> None:
+        """Markiert den aktuell spielenden Track visuell (▶ + Farbe)."""
+        table = self.query_one("#file-data", DataTable)
+        old_path = self._playing_path
+        self._playing_path = path
+
+        # Alten Marker entfernen
+        if old_path and self._name_col_key is not None:
+            for track in self._tracks:
+                if track.path == old_path:
+                    try:
+                        table.update_cell(
+                            str(old_path), self._name_col_key, track.display_name
+                        )
+                    except Exception:
+                        pass
+                    break
+
+        # Neuen Marker setzen
+        if path and self._name_col_key is not None:
+            for track in self._tracks:
+                if track.path == path:
+                    styled = Text(f"▶ {track.display_name}", style="bold green")
+                    try:
+                        table.update_cell(
+                            str(path), self._name_col_key, styled
+                        )
+                    except Exception:
+                        pass
+                    break
+
+    @property
+    def highlighted_track(self) -> AudioTrack | None:
+        """Gibt den aktuell hervorgehobenen (Cursor) Track zurueck."""
+        table = self.query_one("#file-data", DataTable)
+        idx = table.cursor_row
+        if 0 <= idx < len(self._tracks):
+            return self._tracks[idx]
+        return None
 
     @on(DataTable.RowSelected, "#file-data")
     def _on_row_selected(self, event: DataTable.RowSelected) -> None:
@@ -94,9 +142,15 @@ class FileTable(Widget):
             self.post_message(FileTable.TrackHighlighted(self._tracks[idx]))
 
     def highlight_track(self, track: AudioTrack) -> None:
-        """Markiert den aktuell spielenden Track in der Tabelle."""
+        """Bewegt den Cursor zum angegebenen Track."""
         table = self.query_one("#file-data", DataTable)
         for idx, t in enumerate(self._tracks):
             if t.path == track.path:
                 table.move_cursor(row=idx)
                 break
+
+    def _format_name(self, track: AudioTrack) -> str | Text:
+        """Formatiert den Namen — mit ▶ wenn gerade gespielt wird."""
+        if self._playing_path and track.path == self._playing_path:
+            return Text(f"▶ {track.display_name}", style="bold green")
+        return track.display_name

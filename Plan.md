@@ -46,6 +46,7 @@ app.py / widgets/ / screens/ → Composition Root, verdrahtet alles
 - `query_one()` mit Typ-Parameter fuer Widget-Lookup
 - Spinner/Animation: Full Table Rebuild statt `update_cell()`
 - `ModalScreen[T | None]` mit typed `dismiss()` + Callback
+- `priority=True` auf App-Level Bindings um Widget-Key-Capture zu uebersteuern
 
 ### Callback-basierte Entkopplung
 
@@ -82,13 +83,13 @@ Fail-safe Loading: bei korrupter Datei → Defaults verwenden, nie crashen.
 │  Folder-Browser  │  Dateiliste (Tabelle)                        │
 │  (Tree-Widget)   │  Name | Format | Bitrate | Dauer             │
 │                  │                                               │
-│  Music           │  autobahn.mp3      320kbps   22:43           │
-│  ├─ Kraftwerk    │  modell.mp3        320kbps    3:39           │
-│  ├─ C64          │  nummern.mp3       256kbps    4:12           │
+│  Music           │  ▶ autobahn.mp3     320kbps   22:43          │
+│  ├─ Kraftwerk    │  modell.mp3         320kbps    3:39          │
+│  ├─ C64          │  nummern.mp3        256kbps    4:12          │
 │  └─ Amiga        │                                               │
 │                  │                                               │
 ├──────────────────┴───────────────────────────────────────────────┤
-│  ▐▌▐▌▐▌ ▐▌▐▌ ▐▌▐▌▐▌▐▌ ▐▌ ▐▌▐▌▐▌ ▐▌▐▌  (Equalizer-Visualizer) │
+│  ▐▌▐▌▐▌ ▐▌▐▌ ▐▌▐▌▐▌▐▌ ▐▌ ▐▌▐▌▐▌ ▐▌▐▌  (Spektral-Visualizer)  │
 ├──────────────────────────────────────────────────────────────────┤
 │  ► autobahn.mp3          ██████████░░░░░  14:22 / 22:43         │
 │  [◄◄] [▶/▐▐] [►►] [🔀] [🔁]       Vol: ████████░░  80%        │
@@ -112,17 +113,20 @@ Theme-Wechsel per Taste `T` zur Laufzeit. Theme wird in Settings persistiert (`w
 | `Space` | Play / Pause |
 | `N` | Naechster Song |
 | `B` | Vorheriger Song |
-| `←` / `→` | Vor- / Zurueckspulen |
+| `←` / `→` | Vor- / Zurueckspulen (5s) |
 | `↑` / `↓` | Navigation in der Liste |
 | `Enter` | Song abspielen / Ordner oeffnen |
 | `+` / `-` | Lautstaerke |
-| `F` | Song zu Favoriten hinzufuegen |
+| `F` | Song zu Favoriten hinzufuegen/entfernen |
 | `P` | Playlist-Menue (erstellen / laden / hinzufuegen) |
+| `U` | Datei umbenennen |
+| `DEL` | Datei loeschen (mit Bestaetigung) |
 | `T` | Theme wechseln |
 | `L` | Log ein-/ausblenden |
 | `Q` | Beenden |
 
 Bindings nutzen `check_action()` — z.B. `N`/`B` nur sichtbar wenn Song geladen.
+Alle App-Level Bindings mit `priority=True` um Widget-Key-Capture zu uebersteuern.
 
 ## Playlists
 
@@ -142,13 +146,24 @@ Bindings nutzen `check_action()` — z.B. `N`/`B` nur sichtbar wenn Song geladen
 - /home/michael/music/amiga/stardust_memories.mod
 ```
 
-## Equalizer-Visualizer
+## Spektral-Visualizer
 
-- Rein visueller Effekt (kein echter EQ)
-- ASCII/Unicode-Balken die zur Musik "tanzen"
-- Passt sich dem aktiven Theme an (Farben aus TCSS)
-- Animation via `set_interval()` Timer
-- Zufaellige oder beat-basierte Animation
+- **Echte FFT-basierte Spektralanalyse** (stdlib cmath, kein numpy)
+- 2048-Punkt-FFT mit Hann-Fenster, PCM via `pygame.mixer.Sound.get_raw()`
+- 32 log-skalierte Frequenzbaender (20 Hz – 18 kHz)
+- 3-zeilige Multi-Row-Darstellung (24 diskrete Hoehenstufen via Unicode-Bloecke)
+- **Spektralfarben** pro Band: Rot (Bass) → Gelb → Gruen → Cyan → Blau (Hoehen)
+- **Peak-Hold mit Falleffekt**: Peaks halten kurz, dann sanft fallen
+- PCM-Laden im Background-Thread (`@work(thread=True)`)
+- Fallback auf simulierte Zufallswerte waehrend PCM laedt
+- Animation via `set_interval(1/12)` Timer (12 fps)
+
+## Dateiverwaltung
+
+- `U` — Datei umbenennen (RenameScreen, Input mit aktuellem Namen)
+- `DEL` — Datei loeschen (ConfirmScreen mit Sicherheitsabfrage)
+- Nach Umbenennen/Loeschen wird das Verzeichnis automatisch neu gescannt
+- Wenn die geloeschte Datei gerade spielt → naechster Track oder Stop
 
 ## Tech-Stack
 
@@ -157,7 +172,7 @@ Bindings nutzen `check_action()` — z.B. `N`/`B` nur sichtbar wenn Song geladen
 | TUI-Framework | `textual >= 0.85` |
 | Rich Text | `rich >= 13.0` |
 | Validierung | `pydantic >= 2.0` |
-| Audio-Playback | `pygame.mixer` (MOD-Support!) |
+| Audio-Playback | `pygame.mixer` (Buffer 4096, MOD-Support!) |
 | Audio-Metadaten | `mutagen` |
 | SID-Playback | `libsidplayfp` oder `sidplayfp` (Subprocess) |
 | HTTP (optional) | `httpx >= 0.25` |
@@ -180,39 +195,44 @@ retro-amp/
 │       ├── __main__.py          # CLI Entry Point (argparse, absolute Imports!)
 │       ├── app.py               # Textual App — Composition Root
 │       ├── app.tcss             # Globales Layout-CSS
+│       ├── themes.py            # Retro-Themes (C64, Amiga, Atari ST)
 │       ├── domain/
 │       │   ├── __init__.py
 │       │   ├── models.py        # AudioTrack, PlayerState, PlaylistEntry (dataclass)
 │       │   │                    # AppConfig (pydantic)
-│       │   └── protocols.py     # AudioPlayer(Protocol), PlaylistRepository(Protocol)
+│       │   └── protocols.py     # AudioPlayer, MetadataReader, PlaylistRepository, SettingsStore
 │       ├── services/
 │       │   ├── __init__.py
-│       │   ├── player_service.py    # Play/Pause/Next/Prev Logik
+│       │   ├── player_service.py    # Play/Pause/Next/Prev/Seek Logik
 │       │   ├── playlist_service.py  # Playlist CRUD, Favoriten
-│       │   └── metadata_service.py  # Audio-Metadaten lesen
+│       │   └── metadata_service.py  # Audio-Metadaten lesen + Verzeichnis scannen
 │       ├── infrastructure/
 │       │   ├── __init__.py
-│       │   ├── audio_player.py      # pygame.mixer Implementation
-│       │   ├── playlist_store.py    # Markdown-Datei I/O
-│       │   ├── metadata_reader.py   # mutagen Wrapper
-│       │   └── settings.py          # Settings JSON Persistence
+│       │   ├── audio_player.py      # PygameAudioPlayer (pygame.mixer)
+│       │   ├── spectrum.py          # SpectrumAnalyzer (FFT, PCM, Frequenzbaender)
+│       │   ├── playlist_store.py    # MarkdownPlaylistStore (Markdown I/O)
+│       │   ├── metadata_reader.py   # MutagenMetadataReader (mutagen Wrapper)
+│       │   └── settings.py          # JsonSettingsStore (JSON Persistence)
 │       ├── widgets/
 │       │   ├── __init__.py
-│       │   ├── folder_browser.py    # Tree-Widget (links)
-│       │   ├── file_table.py        # DataTable-Widget (rechts)
-│       │   ├── visualizer.py        # Equalizer-Balken
-│       │   └── transport_bar.py     # Play/Pause/Progress/Volume
+│       │   ├── folder_browser.py    # FolderBrowser (DirectoryTree, Audio-Filter)
+│       │   ├── file_table.py        # FileTable (DataTable, Playing-Marker)
+│       │   ├── visualizer.py        # Visualizer (Spektral-FFT, Peaks, Farben)
+│       │   └── transport_bar.py     # TransportBar (Status, Fortschritt, Volume)
 │       └── screens/
 │           ├── __init__.py
-│           ├── playlist_screen.py   # Playlist erstellen/laden/hinzufuegen
-│           └── about_screen.py      # About-Dialog
+│           ├── playlist_screen.py   # PlaylistScreen (erstellen/laden/hinzufuegen)
+│           ├── rename_screen.py     # RenameScreen (Datei umbenennen)
+│           └── confirm_screen.py    # ConfirmScreen (Loeschbestaetigung)
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py              # Shared Fixtures, Mock-Repos
-│   ├── test_models.py
-│   ├── test_player_service.py
-│   ├── test_playlist_service.py
-│   └── test_metadata_service.py
+│   ├── test_models.py           # 27 Tests: AudioFormat, AudioTrack, PlayerState, Playlist
+│   ├── test_player_service.py   # 16 Tests: Play, Pause, Seek, Next/Prev, Volume, Callbacks
+│   ├── test_playlist_service.py # 15 Tests: Favoriten, Playlist CRUD
+│   ├── test_metadata_service.py #  4 Tests: Metadata lesen, Verzeichnis scannen
+│   ├── test_spectrum.py         #  7 Tests: FFT, SpectrumAnalyzer
+│   └── test_themes.py           #  7 Tests: Theme-Definitionen
 └── .github/
     └── workflows/
         └── release.yml          # Multi-Platform PyInstaller Build
@@ -220,42 +240,62 @@ retro-amp/
 
 ## Meilensteine
 
-### v0.1 — Grundgeruest
-- [ ] Projektstruktur aus Template aufsetzen (pyproject.toml, src-Layout, setup.bat)
-- [ ] Domain-Models: AudioTrack, PlayerState, AppConfig
-- [ ] Protocols: AudioPlayer, PlaylistRepository
-- [ ] Textual App mit Grundlayout (Tree links, DataTable rechts)
-- [ ] Folder-Browser: Ordner navigieren, Audio-Dateien filtern
-- [ ] Datei-Tabelle: Name, Format, Bitrate, Dauer (via mutagen)
-- [ ] Audio-Playback: Play, Pause, Stop fuer MP3/OGG/FLAC/WAV (pygame.mixer)
-- [ ] Basis-Tests fuer Domain-Models und Services
+### v0.1 — Grundgeruest ✅
 
-### v0.2 — Player-Funktionen
-- [ ] Transport-Leiste mit Fortschrittsanzeige (render()-Pattern)
-- [ ] Vor/Zurueck, Lautstaerke (+/-)
-- [ ] Naechster/Vorheriger Song
-- [ ] Tastenbelegung komplett mit check_action()
-- [ ] Settings-Persistenz (~/.retro-amp/settings.json)
+- [x] Projektstruktur aus Template aufsetzen (pyproject.toml, src-Layout, setup.bat)
+- [x] Domain-Models: AudioTrack, PlayerState, Playlist, PlaylistEntry
+- [x] Protocols: AudioPlayer, MetadataReader, PlaylistRepository, SettingsStore
+- [x] Textual App mit Grundlayout (Tree links, DataTable rechts)
+- [x] Folder-Browser: Ordner navigieren, Audio-Dateien filtern
+- [x] Datei-Tabelle: Name, Format, Bitrate, Dauer (via mutagen)
+- [x] Audio-Playback: Play, Pause, Stop fuer MP3/OGG/FLAC/WAV (pygame.mixer)
+- [x] Basis-Tests fuer Domain-Models und Services
 
-### v0.3 — Playlists & Favoriten
-- [ ] PlaylistRepository Protocol + Markdown-Implementation
-- [ ] Favoriten-System (Taste F → favorites.md)
-- [ ] Playlist erstellen / laden / Songs hinzufuegen (ModalScreen)
-- [ ] Playlist als Markdown lesen/schreiben
-- [ ] Tests fuer Playlist-Service
+### v0.2 — Player-Funktionen ✅
 
-### v0.4 — Retro-Vibes
-- [ ] C64 Theme (TCSS)
-- [ ] Amiga Workbench Theme (TCSS)
-- [ ] Atari ST Theme (TCSS)
-- [ ] Theme-Wechsel zur Laufzeit (watch_theme + Settings)
-- [ ] Equalizer-Visualizer (set_interval + Unicode-Balken)
+- [x] Transport-Leiste mit Fortschrittsanzeige (render()-Pattern)
+- [x] Vor/Zurueck (Seek ±5s), Lautstaerke (+/-)
+- [x] Naechster/Vorheriger Song, Auto-Next
+- [x] Tastenbelegung komplett mit check_action()
+- [x] Settings-Persistenz (~/.retro-amp/settings.json)
+- [x] Polished Transport: Artist-Title, Format, Bitrate, farbige Icons
+
+### v0.3 — Playlists & Favoriten ✅
+
+- [x] PlaylistRepository Protocol + Markdown-Implementation
+- [x] Favoriten-System (Taste F → favorites.md)
+- [x] Playlist erstellen / laden / Songs hinzufuegen (PlaylistScreen)
+- [x] Playlist als Markdown lesen/schreiben
+- [x] Tests fuer Playlist-Service (15 Tests)
+
+### v0.3.1 — Bugfixes & Spectrum-Analyzer ✅
+
+- [x] BUG: N/B Tasten gingen nicht im Baum/Liste → priority=True auf alle Bindings
+- [x] BUG: Visualizer lief weiter nach Track-Ende → _sync_visualizer() Methode
+- [x] Echte FFT-basierte Spektralanalyse (stdlib cmath, kein numpy)
+- [x] Multi-Row Visualizer mit Spektralfarben und Peak-Hold-Falleffekt
+- [x] ▶ Playing-Indikator in der Dateiliste (gruen + bold)
+- [x] Datei umbenennen mit U (RenameScreen)
+- [x] Datei loeschen mit DEL (ConfirmScreen mit Sicherheitsabfrage)
+- [x] 69 Tests alle gruen
+
+### v0.4 — Retro-Vibes ✅
+
+- [x] C64 Theme — Blau auf Hellblau (#40318D / #7878FF), der Klassiker
+- [x] Amiga Workbench Theme — Blau/Weiss/Orange (#0055AA / #FF8800)
+- [x] Atari ST GEM Theme — Weiss/Schwarz/Gruen (light theme)
+- [x] Theme-Wechsel zur Laufzeit mit T-Taste (zyklisch: C64 → Amiga → Atari)
+- [x] Theme wird in Settings persistiert, beim Start geladen
+- [x] Theme-Name in der Titelleiste
+- [x] 76 Tests alle gruen
 
 ### v0.5 — Nostalgie-Formate
+
 - [ ] SID-Playback (C64) — AudioPlayer Protocol erweitern
 - [ ] MOD/XM/S3M-Playback (Amiga)
 
 ### v0.6 — Liner Notes (Wikipedia-Info)
+
 - [ ] Beim Abspielen eines Songs im Hintergrund Infos sammeln (Artist, Album, Song)
 - [ ] Wikipedia-API abfragen (deutsch + englisch, Fallback)
 - [ ] Ergebnisse als Markdown speichern in `~/.retro-amp/notes/{artist}.md`
@@ -265,6 +305,7 @@ retro-amp/
 - [ ] Graceful: kein Internet? Kein Problem — Feature ist rein optional
 
 ### v1.0 — Release
+
 - [ ] Polishing, Bugfixes
 - [ ] README mit Screenshots
 - [ ] PyPI-Veroeffentlichung
