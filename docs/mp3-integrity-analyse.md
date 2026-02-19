@@ -1,4 +1,4 @@
-# MP3-Integritaetsanalyse: Dropbox-Sync-Korruption
+# MP3-Integritaetsanalyse: SD-Karten-Korruption (nicht Dropbox)
 
 **Datum**: 2026-02-19
 **Anlass**: Wiedergabe-Haenger bei zwei MP3-Dateien, synchronisiert ueber Dropbox
@@ -166,12 +166,80 @@ Sinne. Google Cloud Storage bietet die transparenteste Integritaetspruefung.
 
 ---
 
-## 5. Empfehlungen
+## 5. Dateivergleich: Original vs. korrupte Kopie
+
+Dank der Suchfunktion wurde eine **intakte Originaldatei** gefunden:
+
+| Datei | Pfad |
+|-------|------|
+| **Original (intakt)** | `D:\Dropbox\MUSIK\Pop\The Sound of The Seventies\13 - Colin Blunstone - I Don't Believe In Miracles.mp3` |
+| **Kopie (korrupt)** | `D:\Dropbox\MUSIK\13 - Colin Blunstone - I Don't Believe In Miracles.mp3` |
+
+### Ergebnis des Byte-fuer-Byte-Vergleichs
+
+- **Dateigroesse**: Beide Dateien exakt **6.384.569 Bytes** — identische Groesse
+- **Unterschiede**: 376.832 Bytes weichen ab (5,9% der Datei)
+
+### Die 4 korrupten Regionen im Detail
+
+| # | Hex-Offset | Dezimal-Offset | Laenge (Bytes) | Laenge (Sektoren) | Flash-Pages (4K) |
+|---|------------|----------------|----------------|--------------------|--------------------|
+| 1 | `0x174000` | 1.523.712 | 94.208 | 184 | 23 |
+| 2 | `0x1D4000` | 1.916.928 | 94.208 | 184 | 23 |
+| 3 | `0x234000` | 2.310.144 | 94.208 | 184 | 23 |
+| 4 | `0x294000` | 2.703.360 | 94.208 | 184 | 23 |
+
+### Korruptionsmuster-Analyse
+
+| Eigenschaft | Wert | Bedeutung |
+|-------------|------|-----------|
+| **Art der Korruption** | Null-Bytes (0x00) | Geloeschter / nicht geschriebener Flash-Speicher |
+| **Block-Alignment** | Alle Offsets auf 512-Byte-Grenzen | Sektor-Alignment (typisch fuer Block-Devices) |
+| **Hex-Alignment** | Alle Offsets auf 0x1000-Grenzen | 4K-Page-Alignment (typisch fuer NAND-Flash) |
+| **Block-Groesse** | Exakt 94.208 Bytes (= 23 Flash Pages) | Einheitliche Groesse → systematischer Fehler |
+| **Abstand** | Exakt 393.216 Bytes (384 KB) zwischen Starts | Regelmaessiger Abstand → kein zufaelliger Defekt |
+| **Dateibereiche** | 23,9% – 42,3% der Datei | Mittlerer Bereich betroffen |
+| **Rest der Datei** | Bit-fuer-Bit identisch | Anfang, Ende und Bereiche dazwischen sind intakt |
+
+### Diagnose: SD-Karte / Flash-Speicher-Korruption
+
+Das Muster ist **eindeutig charakteristisch fuer NAND-Flash-Korruption**:
+
+1. **Null-Bytes**: NAND-Flash-Zellen lesen sich als `0x00` (oder `0xFF` je nach Typ)
+   wenn ein Block geloescht oder nicht geschrieben wurde
+2. **Sektor-Alignment**: Block-Devices (SD-Karten, USB-Sticks) arbeiten in
+   512-Byte-Sektoren — die Korruption respektiert diese Grenzen exakt
+3. **4K-Page-Alignment**: NAND-Flash organisiert Daten in 4-KiB-Pages — alle
+   korrupten Regionen beginnen auf Page-Grenzen
+4. **Einheitliche Block-Groesse**: Alle 4 Regionen sind exakt gleich gross —
+   typisch fuer Wear-Leveling-Fehler oder Bad-Block-Management-Probleme
+5. **Regelmaessiger Abstand**: Die exakt gleichen Abstaende deuten auf einen
+   systematischen Zuordnungsfehler im Flash Translation Layer (FTL)
+
+### Fazit
+
+**Dropbox ist fuer diese Korruption NICHT verantwortlich.**
+
+Die korrupte Datei wurde hoechstwahrscheinlich von einer **SD-Karte eines
+Mobilgeraets** kopiert, die bereits beschaedigte Sektoren hatte. Dropbox hat
+die bereits korrupte Datei lediglich synchronisiert. Der Content Hash wurde
+ueber die korrupte Version berechnet — damit ist die Korruption fuer Dropbox
+"korrekt".
+
+Die intakte Originaldatei im Unterordner `Pop\The Sound of The Seventies\`
+bestaetigt, dass die Quelle (CD-Rip) einwandfrei war und die Beschaedigung
+beim Kopieren auf/von der SD-Karte entstanden ist.
+
+---
+
+## 6. Empfehlungen
 
 ### Fuer die betroffenen Dateien
 
 - **Colin Blunstone**: Datei ist nicht reparierbar (368 KB Audio-Daten fehlen).
-  Originaldatei aus Backup oder CD neu rippen.
+  **Loesung**: Die intakte Originaldatei liegt unter
+  `D:\Dropbox\MUSIK\Pop\The Sound of The Seventies\` — korrupte Kopie durch
+  Original ersetzen.
 - **David Bowie**: Kann mit `mp3val -f` repariert werden (nur Header-Korrektur).
 
 ### Fuer Dropbox-Nutzer allgemein
