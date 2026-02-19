@@ -1,7 +1,14 @@
-"""Audio-Playback via pygame.mixer."""
+"""Audio-Playback via pygame.mixer.
+
+OGG/Opus-Dateien werden per pyogg dekodiert und als WAV-Stream geladen,
+da pygame's SDL_mixer nur Vorbis (nicht Opus) unterstuetzt.
+"""
 from __future__ import annotations
 
+import ctypes
+import io
 import logging
+import struct
 from pathlib import Path
 
 import pygame
@@ -10,13 +17,60 @@ import pygame.mixer
 logger = logging.getLogger(__name__)
 
 # Unterstuetzte Formate fuer pygame.mixer
-_PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".flac", ".wav", ".mod", ".xm", ".s3m"}
+_PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m"}
+
+# OGG-Endungen die Opus enthalten koennten
+_OGG_EXTENSIONS = {".ogg", ".oga", ".opus"}
+
+
+def _is_opus(path: Path) -> bool:
+    """Prueft ob eine OGG-Datei Opus-kodiert ist (Header-Check)."""
+    try:
+        with open(path, "rb") as f:
+            header = f.read(40)
+            # OGG/Opus hat 'OpusHead' im ersten OGG-Segment
+            return b"OpusHead" in header
+    except Exception:
+        return False
+
+
+def _decode_opus_to_wav(path: Path) -> io.BytesIO:
+    """Dekodiert eine OGG/Opus-Datei zu einem WAV-Stream im Speicher."""
+    import pyogg
+
+    opus = pyogg.OpusFile(str(path))
+    pcm = ctypes.cast(
+        opus.buffer,
+        ctypes.POINTER(ctypes.c_char * opus.buffer_length),
+    ).contents.raw
+
+    channels: int = opus.channels
+    sample_rate: int = opus.frequency
+    bits = 16
+    data_size = len(pcm)
+
+    wav = io.BytesIO()
+    wav.write(b"RIFF")
+    wav.write(struct.pack("<I", 36 + data_size))
+    wav.write(b"WAVE")
+    wav.write(b"fmt ")
+    wav.write(struct.pack(
+        "<IHHIIHH", 16, 1, channels, sample_rate,
+        sample_rate * channels * bits // 8,
+        channels * bits // 8, bits,
+    ))
+    wav.write(b"data")
+    wav.write(struct.pack("<I", data_size))
+    wav.write(pcm)
+    wav.seek(0)
+    return wav
 
 
 class PygameAudioPlayer:
     """AudioPlayer-Implementation mit pygame.mixer.
 
     Implementiert das AudioPlayer-Protocol aus domain/protocols.py.
+    OGG/Opus-Dateien werden automatisch per pyogg dekodiert.
     """
 
     def __init__(self, frequency: int = 44100, buffer_size: int = 4096) -> None:
@@ -25,6 +79,7 @@ class PygameAudioPlayer:
         self._buffer_size = buffer_size
         self._current_path: Path | None = None
         self._seek_offset: float = 0.0
+        self._opus_wav: io.BytesIO | None = None
         self._init_mixer()
 
     def _init_mixer(self) -> None:
@@ -50,7 +105,12 @@ class PygameAudioPlayer:
             return
 
         try:
-            pygame.mixer.music.load(str(path))
+            self._opus_wav = None
+            if path.suffix.lower() in _OGG_EXTENSIONS and _is_opus(path):
+                self._opus_wav = _decode_opus_to_wav(path)
+                pygame.mixer.music.load(self._opus_wav)
+            else:
+                pygame.mixer.music.load(str(path))
             pygame.mixer.music.play()
             self._current_path = path
             self._seek_offset = 0.0

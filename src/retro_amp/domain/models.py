@@ -19,6 +19,7 @@ class AudioFormat(Enum):
 
     MP3 = "mp3"
     OGG = "ogg"
+    OPUS = "opus"
     FLAC = "flac"
     WAV = "wav"
     MOD = "mod"
@@ -34,6 +35,7 @@ class AudioFormat(Enum):
             ".mp3": cls.MP3,
             ".ogg": cls.OGG,
             ".oga": cls.OGG,
+            ".opus": cls.OPUS,
             ".flac": cls.FLAC,
             ".wav": cls.WAV,
             ".mod": cls.MOD,
@@ -46,7 +48,7 @@ class AudioFormat(Enum):
     @classmethod
     def supported_extensions(cls) -> set[str]:
         """Alle unterstuetzten Dateiendungen."""
-        return {".mp3", ".ogg", ".oga", ".flac", ".wav", ".mod", ".xm", ".s3m", ".sid"}
+        return {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m", ".sid"}
 
 
 @dataclass

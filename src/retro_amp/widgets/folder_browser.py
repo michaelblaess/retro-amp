@@ -17,7 +17,7 @@ class FolderBrowser(DirectoryTree):
     """
 
     _AUDIO_EXTENSIONS = {
-        ".mp3", ".ogg", ".oga", ".flac", ".wav",
+        ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
         ".mod", ".xm", ".s3m", ".sid",
     }
 
