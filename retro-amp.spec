@@ -88,6 +88,8 @@ a = Analysis(
         "pygame.mixer",
         # PyOgg (OGG/Opus Dekodierung)
         "pyogg",
+        # Miniaudio (MP3/FLAC Dekodierung)
+        "miniaudio",
         # Mutagen
         "mutagen",
         "mutagen.mp3",

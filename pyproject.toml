@@ -15,6 +15,7 @@ dependencies = [
     "pygame>=2.5.0",
     "mutagen>=1.47.0",
     "pyogg>=0.6.14a1",
+    "miniaudio>=1.61",
     "textual-themes>=0.1.0",
 ]
 

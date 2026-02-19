@@ -147,8 +147,11 @@ class SpectrumAnalyzer:
         if ext in {".ogg", ".oga", ".opus"}:
             return self._decode_ogg(path)
 
-        # MP3/FLAC und Tracker: Fallback auf pygame.mixer.Sound
-        # (kurze Verzoegerung um Music-Stream nicht zu stoeren)
+        # MP3/FLAC: per miniaudio (kein Konflikt mit pygame Music-Stream)
+        if ext in {".mp3", ".flac"}:
+            return self._decode_via_miniaudio(path)
+
+        # Tracker (MOD/S3M/XM): Fallback auf pygame.mixer.Sound
         return self._decode_via_pygame(path)
 
     def _decode_wav(self, path: Path) -> tuple[bytes | None, int, int]:
@@ -194,6 +197,24 @@ class SpectrumAnalyzer:
             # Letzter Fallback: pygame
             return self._decode_via_pygame(path)
         except Exception:
+            return None, 0, 0
+
+    def _decode_via_miniaudio(self, path: Path) -> tuple[bytes | None, int, int]:
+        """Dekodiert MP3/FLAC per miniaudio (kein Konflikt mit pygame Music-Stream)."""
+        try:
+            import miniaudio
+
+            decoded = miniaudio.decode_file(
+                str(path),
+                output_format=miniaudio.SampleFormat.SIGNED16,
+                nchannels=2,
+                sample_rate=44100,
+            )
+            # decoded.samples ist ein array von interleaved int16
+            raw = bytes(decoded.samples)
+            return raw, decoded.sample_rate, decoded.nchannels
+        except Exception:
+            logger.debug("miniaudio-Dekodierung fehlgeschlagen: %s", path, exc_info=True)
             return None, 0, 0
 
     def _decode_via_pygame(self, path: Path) -> tuple[bytes | None, int, int]:

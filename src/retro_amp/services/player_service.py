@@ -126,10 +126,14 @@ class PlayerService:
     def update_position(self) -> None:
         """Aktualisiert die Position vom Player. Aufgerufen per Timer."""
         if self._state.is_playing:
-            self._state.position_seconds = self._player.get_position()
+            pos = self._player.get_position()
+            # Nur aktualisieren wenn valide (>0), sonst alten Wert behalten
+            if pos > 0:
+                self._state.position_seconds = pos
 
-            # Pruefe ob Track fertig ist
-            if not self._player.is_busy() and self._state.position_seconds > 0:
+            # Pruefe ob Track fertig ist:
+            # is_busy() == False UND wir haben schon etwas gespielt (> 1s)
+            if not self._player.is_busy() and self._state.position_seconds >= 1.0:
                 self._state.state = PlaybackState.STOPPED
                 if self._on_finished:
                     self._on_finished()
