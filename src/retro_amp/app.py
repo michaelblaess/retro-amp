@@ -6,7 +6,7 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import DirectoryTree, Footer, Header
+from textual.widgets import DirectoryTree, Footer, Header, Rule, TabbedContent, TabPane
 
 from textual import work
 
@@ -25,9 +25,12 @@ from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
 from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
+from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricsPanel
+from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
+from .widgets.youtube_panel import YoutubePanel
 
 
 class RetroAmpApp(App):
@@ -50,7 +53,7 @@ class RetroAmpApp(App):
         Binding("u", "rename_file", "Umbenennen", priority=True),
         Binding("delete", "delete_file", "Loeschen", key_display="DEL", priority=True),
         Binding("t", "cycle_theme", "Theme", priority=True),
-        Binding("i", "show_info", "Info", priority=True),
+        Binding("i", "show_about", "Info", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -124,7 +127,16 @@ class RetroAmpApp(App):
                 yield FolderBrowser(str(self._tree_root), id="folder-browser")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
-                yield LyricsPanel(id="lyrics-panel")
+                yield Rule(id="tab-separator")
+                with TabbedContent(id="content-tabs"):
+                    with TabPane("Lyrics", id="tab-lyrics"):
+                        yield LyricsPanel(id="lyrics-panel")
+                    with TabPane("Lyrics (deutsch)", id="tab-translation"):
+                        yield TranslationPanel(id="translation-panel")
+                    with TabPane("Info", id="tab-info"):
+                        yield InfoPanel(id="info-panel")
+                    with TabPane("YouTube", id="tab-youtube"):
+                        yield YoutubePanel(id="youtube-panel")
         yield Visualizer(id="visualizer")
         yield TransportBar(id="transport")
         yield Footer()
@@ -153,9 +165,13 @@ class RetroAmpApp(App):
     def on_directory_tree_file_selected(
         self, event: DirectoryTree.FileSelected
     ) -> None:
-        """Datei im Baum ausgewaehlt — abspielen."""
+        """Datei im Baum ausgewaehlt — Ordner aktualisieren und abspielen."""
         path = event.path
         if self._metadata_service.is_audio_file(path):
+            # Rechtes Panel mit Ordner-Inhalt aktualisieren
+            parent = path.parent
+            self._scan_directory(parent)
+            self._save_last_path(parent)
             track = self._metadata_service.read_track(path)
             self._play_track(track)
 
@@ -255,27 +271,21 @@ class RetroAmpApp(App):
         self.notify(f"Theme: {display}")
         self._save_theme(next_theme)
 
-    def action_show_info(self) -> None:
-        """Liner Notes (Wikipedia-Info) zum aktuellen Artist anzeigen."""
-        track = self._player_service.state.current_track
-        if not track:
-            self.notify("Kein Track ausgewaehlt", severity="warning")
-            return
-
-        artist = track.artist or track.display_name
-        self.notify(f"Suche Info zu {artist}...", severity="information")
-        self._fetch_and_show_info(artist)
+    def action_show_about(self) -> None:
+        """About-Dialog anzeigen."""
+        from .screens.about_screen import AboutScreen  # Lazy import
+        self.push_screen(AboutScreen())
 
     @work(exclusive=True, group="liner-notes", thread=True)
     def _fetch_and_show_info(self, artist: str) -> None:
-        """Holt Liner Notes im Background-Thread und zeigt den Screen."""
+        """Holt Liner Notes im Background-Thread."""
         note = self._liner_notes_service.get_note(artist)
-        self.call_from_thread(self._show_info_screen, artist, note)
+        self.call_from_thread(self._apply_info, artist, note)
 
-    def _show_info_screen(self, artist: str, note: str) -> None:
-        """Zeigt den Info-Screen im Main-Thread."""
-        from .screens.info_screen import InfoScreen  # Lazy import
-        self.push_screen(InfoScreen(artist, note))
+    def _apply_info(self, artist: str, note: str) -> None:
+        """Zeigt Info im InfoPanel (Main-Thread)."""
+        info_panel = self.query_one("#info-panel", InfoPanel)
+        info_panel.show_info(artist, note)
 
     def action_rename_file(self) -> None:
         """Datei umbenennen — Dialog oeffnen."""
@@ -392,7 +402,7 @@ class RetroAmpApp(App):
             return True if state.has_previous else None
         if action in ("seek_forward", "seek_backward"):
             return True if has_track and not state.is_stopped else None
-        if action in ("toggle_favorite", "show_info"):
+        if action == "toggle_favorite":
             return True if has_track else None
         if action in ("rename_file", "delete_file"):
             file_table = self.query_one("#file-table", FileTable)
@@ -428,16 +438,18 @@ class RetroAmpApp(App):
         self._highlight_current_track()
         self.sub_title = track.display_name
 
-        # Lyrics asynchron laden
-        self._load_lyrics_for_track(track)
+        # Alle Tabs asynchron laden
+        self._load_tabs_for_track(track)
 
     def _highlight_current_track(self) -> None:
-        """Markiert den aktuellen Track in der Tabelle (Cursor + visuell)."""
+        """Markiert den aktuellen Track in der Tabelle und im Baum."""
         track = self._player_service.state.current_track
         file_table = self.query_one("#file-table", FileTable)
         file_table.mark_playing(track.path if track else None)
         if track:
             file_table.highlight_track(track)
+            folder_browser = self.query_one("#folder-browser", FolderBrowser)
+            folder_browser.highlight_path(track.path)
 
     def _tick_position(self) -> None:
         """Timer-Callback: Position aktualisieren."""
@@ -477,15 +489,14 @@ class RetroAmpApp(App):
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
             self.sub_title = ""
-            lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
-            lyrics_panel.clear()
+            self._clear_all_tabs()
             self._lyrics_generation += 1
         else:
             self._highlight_current_track()
             track = self._player_service.state.current_track
             if track:
                 self.sub_title = track.display_name
-                self._load_lyrics_for_track(track)
+                self._load_tabs_for_track(track)
         self._update_transport()
 
     def _save_last_path(self, path: Path) -> None:
@@ -506,24 +517,38 @@ class RetroAmpApp(App):
         settings["theme"] = theme_name
         self._settings_store.save(settings)
 
-    def _load_lyrics_for_track(self, track: AudioTrack) -> None:
-        """Startet asynchrones Laden der Lyrics fuer einen Track."""
+    def _load_tabs_for_track(self, track: AudioTrack) -> None:
+        """Laedt Inhalte fuer alle Tabs asynchron."""
         artist = track.artist
         title = track.title or track.path.stem
-        if not artist:
-            # Kein Artist-Tag → kein Lyrics-Lookup
-            lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
-            lyrics_panel.clear()
-            return
 
         # Generation erhoehen → alte Threads ignorieren ihr Ergebnis
         self._lyrics_generation += 1
         generation = self._lyrics_generation
 
-        lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
-        lyrics_panel.show_loading(artist, title)
+        if artist:
+            # Lyrics + Uebersetzung laden
+            self.query_one("#lyrics-panel", LyricsPanel).show_loading(artist, title)
+            self.query_one("#translation-panel", TranslationPanel).show_loading(
+                artist, title,
+            )
+            self._fetch_lyrics_async(artist, title, generation)
 
-        self._fetch_lyrics_async(artist, title, generation)
+            # Info (Wikipedia) laden
+            self.query_one("#info-panel", InfoPanel).show_loading(artist)
+            self._fetch_and_show_info(artist)
+
+            # YouTube-Links
+            self.query_one("#youtube-panel", YoutubePanel).show_links(artist, title)
+        else:
+            self._clear_all_tabs()
+
+    def _clear_all_tabs(self) -> None:
+        """Leert alle Tab-Panels."""
+        self.query_one("#lyrics-panel", LyricsPanel).clear()
+        self.query_one("#translation-panel", TranslationPanel).clear()
+        self.query_one("#info-panel", InfoPanel).clear()
+        self.query_one("#youtube-panel", YoutubePanel).clear()
 
     @work(exclusive=True, group="lyrics", thread=True)
     def _fetch_lyrics_async(
@@ -532,7 +557,6 @@ class RetroAmpApp(App):
         """Holt Lyrics im Background-Thread."""
         original, translated = self._lyrics_service.get_lyrics(artist, title)
 
-        # Pruefen ob noch relevant (Benutzer hat vielleicht Song gewechselt)
         if generation != self._lyrics_generation:
             return
 
@@ -549,12 +573,15 @@ class RetroAmpApp(App):
         generation: int,
     ) -> None:
         """Wendet Lyrics auf die UI an (Main-Thread)."""
-        # Nochmal pruefen — koennte sich zwischen call_from_thread geaendert haben
         if generation != self._lyrics_generation:
             return
 
-        lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
-        lyrics_panel.show_lyrics(artist, title, original, translated)
+        self.query_one("#lyrics-panel", LyricsPanel).show_lyrics(
+            artist, title, original,
+        )
+        self.query_one("#translation-panel", TranslationPanel).show_translation(
+            artist, title, translated,
+        )
 
     def on_unmount(self) -> None:
         """Cleanup beim Beenden."""

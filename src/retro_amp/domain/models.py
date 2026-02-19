@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
@@ -64,6 +65,8 @@ class AudioTrack:
     artist: str = ""
     album: str = ""
     title: str = ""
+    file_size_bytes: int = 0
+    modified_date: str = ""
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -101,6 +104,26 @@ class AudioTrack:
     def format_display(self) -> str:
         """Format als Grossbuchstaben."""
         return self.format.value.upper()
+
+    @property
+    def size_display(self) -> str:
+        """Formatierte Dateigroesse als KB oder MB."""
+        if self.file_size_bytes <= 0:
+            return ""
+        if self.file_size_bytes < 1024 * 1024:
+            return f"{self.file_size_bytes / 1024:.0f} KB"
+        return f"{self.file_size_bytes / (1024 * 1024):.1f} MB"
+
+    @property
+    def date_display(self) -> str:
+        """Kurzes Datum (DD.MM.YYYY)."""
+        if not self.modified_date:
+            return ""
+        try:
+            dt = datetime.fromisoformat(self.modified_date)
+            return dt.strftime("%d.%m.%Y")
+        except (ValueError, TypeError):
+            return self.modified_date
 
 
 @dataclass

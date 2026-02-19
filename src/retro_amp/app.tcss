@@ -20,7 +20,11 @@ Screen {
     layout: vertical;
 }
 
-#file-table {
-    height: auto;
-    max-height: 50%;
+#tab-separator {
+    color: $accent;
+    margin: 0;
+}
+
+#content-tabs {
+    height: 1fr;
 }

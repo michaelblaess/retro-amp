@@ -1,4 +1,4 @@
-"""Lyrics Panel — zeigt Song-Texte mit Uebersetzung."""
+"""Lyrics Panel — zeigt Original-Songtexte."""
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -8,17 +8,12 @@ from textual.widgets import Static
 
 
 class LyricsPanel(Widget):
-    """Scrollbares Panel fuer Lyrics mit Original und Uebersetzung."""
+    """Scrollbares Panel fuer Original-Lyrics."""
 
     DEFAULT_CSS = """
     LyricsPanel {
         width: 100%;
         height: 1fr;
-        border: solid $error;
-        display: none;
-    }
-    LyricsPanel.visible {
-        display: block;
     }
     LyricsPanel #lyrics-scroll {
         height: 100%;
@@ -32,71 +27,31 @@ class LyricsPanel(Widget):
     LyricsPanel #lyrics-text {
         color: $text;
     }
-    LyricsPanel #lyrics-translated {
-        color: $text-muted;
-        margin-top: 1;
-    }
     """
-
-    def __init__(self, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-        self._artist: str = ""
-        self._title: str = ""
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="lyrics-scroll"):
             yield Static("", id="lyrics-title")
             yield Static("", id="lyrics-text")
-            yield Static("", id="lyrics-translated")
 
     def show_loading(self, artist: str, title: str) -> None:
         """Zeigt Ladezustand an."""
-        self._artist = artist
-        self._title = title
-        self.add_class("visible")
+        self.query_one("#lyrics-title", Static).update(
+            f"\u266a {artist} \u2014 {title}"
+        )
+        self.query_one("#lyrics-text", Static).update("Lade Lyrics...")
 
-        title_widget = self.query_one("#lyrics-title", Static)
-        text_widget = self.query_one("#lyrics-text", Static)
-        translated_widget = self.query_one("#lyrics-translated", Static)
-
-        title_widget.update(f"♪ {artist} — {title}")
-        text_widget.update("Lade Lyrics...")
-        translated_widget.update("")
-
-    def show_lyrics(
-        self, artist: str, title: str, original: str, translated: str,
-    ) -> None:
-        """Zeigt Lyrics an."""
-        self._artist = artist
-        self._title = title
-        self.add_class("visible")
-
-        title_widget = self.query_one("#lyrics-title", Static)
-        text_widget = self.query_one("#lyrics-text", Static)
-        translated_widget = self.query_one("#lyrics-translated", Static)
-
-        title_widget.update(f"♪ {artist} — {title}")
-
-        if original:
-            text_widget.update(original)
-            if translated:
-                translated_widget.update(f"— Uebersetzung —\n\n{translated}")
-            else:
-                translated_widget.update("")
-        else:
-            text_widget.update("Keine Lyrics gefunden.")
-            translated_widget.update("")
-
-        # Zum Anfang scrollen
-        scroll = self.query_one("#lyrics-scroll", VerticalScroll)
-        scroll.scroll_home(animate=False)
+    def show_lyrics(self, artist: str, title: str, text: str) -> None:
+        """Zeigt Original-Lyrics an."""
+        self.query_one("#lyrics-title", Static).update(
+            f"\u266a {artist} \u2014 {title}"
+        )
+        self.query_one("#lyrics-text", Static).update(
+            text if text else "Keine Lyrics gefunden."
+        )
+        self.query_one("#lyrics-scroll", VerticalScroll).scroll_home(animate=False)
 
     def clear(self) -> None:
-        """Versteckt das Panel."""
-        self.remove_class("visible")
-        title_widget = self.query_one("#lyrics-title", Static)
-        text_widget = self.query_one("#lyrics-text", Static)
-        translated_widget = self.query_one("#lyrics-translated", Static)
-        title_widget.update("")
-        text_widget.update("")
-        translated_widget.update("")
+        """Leert das Panel."""
+        self.query_one("#lyrics-title", Static).update("")
+        self.query_one("#lyrics-text", Static).update("")

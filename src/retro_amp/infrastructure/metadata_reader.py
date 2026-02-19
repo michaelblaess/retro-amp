@@ -6,6 +6,8 @@ unterstuetzt. Deren Metadaten werden direkt aus dem Datei-Header gelesen.
 from __future__ import annotations
 
 import logging
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..domain.models import AudioFormat, AudioTrack
@@ -15,6 +17,73 @@ logger = logging.getLogger(__name__)
 # Formate mit Header-Metadaten (kein mutagen-Support)
 _TRACKER_EXTENSIONS = {".mod", ".s3m", ".xm"}
 _HEADER_EXTENSIONS = {".mod", ".s3m", ".xm", ".sid"}
+
+# Trennzeichen fuer "Artist — Title" in Metadaten-Titeln
+_TITLE_SEPARATORS = re.compile(r"\s*[\u2014\u2013]\s*|\s+[-–—]+\s+")
+
+# Dateiname-Patterns: {NUM}. {ARTIST} - {TITLE}  /  {NUM} - {ARTIST} - {TITLE}
+_FN_NUMBERED_DOT = re.compile(r"^\d{1,3}\.\s*(.+?)\s+-\s+(.+)$")
+_FN_NUMBERED_DASH = re.compile(r"^\d{1,3}\s+-\s+(.+?)\s+-\s+(.+)$")
+# {ARTIST} - {TITLE}
+_FN_ARTIST_TITLE = re.compile(r"^(.+?)\s+-\s+(.+)$")
+# lowercase-dash: {num}-{artist}-{title}[-{suffix}]  (z.B. 101-2pac-white_mans_world-cms)
+_FN_LOWER_DASH = re.compile(r"^\d+-([^-]+)-(.+?)(?:-[a-z]{2,4})?$", re.IGNORECASE)
+
+
+def _parse_title_tag(title: str) -> tuple[str, str]:
+    """Versucht Artist und Titel aus einem kombinierten Title-Tag zu extrahieren.
+
+    Manche Dateien haben den Title-Tag im Format "Artist — Title".
+    Returns: (artist, title) oder ("", "") wenn kein Muster erkannt.
+    """
+    parts = _TITLE_SEPARATORS.split(title, maxsplit=1)
+    if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+        return parts[0].strip(), parts[1].strip()
+    return "", ""
+
+
+def _parse_filename(path: Path) -> tuple[str, str]:
+    """Extrahiert Artist und Titel aus dem Dateinamen (Fallback).
+
+    Erkennt Muster wie:
+    - "001. Geto Boys - Mind Playin' Tricks.mp3"
+    - "13 - Colin Blunstone - I Don't Believe In Miracles.mp3"
+    - "2Pac - Can't c me.mp3"
+    - "101-2pac-white_mans_world-cms"
+    - "the-association-never-my-love.mp3"
+
+    Als letzten Fallback: Ordnername als Artist, Dateiname als Titel.
+    """
+    stem = path.stem
+
+    # Pattern 1: "001. Artist - Title"
+    m = _FN_NUMBERED_DOT.match(stem)
+    if m:
+        return m.group(1).strip(), m.group(2).strip()
+
+    # Pattern 2: "13 - Artist - Title"
+    m = _FN_NUMBERED_DASH.match(stem)
+    if m:
+        return m.group(1).strip(), m.group(2).strip()
+
+    # Pattern 3: "Artist - Title"
+    m = _FN_ARTIST_TITLE.match(stem)
+    if m:
+        return m.group(1).strip(), m.group(2).strip()
+
+    # Pattern 4: lowercase-dash "101-2pac-white_mans_world-cms"
+    m = _FN_LOWER_DASH.match(stem)
+    if m:
+        artist = m.group(1).replace("_", " ").replace("-", " ").title()
+        title = m.group(2).replace("_", " ").replace("-", " ").title()
+        return artist, title
+
+    # Fallback: Ordnername als Artist-Hint
+    parent_name = path.parent.name
+    if parent_name and parent_name != path.anchor:
+        return parent_name, stem.replace("_", " ").replace("-", " ").strip()
+
+    return "", stem
 
 
 def _read_header_title(path: Path) -> str:
@@ -67,6 +136,16 @@ class MutagenMetadataReader:
         """Liest Metadaten einer Audio-Datei."""
         track = AudioTrack(path=path)
 
+        # Dateigroesse und Aenderungsdatum lesen
+        try:
+            stat = path.stat()
+            track.file_size_bytes = stat.st_size
+            track.modified_date = datetime.fromtimestamp(
+                stat.st_mtime, tz=timezone.utc,
+            ).isoformat()
+        except OSError:
+            pass
+
         # Tracker/SID-Formate: mutagen unterstuetzt diese nicht
         if path.suffix.lower() in _HEADER_EXTENSIONS:
             title = _read_header_title(path)
@@ -105,6 +184,21 @@ class MutagenMetadataReader:
 
         except Exception:
             logger.debug("Metadaten konnten nicht gelesen werden: %s", path)
+
+        # Fallback 1: Title-Tag enthaelt "Artist — Title" → aufteilen
+        if track.title and not track.artist:
+            parsed_artist, parsed_title = _parse_title_tag(track.title)
+            if parsed_artist:
+                track.artist = parsed_artist
+                track.title = parsed_title
+
+        # Fallback 2: Dateiname parsen wenn Artist oder Title fehlt
+        if not track.artist or not track.title:
+            fn_artist, fn_title = _parse_filename(path)
+            if not track.artist and fn_artist:
+                track.artist = fn_artist
+            if not track.title and fn_title:
+                track.title = fn_title
 
         return track
 
