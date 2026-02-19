@@ -134,15 +134,20 @@ class LyricsService:
         # In Bloecke aufteilen (MyMemory Limit: ~500 Zeichen)
         chunks = self._split_text(text, _TRANSLATE_CHUNK_SIZE)
         translated_parts: list[str] = []
+        any_success = False
 
         for chunk in chunks:
             translated = self._translate_chunk(chunk)
             if translated:
                 translated_parts.append(translated)
+                any_success = True
             else:
-                # Bei Fehler Original behalten
-                translated_parts.append(chunk)
+                # Chunk fehlgeschlagen → ueberspringen
+                translated_parts.append("")
 
+        # Nur zurueckgeben wenn mindestens ein Chunk erfolgreich war
+        if not any_success:
+            return ""
         return "\n".join(translated_parts)
 
     def _translate_chunk(self, text: str) -> str:
@@ -156,11 +161,25 @@ class LyricsService:
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 data = json.loads(resp.read())
+                status = data.get("responseStatus", 0)
                 result = data.get("responseData", {}).get("translatedText", "")
+                if status != 200 or not result:
+                    return ""
                 # MyMemory gibt UPPERCASE zurueck bei Fehlern → verwerfen
-                if result and result != result.upper():
-                    return result
-                return ""
+                if result == result.upper():
+                    return ""
+                # Bekannte Fehlermeldungen filtern
+                error_markers = [
+                    "nicht übersetzt",
+                    "not translated",
+                    "mymemory warning",
+                    "no translation",
+                    "please use",
+                ]
+                result_lower = result.lower()
+                if any(m in result_lower for m in error_markers):
+                    return ""
+                return result
         except Exception:
             logger.debug("Uebersetzung fehlgeschlagen")
             return ""

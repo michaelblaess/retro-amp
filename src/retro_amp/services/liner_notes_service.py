@@ -119,27 +119,36 @@ class LinerNotesService:
 
     def _fetch_from_wikipedia(self, artist: str) -> str:
         """Holt Artist-Info aus Wikipedia (deutsch, dann englisch Fallback)."""
-        # Suchstrategien: mit "Band"/"Musiker" Suffix fuer bessere Treffer
-        queries_de = [f"{artist} Band", f"{artist} Musiker", artist]
-        queries_en = [f"{artist} band", f"{artist} musician", artist]
+        # Exakten Namen zuerst, dann mit Suffixen
+        queries_de = [artist, f"{artist} Rapper", f"{artist} Musiker", f"{artist} Band"]
+        queries_en = [artist, f"{artist} rapper", f"{artist} musician", f"{artist} band"]
 
         # Deutsch zuerst
         for query in queries_de:
             title, extract = _wiki_search(query, "de")
-            if extract and self._is_music_related(title, extract, artist):
+            if extract and self._is_relevant(title, extract, artist):
                 return self._format_note(artist, title, extract, "de")
 
         # Englisch Fallback
         for query in queries_en:
             title, extract = _wiki_search(query, "en")
-            if extract and self._is_music_related(title, extract, artist):
+            if extract and self._is_relevant(title, extract, artist):
                 return self._format_note(artist, title, extract, "en")
 
         return ""
 
-    def _is_music_related(self, title: str, extract: str, artist: str) -> bool:
-        """Prueft ob das Wikipedia-Ergebnis musikbezogen ist."""
+    def _is_relevant(self, title: str, extract: str, artist: str) -> bool:
+        """Prueft ob das Ergebnis zum Artist passt UND musikbezogen ist."""
         text = (title + " " + extract).lower()
+
+        # 1) Ergebnis muss zum gesuchten Artist passen
+        #    Mindestens ein signifikantes Wort (>= 3 Zeichen) muss vorkommen
+        words = artist.lower().split()
+        significant = [w for w in words if len(w) >= 3]
+        if significant and not any(w in text for w in significant):
+            return False
+
+        # 2) Ergebnis muss musikbezogen sein
         music_keywords = [
             "band", "musik", "music", "singer", "saenger", "sängerin",
             "album", "song", "record label", "plattenlabel", "genre",
@@ -150,7 +159,6 @@ class LinerNotesService:
             "composer", "producer", "produzent", "chart",
             "single", "tour", "konzert", "concert", "sänger",
         ]
-        # Wortgrenzen-Match: vermeidet false positives wie "hit" in "Fahrzeughit..."
         return any(
             re.search(rf"\b{re.escape(kw)}\b", text)
             for kw in music_keywords

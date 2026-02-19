@@ -66,13 +66,13 @@ class TestLinerNotesService:
             mock_fetch.assert_not_called()
             assert "Cached" in result
 
-    def test_is_music_related_detects_band(self, tmp_path: Path) -> None:
+    def test_is_relevant_detects_band(self, tmp_path: Path) -> None:
         svc = LinerNotesService(notes_dir=tmp_path)
-        assert svc._is_music_related("Kraftwerk (Band)", "Eine deutsche Band", "Kraftwerk")
+        assert svc._is_relevant("Kraftwerk (Band)", "Eine deutsche Band", "Kraftwerk")
 
-    def test_is_music_related_rejects_non_music(self, tmp_path: Path) -> None:
+    def test_is_relevant_rejects_non_music(self, tmp_path: Path) -> None:
         svc = LinerNotesService(notes_dir=tmp_path)
-        assert not svc._is_music_related("Kraftwerk", "Technische Anlage zur Stromerzeugung", "Kraftwerk")
+        assert not svc._is_relevant("Kraftwerk", "Technische Anlage zur Stromerzeugung", "Kraftwerk")
 
     def test_format_note(self, tmp_path: Path) -> None:
         svc = LinerNotesService(notes_dir=tmp_path)

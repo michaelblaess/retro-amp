@@ -10,20 +10,29 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 
-class _YTLink(Static):
-    """Klickbarer YouTube-Link — oeffnet den Browser bei Klick."""
+class _YTLink(Static, can_focus=True):
+    """Klickbarer YouTube-Link — oeffnet den Browser bei Klick oder Enter."""
 
     DEFAULT_CSS = """
     _YTLink {
         height: auto;
         margin-bottom: 1;
+        padding: 0 1;
         color: $text;
     }
     _YTLink:hover {
         text-style: bold underline;
         color: $accent;
     }
+    _YTLink:focus {
+        text-style: bold underline;
+        color: $accent;
+    }
     """
+
+    BINDINGS = [
+        ("enter", "open_link", "Oeffnen"),
+    ]
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -36,6 +45,11 @@ class _YTLink(Static):
 
     def on_click(self) -> None:
         """Oeffnet den Link im Standard-Browser."""
+        if self._url:
+            webbrowser.open(self._url)
+
+    def action_open_link(self) -> None:
+        """Oeffnet den Link im Standard-Browser (Enter-Taste)."""
         if self._url:
             webbrowser.open(self._url)
 
