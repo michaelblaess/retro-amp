@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import urllib.parse
 
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
@@ -62,16 +63,21 @@ class YoutubePanel(Widget):
 
         self._urls = [url_full, url_video, url_live, url_artist]
 
-        lines = [
-            f"\U0001f50d Suche: [link={url_full}]{query_full}[/link]",
-            "",
-            f"\U0001f3ac Video: [link={url_video}]{query_video}[/link]",
-            "",
-            f"\U0001f3a4 Live: [link={url_live}]{query_live}[/link]",
-            "",
-            f"\U0001f3b5 Artist: [link={url_artist}]{query_artist}[/link]",
-        ]
-        links_widget.update("\n".join(lines))
+        # Rich Text-Objekte verwenden (kein Markup-Parser, keine URL-Probleme)
+        text = Text()
+        text.append("\U0001f50d Suche: ")
+        text.append(query_full, style=f"link {url_full}")
+        text.append("\n\n")
+        text.append("\U0001f3ac Video: ")
+        text.append(query_video, style=f"link {url_video}")
+        text.append("\n\n")
+        text.append("\U0001f3a4 Live: ")
+        text.append(query_live, style=f"link {url_live}")
+        text.append("\n\n")
+        text.append("\U0001f3b5 Artist: ")
+        text.append(query_artist, style=f"link {url_artist}")
+
+        links_widget.update(text)
         hint_widget.update("Links anklicken um YouTube im Browser zu oeffnen")
 
         self.query_one("#yt-scroll", VerticalScroll).scroll_home(animate=False)
