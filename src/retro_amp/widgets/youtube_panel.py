@@ -2,12 +2,42 @@
 from __future__ import annotations
 
 import urllib.parse
+import webbrowser
 
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
+
+
+class _YTLink(Static):
+    """Klickbarer YouTube-Link — oeffnet den Browser bei Klick."""
+
+    DEFAULT_CSS = """
+    _YTLink {
+        height: auto;
+        margin-bottom: 1;
+        color: $text;
+    }
+    _YTLink:hover {
+        text-style: bold underline;
+        color: $accent;
+    }
+    """
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._url: str = ""
+
+    def set_link(self, label: str, url: str) -> None:
+        """Setzt Label und URL."""
+        self._url = url
+        self.update(label)
+
+    def on_click(self) -> None:
+        """Oeffnet den Link im Standard-Browser."""
+        if self._url:
+            webbrowser.open(self._url)
 
 
 class YoutubePanel(Widget):
@@ -27,9 +57,6 @@ class YoutubePanel(Widget):
         color: $accent;
         margin-bottom: 1;
     }
-    YoutubePanel #yt-links {
-        color: $text;
-    }
     YoutubePanel #yt-hint {
         margin-top: 1;
         color: $text-muted;
@@ -39,53 +66,52 @@ class YoutubePanel(Widget):
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="yt-scroll"):
             yield Static("", id="yt-title")
-            yield Static("", id="yt-links")
+            yield _YTLink(id="yt-search")
+            yield _YTLink(id="yt-video")
+            yield _YTLink(id="yt-live")
+            yield _YTLink(id="yt-artist")
             yield Static("", id="yt-hint")
 
     def show_links(self, artist: str, title: str) -> None:
         """Zeigt YouTube-Links fuer den aktuellen Track."""
-        title_widget = self.query_one("#yt-title", Static)
-        links_widget = self.query_one("#yt-links", Static)
-        hint_widget = self.query_one("#yt-hint", Static)
+        self.query_one("#yt-title", Static).update(
+            f"\u266a {artist} \u2014 {title}"
+        )
 
-        title_widget.update(f"\u266a {artist} \u2014 {title}")
-
-        # Such-URLs generieren
         query_full = f"{artist} {title}"
         query_video = f"{artist} {title} official video"
         query_live = f"{artist} {title} live"
         query_artist = f"{artist} music"
 
-        url_full = self._search_url(query_full)
-        url_video = self._search_url(query_video)
-        url_live = self._search_url(query_live)
-        url_artist = self._search_url(query_artist)
+        self.query_one("#yt-search", _YTLink).set_link(
+            f"\U0001f50d Suche: {query_full}",
+            self._search_url(query_full),
+        )
+        self.query_one("#yt-video", _YTLink).set_link(
+            f"\U0001f3ac Video: {query_video}",
+            self._search_url(query_video),
+        )
+        self.query_one("#yt-live", _YTLink).set_link(
+            f"\U0001f3a4 Live: {query_live}",
+            self._search_url(query_live),
+        )
+        self.query_one("#yt-artist", _YTLink).set_link(
+            f"\U0001f3b5 Artist: {query_artist}",
+            self._search_url(query_artist),
+        )
 
-        self._urls = [url_full, url_video, url_live, url_artist]
-
-        # Rich Text-Objekte verwenden (kein Markup-Parser, keine URL-Probleme)
-        text = Text()
-        text.append("\U0001f50d Suche: ")
-        text.append(query_full, style=f"link {url_full}")
-        text.append("\n\n")
-        text.append("\U0001f3ac Video: ")
-        text.append(query_video, style=f"link {url_video}")
-        text.append("\n\n")
-        text.append("\U0001f3a4 Live: ")
-        text.append(query_live, style=f"link {url_live}")
-        text.append("\n\n")
-        text.append("\U0001f3b5 Artist: ")
-        text.append(query_artist, style=f"link {url_artist}")
-
-        links_widget.update(text)
-        hint_widget.update("Links anklicken um YouTube im Browser zu oeffnen")
-
+        self.query_one("#yt-hint", Static).update(
+            "Anklicken um YouTube im Browser zu oeffnen"
+        )
         self.query_one("#yt-scroll", VerticalScroll).scroll_home(animate=False)
 
     def clear(self) -> None:
         """Leert das Panel."""
         self.query_one("#yt-title", Static).update("")
-        self.query_one("#yt-links", Static).update("")
+        for link_id in ("#yt-search", "#yt-video", "#yt-live", "#yt-artist"):
+            link = self.query_one(link_id, _YTLink)
+            link._url = ""
+            link.update("")
         self.query_one("#yt-hint", Static).update("")
 
     @staticmethod

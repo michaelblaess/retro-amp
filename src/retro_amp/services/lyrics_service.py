@@ -157,10 +157,10 @@ class LyricsService:
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 data = json.loads(resp.read())
                 result = data.get("responseData", {}).get("translatedText", "")
-                # MyMemory gibt manchmal UPPERCASE zurueck bei Fehlern
+                # MyMemory gibt UPPERCASE zurueck bei Fehlern → verwerfen
                 if result and result != result.upper():
                     return result
-                return result
+                return ""
         except Exception:
             logger.debug("Uebersetzung fehlgeschlagen")
             return ""

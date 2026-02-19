@@ -140,16 +140,21 @@ class LinerNotesService:
     def _is_music_related(self, title: str, extract: str, artist: str) -> bool:
         """Prueft ob das Wikipedia-Ergebnis musikbezogen ist."""
         text = (title + " " + extract).lower()
-        music_keywords = {
+        music_keywords = [
             "band", "musik", "music", "singer", "saenger", "sängerin",
-            "album", "song", "record", "label", "genre", "pop", "rock",
-            "electronic", "elektronisch", "hip-hop", "jazz", "synthie",
-            "synth", "punk", "metal", "wave", "disco", "rapper",
+            "album", "song", "record label", "plattenlabel", "genre",
+            "pop", "rock", "electronic", "elektronisch", "hip-hop",
+            "hip hop", "jazz", "synthie", "synth", "punk", "metal",
+            "wave", "disco", "rapper", "rap", "r&b",
             "gitarrist", "guitarist", "drummer", "pianist", "komponist",
-            "composer", "producer", "produzent", "hit", "chart",
-            "single", "lp", "ep", "tour", "konzert", "concert",
-        }
-        return any(kw in text for kw in music_keywords)
+            "composer", "producer", "produzent", "chart",
+            "single", "tour", "konzert", "concert", "sänger",
+        ]
+        # Wortgrenzen-Match: vermeidet false positives wie "hit" in "Fahrzeughit..."
+        return any(
+            re.search(rf"\b{re.escape(kw)}\b", text)
+            for kw in music_keywords
+        )
 
     def _format_note(
         self, artist: str, title: str, extract: str, lang: str,
