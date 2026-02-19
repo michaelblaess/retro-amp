@@ -54,6 +54,7 @@ a = Analysis(
         "retro_amp.widgets.translation_panel",
         "retro_amp.widgets.info_panel",
         "retro_amp.widgets.youtube_panel",
+        "retro_amp.widgets.search_panel",
         # Screens
         "retro_amp.screens",
         "retro_amp.screens.confirm_screen",

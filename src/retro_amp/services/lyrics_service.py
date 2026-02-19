@@ -8,16 +8,19 @@ from __future__ import annotations
 import json
 import logging
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_USER_AGENT = "retro-amp/0.6 (terminal-music-player; github.com/michaelblaess/retro-amp)"
+_USER_AGENT = "retro-amp/0.7 (terminal-music-player; github.com/michaelblaess/retro-amp)"
 _TIMEOUT = 8
 # MyMemory: max 500 Zeichen pro Request, wir teilen in Bloecke
 _TRANSLATE_CHUNK_SIZE = 450
+# MyMemory: Email-Parameter gibt 50.000 Zeichen/Tag (statt 5.000 anonym)
+_MYMEMORY_EMAIL = "retro-amp@michaelblaess.de"
 
 
 def _safe_filename(name: str) -> str:
@@ -140,21 +143,27 @@ class LyricsService:
             if translated:
                 translated_parts.append(translated)
                 any_success = True
+            elif self._rate_limited:
+                # Rate Limit → sofort abbrechen, nicht weiter versuchen
+                break
             else:
-                # Chunk fehlgeschlagen → ueberspringen
                 translated_parts.append("")
 
-        # Nur zurueckgeben wenn mindestens ein Chunk erfolgreich war
         if not any_success:
             return ""
         return "\n".join(translated_parts)
 
+    _rate_limited: bool = False
+
     def _translate_chunk(self, text: str) -> str:
         """Uebersetzt einen einzelnen Text-Block."""
+        if self._rate_limited:
+            return ""
         try:
             params = urllib.parse.urlencode({
                 "q": text,
                 "langpair": "en|de",
+                "de": _MYMEMORY_EMAIL,
             })
             url = f"https://api.mymemory.translated.net/get?{params}"
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
@@ -162,6 +171,12 @@ class LyricsService:
                 data = json.loads(resp.read())
                 status = data.get("responseStatus", 0)
                 result = data.get("responseData", {}).get("translatedText", "")
+
+                # 429 als responseStatus (innerhalb JSON)
+                if status == 429:
+                    self._rate_limited = True
+                    logger.debug("MyMemory Rate Limit erreicht (JSON)")
+                    return ""
                 if status != 200 or not result:
                     return ""
                 # MyMemory gibt UPPERCASE zurueck bei Fehlern → verwerfen
@@ -179,6 +194,13 @@ class LyricsService:
                 if any(m in result_lower for m in error_markers):
                     return ""
                 return result
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                self._rate_limited = True
+                logger.debug("MyMemory Rate Limit erreicht (HTTP 429)")
+            else:
+                logger.debug("Uebersetzung HTTP-Fehler: %s", e.code)
+            return ""
         except Exception:
             logger.debug("Uebersetzung fehlgeschlagen")
             return ""

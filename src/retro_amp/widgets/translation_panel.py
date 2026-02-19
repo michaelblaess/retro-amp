@@ -47,7 +47,12 @@ class TranslationPanel(Widget):
             f"\u266a {artist} \u2014 {title}"
         )
         self.query_one("#translation-text", Static).update(
-            text if text else "Keine Uebersetzung verfuegbar."
+            text if text else
+            "Keine Uebersetzung verfuegbar.\n\n"
+            "Moegliche Gruende:\n"
+            "- API Rate Limit erreicht (max. 50.000 Zeichen/Tag)\n"
+            "- Kein Internet\n"
+            "- Lyrics nicht auf Englisch"
         )
         self.query_one("#translation-scroll", VerticalScroll).scroll_home(
             animate=False,

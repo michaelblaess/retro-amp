@@ -6,7 +6,9 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import DirectoryTree, Footer, Header, Rule, TabbedContent, TabPane
+from textual.widgets import (
+    DirectoryTree, Footer, Header, Input, Rule, TabbedContent, TabPane,
+)
 
 from textual import work
 
@@ -27,6 +29,7 @@ from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricsPanel
+from .widgets.search_panel import SearchPanel, _SearchResult
 from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
@@ -54,6 +57,7 @@ class RetroAmpApp(App):
         Binding("delete", "delete_file", "Loeschen", key_display="DEL", priority=True),
         Binding("t", "cycle_theme", "Theme", priority=True),
         Binding("i", "show_about", "Info", priority=True),
+        Binding("s", "focus_search", "Suche", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -122,6 +126,10 @@ class RetroAmpApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
+        yield Input(
+            placeholder="\U0001f50d Suche ... (s)",
+            id="global-search",
+        )
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
                 yield FolderBrowser(str(self._tree_root), id="folder-browser")
@@ -137,6 +145,8 @@ class RetroAmpApp(App):
                         yield InfoPanel(id="info-panel")
                     with TabPane("YouTube", id="tab-youtube"):
                         yield YoutubePanel(id="youtube-panel")
+                    with TabPane("Suchergebnisse", id="tab-search"):
+                        yield SearchPanel(id="search-panel")
         yield Visualizer(id="visualizer")
         yield TransportBar(id="transport")
         yield Footer()
@@ -275,6 +285,51 @@ class RetroAmpApp(App):
         """About-Dialog anzeigen."""
         from .screens.about_screen import AboutScreen  # Lazy import
         self.push_screen(AboutScreen())
+
+    def action_focus_search(self) -> None:
+        """Fokus auf Suchleiste setzen."""
+        search_input = self.query_one("#global-search", Input)
+        search_input.focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Suchleiste: Enter gedrueckt → Suche starten."""
+        if event.input.id != "global-search":
+            return
+        query = event.value.strip()
+        if not query:
+            return
+        # Suche im Background-Thread starten
+        self._run_global_search(query)
+
+    @work(exclusive=True, group="search", thread=True)
+    def _run_global_search(self, query: str) -> None:
+        """Globale Dateisuche im Background-Thread."""
+        self.call_from_thread(self._apply_search, query)
+
+    def _apply_search(self, query: str) -> None:
+        """Suche ausfuehren und Tab aktivieren (Main-Thread)."""
+        search_panel = self.query_one("#search-panel", SearchPanel)
+        search_panel.show_results(query, self._tree_root)
+        # Tab "Suchergebnisse" aktivieren
+        tabs = self.query_one("#content-tabs", TabbedContent)
+        tabs.active = "tab-search"
+
+    def on__search_result_selected(
+        self, event: _SearchResult.Selected,
+    ) -> None:
+        """Suchergebnis angeklickt → navigieren."""
+        path = event.path
+        if path.is_dir():
+            self._scan_directory(path)
+            self._save_last_path(path)
+            self.notify(f"Ordner: {path.name}")
+        elif path.is_file():
+            parent = path.parent
+            self._scan_directory(parent)
+            self._save_last_path(parent)
+            if self._metadata_service.is_audio_file(path):
+                track = self._metadata_service.read_track(path)
+                self._play_track(track)
 
     @work(exclusive=True, group="liner-notes", thread=True)
     def _fetch_and_show_info(self, artist: str) -> None:
