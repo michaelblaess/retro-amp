@@ -18,6 +18,7 @@ from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
 from .infrastructure.spectrum import SpectrumAnalyzer
+from .services.liner_notes_service import LinerNotesService
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
@@ -47,6 +48,7 @@ class RetroAmpApp(App):
         Binding("u", "rename_file", "Umbenennen", priority=True),
         Binding("delete", "delete_file", "Loeschen", key_display="DEL", priority=True),
         Binding("t", "cycle_theme", "Theme", priority=True),
+        Binding("i", "show_info", "Info", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -67,6 +69,7 @@ class RetroAmpApp(App):
         self._player_service = PlayerService(self._audio_player)
         self._metadata_service = MetadataService(self._metadata_reader)
         self._playlist_service = PlaylistService(self._playlist_store)
+        self._liner_notes_service = LinerNotesService()
 
         # Settings laden
         settings = self._settings_store.load()
@@ -245,6 +248,28 @@ class RetroAmpApp(App):
         self.notify(f"Theme: {display}")
         self._save_theme(next_theme)
 
+    def action_show_info(self) -> None:
+        """Liner Notes (Wikipedia-Info) zum aktuellen Artist anzeigen."""
+        track = self._player_service.state.current_track
+        if not track:
+            self.notify("Kein Track ausgewaehlt", severity="warning")
+            return
+
+        artist = track.artist or track.display_name
+        self.notify(f"Suche Info zu {artist}...", severity="information")
+        self._fetch_and_show_info(artist)
+
+    @work(exclusive=True, group="liner-notes", thread=True)
+    def _fetch_and_show_info(self, artist: str) -> None:
+        """Holt Liner Notes im Background-Thread und zeigt den Screen."""
+        note = self._liner_notes_service.get_note(artist)
+        self.call_from_thread(self._show_info_screen, artist, note)
+
+    def _show_info_screen(self, artist: str, note: str) -> None:
+        """Zeigt den Info-Screen im Main-Thread."""
+        from .screens.info_screen import InfoScreen  # Lazy import
+        self.push_screen(InfoScreen(artist, note))
+
     def action_rename_file(self) -> None:
         """Datei umbenennen — Dialog oeffnen."""
         from .screens.rename_screen import RenameScreen  # Lazy import
@@ -360,7 +385,7 @@ class RetroAmpApp(App):
             return True if state.has_previous else None
         if action in ("seek_forward", "seek_backward"):
             return True if has_track and not state.is_stopped else None
-        if action == "toggle_favorite":
+        if action in ("toggle_favorite", "show_info"):
             return True if has_track else None
         if action in ("rename_file", "delete_file"):
             file_table = self.query_one("#file-table", FileTable)

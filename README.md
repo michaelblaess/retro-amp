@@ -79,8 +79,9 @@ retro-amp --version           # Zeigt die Version / Show version
 
 - **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
-- **Audio-Playback** — MP3, OGG, FLAC, WAV, MOD/XM/S3M (via pygame.mixer)
+- **Audio-Playback** — MP3, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
+- **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **6 Retro-Themes** — C64, Amiga Workbench, Atari ST GEM, IBM Terminal, NeXTSTEP, BeOS
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
@@ -102,6 +103,7 @@ retro-amp --version           # Zeigt die Version / Show version
 | `U` | Datei umbenennen / Rename file |
 | `DEL` | Datei loeschen / Delete file |
 | `T` | Theme wechseln / Cycle theme |
+| `I` | Artist-Info (Wikipedia) / Artist info |
 | `Q` | Beenden / Quit |
 
 ## Themes

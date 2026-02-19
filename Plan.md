@@ -289,27 +289,31 @@ retro-amp/
 - [x] Theme-Name in der Titelleiste
 - [x] 76 Tests alle gruen
 
-### v0.5 — Nostalgie-Formate
+### v0.5 — Nostalgie-Formate ✅
 
-- [ ] SID-Playback (C64) — AudioPlayer Protocol erweitern
-- [ ] MOD/XM/S3M-Playback (Amiga)
+- [x] MOD/XM/S3M-Playback (Amiga) — funktioniert nativ via pygame.mixer
+- [x] Tracker-Metadaten: Titel aus MOD/S3M/XM-Header gelesen
+- [x] SID-Playback (C64) — per sidplayfp Subprocess (optional, braucht sidplayfp)
+- [x] SID-Metadaten: Titel + Artist aus PSID/RSID-Header gelesen
+- [x] OGG/Opus-Playback via pyogg (pygame's SDL_mixer kann nur Vorbis)
 
-### v0.6 — Liner Notes (Wikipedia-Info)
+### v0.6 — Liner Notes (Wikipedia-Info) ✅
 
-- [ ] Beim Abspielen eines Songs im Hintergrund Infos sammeln (Artist, Album, Song)
-- [ ] Wikipedia-API abfragen (deutsch + englisch, Fallback)
-- [ ] Ergebnisse als Markdown speichern in `~/.retro-amp/notes/{artist}.md`
-- [ ] Cache: nur einmal pro Artist/Album abfragen, nicht bei jedem Play
-- [ ] Optional: Info-Panel in der UI anzeigen (z.B. mit Taste `I`)
-- [ ] Daten aus ID3-Tags als Suchbegriffe nutzen (Artist, Album, Title)
-- [ ] Graceful: kein Internet? Kein Problem — Feature ist rein optional
+- [x] Wikipedia-API abfragen (deutsch + englisch Fallback)
+- [x] Smarte Suche: "{artist} Band"/"Musiker" mit Musik-Relevanz-Check
+- [x] Ergebnisse als Markdown gecached in `~/.retro-amp/notes/{artist}.md`
+- [x] Cache: nur einmal pro Artist abfragen, nicht bei jedem Play
+- [x] Info-Screen per Taste `I` (ModalScreen, ESC zum Schliessen)
+- [x] Daten aus ID3-Tags als Suchbegriffe (Artist, Fallback: display_name)
+- [x] Graceful: kein Internet → "Keine Informationen gefunden"
+- [x] 99 Tests alle gruen
 
 ### v1.0 — Release
 
 - [ ] Polishing, Bugfixes
 - [ ] README mit Screenshots
 - [ ] PyPI-Veroeffentlichung
-- [ ] GitHub Actions Release-Workflow (PyInstaller, Multi-Platform)
+- [x] GitHub Actions Release-Workflow (PyInstaller, Multi-Platform)
 - [ ] Optional: Umstieg auf SQLite fuer Playlists
 
 ## Referenz-Projekte

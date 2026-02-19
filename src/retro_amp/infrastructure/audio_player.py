@@ -2,13 +2,18 @@
 
 OGG/Opus-Dateien werden per pyogg dekodiert und als WAV-Stream geladen,
 da pygame's SDL_mixer nur Vorbis (nicht Opus) unterstuetzt.
+
+SID-Dateien (C64) werden per sidplayfp Subprocess zu WAV dekodiert,
+falls sidplayfp installiert ist.
 """
 from __future__ import annotations
 
 import ctypes
 import io
 import logging
+import shutil
 import struct
+import subprocess
 from pathlib import Path
 
 import pygame
@@ -66,11 +71,60 @@ def _decode_opus_to_wav(path: Path) -> io.BytesIO:
     return wav
 
 
+def _find_sidplayfp() -> str | None:
+    """Sucht nach sidplayfp im PATH."""
+    return shutil.which("sidplayfp") or shutil.which("sidplay2")
+
+
+def _decode_sid_to_wav(path: Path, duration: int = 180) -> io.BytesIO | None:
+    """Dekodiert eine SID-Datei zu einem WAV-Stream per sidplayfp.
+
+    Args:
+        path: Pfad zur SID-Datei
+        duration: Maximale Spieldauer in Sekunden (Default: 3 Minuten)
+
+    Returns:
+        WAV-Stream oder None wenn sidplayfp nicht verfuegbar
+    """
+    sid_bin = _find_sidplayfp()
+    if not sid_bin:
+        logger.warning("sidplayfp nicht gefunden — SID-Playback nicht verfuegbar")
+        return None
+
+    try:
+        result = subprocess.run(
+            [
+                sid_bin,
+                "--wav=-",       # WAV nach stdout
+                f"-t{duration}",  # Maximale Dauer
+                "-f44100",        # Sample Rate
+                str(path),
+            ],
+            capture_output=True,
+            timeout=duration + 10,
+        )
+        if result.returncode != 0 or len(result.stdout) < 44:
+            logger.warning("sidplayfp Fehler fuer %s: %s", path, result.stderr[:200])
+            return None
+        wav = io.BytesIO(result.stdout)
+        return wav
+    except FileNotFoundError:
+        logger.warning("sidplayfp nicht gefunden")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning("sidplayfp Timeout fuer %s", path)
+        return None
+    except Exception:
+        logger.exception("SID-Dekodierung fehlgeschlagen fuer %s", path)
+        return None
+
+
 class PygameAudioPlayer:
     """AudioPlayer-Implementation mit pygame.mixer.
 
     Implementiert das AudioPlayer-Protocol aus domain/protocols.py.
     OGG/Opus-Dateien werden automatisch per pyogg dekodiert.
+    SID-Dateien werden per sidplayfp Subprocess dekodiert (falls installiert).
     """
 
     def __init__(self, frequency: int = 44100, buffer_size: int = 4096) -> None:
@@ -80,6 +134,7 @@ class PygameAudioPlayer:
         self._current_path: Path | None = None
         self._seek_offset: float = 0.0
         self._opus_wav: io.BytesIO | None = None
+        self._sid_wav: io.BytesIO | None = None
         self._init_mixer()
 
     def _init_mixer(self) -> None:
@@ -106,7 +161,16 @@ class PygameAudioPlayer:
 
         try:
             self._opus_wav = None
-            if path.suffix.lower() in _OGG_EXTENSIONS and _is_opus(path):
+            self._sid_wav = None
+            ext = path.suffix.lower()
+
+            if ext == ".sid":
+                self._sid_wav = _decode_sid_to_wav(path)
+                if self._sid_wav is None:
+                    logger.warning("SID-Playback nicht moeglich: %s", path)
+                    return
+                pygame.mixer.music.load(self._sid_wav)
+            elif ext in _OGG_EXTENSIONS and _is_opus(path):
                 self._opus_wav = _decode_opus_to_wav(path)
                 pygame.mixer.music.load(self._opus_wav)
             else:

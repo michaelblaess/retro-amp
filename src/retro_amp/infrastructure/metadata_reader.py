@@ -1,4 +1,8 @@
-"""Audio-Metadaten lesen via mutagen."""
+"""Audio-Metadaten lesen via mutagen.
+
+Tracker-Formate (MOD, S3M, XM) und SID-Dateien werden nicht von mutagen
+unterstuetzt. Deren Metadaten werden direkt aus dem Datei-Header gelesen.
+"""
 from __future__ import annotations
 
 import logging
@@ -8,16 +12,71 @@ from ..domain.models import AudioFormat, AudioTrack
 
 logger = logging.getLogger(__name__)
 
+# Formate mit Header-Metadaten (kein mutagen-Support)
+_TRACKER_EXTENSIONS = {".mod", ".s3m", ".xm"}
+_HEADER_EXTENSIONS = {".mod", ".s3m", ".xm", ".sid"}
+
+
+def _read_header_title(path: Path) -> str:
+    """Liest den Song-Titel aus dem Header einer Tracker-/SID-Datei."""
+    try:
+        ext = path.suffix.lower()
+        with open(path, "rb") as f:
+            if ext == ".mod":
+                # MOD: Bytes 0-19 = Song-Titel (ASCII, null-padded)
+                raw = f.read(20)
+            elif ext == ".s3m":
+                # S3M: Bytes 0-27 = Song-Name (ASCII, null-padded)
+                raw = f.read(28)
+            elif ext == ".xm":
+                # XM: Bytes 17-36 = Modul-Name (nach "Extended Module: " Header)
+                header = f.read(37)
+                raw = header[17:37] if len(header) >= 37 else b""
+            elif ext == ".sid":
+                # PSID/RSID: Bytes 0x16-0x35 = Name (32 Bytes, ASCII)
+                header = f.read(0x36)
+                raw = header[0x16:0x36] if len(header) >= 0x36 else b""
+            else:
+                return ""
+            return raw.decode("ascii", errors="replace").strip("\x00").strip()
+    except Exception:
+        return ""
+
+
+def _read_sid_artist(path: Path) -> str:
+    """Liest den Artist aus dem SID-Header."""
+    try:
+        with open(path, "rb") as f:
+            header = f.read(0x56)
+            # PSID/RSID: Bytes 0x36-0x55 = Author (32 Bytes, ASCII)
+            if len(header) >= 0x56:
+                return header[0x36:0x56].decode("ascii", errors="replace").strip("\x00").strip()
+    except Exception:
+        pass
+    return ""
+
 
 class MutagenMetadataReader:
     """MetadataReader-Implementation mit mutagen.
 
     Implementiert das MetadataReader-Protocol aus domain/protocols.py.
+    Tracker-Formate (MOD/S3M/XM) liest es direkt aus dem Header.
     """
 
     def read(self, path: Path) -> AudioTrack:
         """Liest Metadaten einer Audio-Datei."""
         track = AudioTrack(path=path)
+
+        # Tracker/SID-Formate: mutagen unterstuetzt diese nicht
+        if path.suffix.lower() in _HEADER_EXTENSIONS:
+            title = _read_header_title(path)
+            if title:
+                track.title = title
+            if path.suffix.lower() == ".sid":
+                artist = _read_sid_artist(path)
+                if artist:
+                    track.artist = artist
+            return track
 
         try:
             import mutagen
