@@ -127,7 +127,7 @@ class PygameAudioPlayer:
     SID-Dateien werden per sidplayfp Subprocess dekodiert (falls installiert).
     """
 
-    def __init__(self, frequency: int = 44100, buffer_size: int = 4096) -> None:
+    def __init__(self, frequency: int = 44100, buffer_size: int = 8192) -> None:
         self._initialized = False
         self._frequency = frequency
         self._buffer_size = buffer_size

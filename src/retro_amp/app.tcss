@@ -19,3 +19,8 @@ Screen {
     height: 1fr;
     layout: vertical;
 }
+
+#file-table {
+    height: auto;
+    max-height: 50%;
+}

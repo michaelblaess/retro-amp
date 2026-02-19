@@ -19,11 +19,13 @@ from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
 from .infrastructure.spectrum import SpectrumAnalyzer
 from .services.liner_notes_service import LinerNotesService
+from .services.lyrics_service import LyricsService
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
 from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
+from .widgets.lyrics_panel import LyricsPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
 
@@ -70,6 +72,10 @@ class RetroAmpApp(App):
         self._metadata_service = MetadataService(self._metadata_reader)
         self._playlist_service = PlaylistService(self._playlist_store)
         self._liner_notes_service = LinerNotesService()
+        self._lyrics_service = LyricsService()
+
+        # Generations-Counter fuer Lyrics-Thread-Cancellation
+        self._lyrics_generation: int = 0
 
         # Settings laden
         settings = self._settings_store.load()
@@ -118,6 +124,7 @@ class RetroAmpApp(App):
                 yield FolderBrowser(str(self._tree_root), id="folder-browser")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
+                yield LyricsPanel(id="lyrics-panel")
         yield Visualizer(id="visualizer")
         yield TransportBar(id="transport")
         yield Footer()
@@ -421,6 +428,9 @@ class RetroAmpApp(App):
         self._highlight_current_track()
         self.sub_title = track.display_name
 
+        # Lyrics asynchron laden
+        self._load_lyrics_for_track(track)
+
     def _highlight_current_track(self) -> None:
         """Markiert den aktuellen Track in der Tabelle (Cursor + visuell)."""
         track = self._player_service.state.current_track
@@ -467,11 +477,15 @@ class RetroAmpApp(App):
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
             self.sub_title = ""
+            lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
+            lyrics_panel.clear()
+            self._lyrics_generation += 1
         else:
             self._highlight_current_track()
             track = self._player_service.state.current_track
             if track:
                 self.sub_title = track.display_name
+                self._load_lyrics_for_track(track)
         self._update_transport()
 
     def _save_last_path(self, path: Path) -> None:
@@ -492,7 +506,58 @@ class RetroAmpApp(App):
         settings["theme"] = theme_name
         self._settings_store.save(settings)
 
+    def _load_lyrics_for_track(self, track: AudioTrack) -> None:
+        """Startet asynchrones Laden der Lyrics fuer einen Track."""
+        artist = track.artist
+        title = track.title or track.path.stem
+        if not artist:
+            # Kein Artist-Tag → kein Lyrics-Lookup
+            lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
+            lyrics_panel.clear()
+            return
+
+        # Generation erhoehen → alte Threads ignorieren ihr Ergebnis
+        self._lyrics_generation += 1
+        generation = self._lyrics_generation
+
+        lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
+        lyrics_panel.show_loading(artist, title)
+
+        self._fetch_lyrics_async(artist, title, generation)
+
+    @work(exclusive=True, group="lyrics", thread=True)
+    def _fetch_lyrics_async(
+        self, artist: str, title: str, generation: int,
+    ) -> None:
+        """Holt Lyrics im Background-Thread."""
+        original, translated = self._lyrics_service.get_lyrics(artist, title)
+
+        # Pruefen ob noch relevant (Benutzer hat vielleicht Song gewechselt)
+        if generation != self._lyrics_generation:
+            return
+
+        self.call_from_thread(
+            self._apply_lyrics, artist, title, original, translated, generation,
+        )
+
+    def _apply_lyrics(
+        self,
+        artist: str,
+        title: str,
+        original: str,
+        translated: str,
+        generation: int,
+    ) -> None:
+        """Wendet Lyrics auf die UI an (Main-Thread)."""
+        # Nochmal pruefen — koennte sich zwischen call_from_thread geaendert haben
+        if generation != self._lyrics_generation:
+            return
+
+        lyrics_panel = self.query_one("#lyrics-panel", LyricsPanel)
+        lyrics_panel.show_lyrics(artist, title, original, translated)
+
     def on_unmount(self) -> None:
         """Cleanup beim Beenden."""
+        self._lyrics_generation += 1  # Offene Lyrics-Threads ignorieren
         self._spectrum_analyzer.unload()
         self._audio_player.cleanup()

@@ -97,33 +97,27 @@ class SpectrumAnalyzer:
     def load(self, path: Path) -> None:
         """Laedt PCM-Daten einer Audio-Datei (blocking, in Worker aufrufen).
 
-        Nutzt pygame.mixer.Sound zum Dekodieren, extrahiert Raw-PCM
-        und gibt den Sound sofort wieder frei.
+        Nutzt einen separaten Dekodierungspfad (nicht pygame.mixer.Sound),
+        um Konflikte mit dem laufenden Music-Stream zu vermeiden.
         """
         self._ready = False
         self._pcm = None
 
         try:
-            if not pygame.mixer.get_init():
-                logger.warning("pygame.mixer nicht initialisiert")
+            raw, sample_rate, channels = self._decode_to_pcm(path)
+            if raw is None:
                 return
 
-            init_info = pygame.mixer.get_init()
-            if init_info:
-                self._sample_rate = init_info[0]
-                self._channels = init_info[2]
+            self._sample_rate = sample_rate
+            self._channels = channels
             self._compute_band_bins(self._sample_rate)
-
-            sound = pygame.mixer.Sound(str(path))
-            raw = sound.get_raw()
-            del sound  # Speicher freigeben
 
             # Raw-Bytes in signed 16-bit Array
             pcm = array.array("h")
             pcm.frombytes(raw)
 
             # Stereo zu Mono mischen
-            if self._channels == 2 and len(pcm) >= 2:
+            if channels == 2 and len(pcm) >= 2:
                 mono = array.array("h")
                 for j in range(0, len(pcm) - 1, 2):
                     mono.append((pcm[j] + pcm[j + 1]) // 2)
@@ -136,6 +130,94 @@ class SpectrumAnalyzer:
             logger.debug("Spectrum-Daten konnten nicht geladen werden", exc_info=True)
             self._pcm = None
             self._ready = False
+
+    def _decode_to_pcm(self, path: Path) -> tuple[bytes | None, int, int]:
+        """Dekodiert Audio zu PCM ohne pygame.mixer.Sound zu verwenden.
+
+        Returns:
+            (raw_bytes, sample_rate, channels) oder (None, 0, 0) bei Fehler.
+        """
+        ext = path.suffix.lower()
+
+        # WAV: direkt lesen
+        if ext == ".wav":
+            return self._decode_wav(path)
+
+        # OGG/Opus: per pyogg
+        if ext in {".ogg", ".oga", ".opus"}:
+            return self._decode_ogg(path)
+
+        # MP3/FLAC und Tracker: Fallback auf pygame.mixer.Sound
+        # (kurze Verzoegerung um Music-Stream nicht zu stoeren)
+        return self._decode_via_pygame(path)
+
+    def _decode_wav(self, path: Path) -> tuple[bytes | None, int, int]:
+        """Dekodiert WAV direkt per wave-Modul."""
+        import wave
+        try:
+            with wave.open(str(path), "rb") as wf:
+                sr = wf.getframerate()
+                ch = wf.getnchannels()
+                raw = wf.readframes(wf.getnframes())
+                return raw, sr, ch
+        except Exception:
+            return None, 0, 0
+
+    def _decode_ogg(self, path: Path) -> tuple[bytes | None, int, int]:
+        """Dekodiert OGG/Opus per pyogg."""
+        import ctypes
+        try:
+            # Erst Opus versuchen
+            try:
+                import pyogg
+                opus = pyogg.OpusFile(str(path))
+                raw = ctypes.cast(
+                    opus.buffer,
+                    ctypes.POINTER(ctypes.c_char * opus.buffer_length),
+                ).contents.raw
+                return raw, opus.frequency, opus.channels
+            except Exception:
+                pass
+
+            # Fallback: Vorbis via pyogg
+            try:
+                import pyogg
+                vorbis = pyogg.VorbisFile(str(path))
+                raw = ctypes.cast(
+                    vorbis.buffer,
+                    ctypes.POINTER(ctypes.c_char * vorbis.buffer_length),
+                ).contents.raw
+                return raw, vorbis.frequency, vorbis.channels
+            except Exception:
+                pass
+
+            # Letzter Fallback: pygame
+            return self._decode_via_pygame(path)
+        except Exception:
+            return None, 0, 0
+
+    def _decode_via_pygame(self, path: Path) -> tuple[bytes | None, int, int]:
+        """Fallback-Dekodierung per pygame.mixer.Sound.
+
+        Wartet kurz damit der Music-Stream nicht gestoert wird.
+        """
+        import time
+        time.sleep(0.5)  # Music-Stream stabilisieren lassen
+
+        try:
+            if not pygame.mixer.get_init():
+                return None, 0, 0
+
+            init_info = pygame.mixer.get_init()
+            sr = init_info[0] if init_info else 44100
+            ch = init_info[2] if init_info else 2
+
+            sound = pygame.mixer.Sound(str(path))
+            raw = sound.get_raw()
+            del sound
+            return raw, sr, ch
+        except Exception:
+            return None, 0, 0
 
     def unload(self) -> None:
         """Gibt PCM-Daten frei."""
