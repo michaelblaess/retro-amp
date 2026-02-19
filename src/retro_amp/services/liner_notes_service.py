@@ -90,8 +90,9 @@ class LinerNotesService:
         # Von Wikipedia holen
         note = self._fetch_from_wikipedia(artist)
 
-        # Cache schreiben (auch leere Ergebnisse, um wiederholte Abfragen zu vermeiden)
-        self._write_cache(artist, note)
+        # Nur erfolgreiche Ergebnisse cachen — bei Fehler naechstes Mal erneut versuchen
+        if note:
+            self._write_cache(artist, note)
 
         return note
 

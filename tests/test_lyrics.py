@@ -54,16 +54,16 @@ class TestLyricsService:
             mock.assert_not_called()
             assert original == "Lyrics here"
 
-    def test_empty_result_cached(self, tmp_path: Path) -> None:
-        """Auch leere Ergebnisse werden gecached."""
+    def test_empty_result_not_cached(self, tmp_path: Path) -> None:
+        """Leere Ergebnisse werden NICHT gecached (Retry bei naechstem Versuch)."""
         svc = LyricsService(lyrics_dir=tmp_path)
 
         with patch.object(svc, "_fetch_lyrics", return_value=""):
             svc.get_lyrics("Nobody", "Nothing", translate=False)
 
-        # Cache-Datei sollte existieren
+        # Cache-Datei sollte NICHT existieren
         cached = svc._read_cache("Nobody", "Nothing")
-        assert cached == ("", "")
+        assert cached is None
 
     def test_split_text(self, tmp_path: Path) -> None:
         """Text wird an Absatzgrenzen geteilt."""

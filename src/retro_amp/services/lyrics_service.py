@@ -59,8 +59,7 @@ class LyricsService:
         # Von lrclib.net holen
         original = self._fetch_lyrics(artist, title)
         if not original:
-            # Leeren Cache schreiben (vermeidet wiederholte Abfragen)
-            self._write_cache(artist, title, "", "")
+            # NICHT cachen — naechster Versuch probiert es erneut
             return "", ""
 
         # Uebersetzen
