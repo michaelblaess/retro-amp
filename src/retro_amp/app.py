@@ -33,6 +33,7 @@ from .widgets.search_panel import SearchPanel, _SearchResult
 from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
+from .screens.library_picker_screen import LibraryPickerScreen
 from .widgets.youtube_panel import YoutubePanel
 
 
@@ -58,6 +59,7 @@ class RetroAmpApp(App):
         Binding("t", "cycle_theme", "Theme", priority=True),
         Binding("i", "show_about", "Info", priority=True),
         Binding("s", "focus_search", "Suche", priority=True),
+        Binding("l", "pick_library", "Library", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -96,18 +98,20 @@ class RetroAmpApp(App):
             self.theme = "c64"
 
         # Baumwurzel bestimmen (immer der Musik-Root, nicht der letzte Ordner)
+        self._needs_library_picker = False
         if start_path:
             self._tree_root = Path(start_path).expanduser().resolve()
+            # CLI-Pfad als music_library persistieren
+            settings["music_library"] = str(self._tree_root)
+            self._settings_store.save(settings)
         else:
-            for candidate in [
-                Path("D:/Dropbox/MUSIK"),
-                Path.home() / "Music",
-            ]:
-                if candidate.is_dir():
-                    self._tree_root = candidate
-                    break
+            saved_library = str(settings.get("music_library", ""))
+            if saved_library and Path(saved_library).is_dir():
+                self._tree_root = Path(saved_library)
             else:
-                self._tree_root = Path.home()
+                # Kein gespeicherter Pfad — Picker beim Start zeigen
+                self._needs_library_picker = True
+                self._tree_root = Path.home() / "Music" if (Path.home() / "Music").is_dir() else Path.home()
 
         if not self._tree_root.is_dir():
             self._tree_root = Path.home()
@@ -160,8 +164,45 @@ class RetroAmpApp(App):
         # Theme-Name in Titelleiste
         display = THEME_DISPLAY_NAMES.get(self.theme, self.theme)
         self.sub_title = f"♪ {display}"
-        # Initial: letzten Ordner in Tabelle laden
-        self._scan_directory(self._initial_scan_path)
+
+        # Fokus auf Verzeichnisbaum statt Suchfeld (zeigt alle Bindings im Footer)
+        self.query_one("#folder-browser", FolderBrowser).focus()
+
+        if self._needs_library_picker:
+            self._show_library_picker()
+        else:
+            # Initial: letzten Ordner in Tabelle laden
+            self._scan_directory(self._initial_scan_path)
+
+    def _show_library_picker(self) -> None:
+        """Zeigt den Library-Picker-Dialog."""
+        candidates: list[Path] = []
+        music_dir = Path.home() / "Music"
+        if music_dir.is_dir():
+            candidates.append(music_dir)
+        cwd = Path.cwd().resolve()
+        if cwd != Path.home() and cwd not in candidates:
+            candidates.append(cwd)
+        self.push_screen(
+            LibraryPickerScreen(candidates),
+            callback=self._on_library_picked,
+        )
+
+    def _on_library_picked(self, chosen: Path | None) -> None:
+        """Callback vom Library-Picker — Pfad speichern und Baum aktualisieren."""
+        if chosen is None:
+            return
+        self._tree_root = chosen
+        self._initial_scan_path = chosen
+        # Pfad persistieren
+        settings = self._settings_store.load()
+        settings["music_library"] = str(chosen)
+        self._settings_store.save(settings)
+        # Baum und Tabelle mit neuem Root aktualisieren
+        browser = self.query_one("#folder-browser", FolderBrowser)
+        browser.path = str(chosen)
+        browser.reload()
+        self._scan_directory(chosen)
 
     # --- Event-Handler fuer Widget-Messages ---
 
@@ -285,6 +326,10 @@ class RetroAmpApp(App):
         """About-Dialog anzeigen."""
         from .screens.about_screen import AboutScreen  # Lazy import
         self.push_screen(AboutScreen())
+
+    def action_pick_library(self) -> None:
+        """Library-Picker-Dialog oeffnen."""
+        self._show_library_picker()
 
     def action_focus_search(self) -> None:
         """Fokus auf Suchleiste setzen."""

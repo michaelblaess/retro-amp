@@ -15,6 +15,7 @@ _DEFAULTS: dict[str, object] = {
     "theme": "textual-dark",
     "volume": 0.8,
     "last_path": "",
+    "music_library": "",
 }
 
 
