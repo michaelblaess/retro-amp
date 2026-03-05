@@ -4,23 +4,18 @@ Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](ht
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  retro-amp v0.4                          ♪ C64 — Commodore 64   │
-├──────────────────┬───────────────────────────────────────────────┤
-│                  │                                               │
-│  MUSIK           │  ▶ autobahn.mp3      MP3  320kbps   22:43    │
-│  ├─ Kraftwerk    │    modell.mp3        MP3  320kbps    3:39    │
-│  ├─ C64          │    nummern.mp3       MP3  256kbps    4:12    │
-│  └─ Amiga        │    roboter.mp3       MP3  320kbps    6:11    │
-│                  │                                               │
-├──────────────────┴───────────────────────────────────────────────┤
-│  ▅▇█▃▆█▅▂▇▅▃▆█▇▅▂▄▆▃▅▇█▅▃▆▇▅▂▄▆  (Spektral-Visualizer / FFT) │
-├──────────────────────────────────────────────────────────────────┤
-│  ▶  Kraftwerk - Autobahn  [MP3 | 320 kbps]                     │
-│      ████████████████░░░░░░░░  14:22 / 22:43   Vol: ████░░ 80% │
-└──────────────────────────────────────────────────────────────────┘
-```
+![BeOS Theme](docs/screenshots/01-main.png)
+*BeOS Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
+
+| | |
+|---|---|
+| ![IBM Terminal](docs/screenshots/02-ibm-theme.png) | ![Amiga Workbench](docs/screenshots/09-amiga-theme.png) |
+| *IBM Terminal — Phosphor-Gruen* | *Amiga Workbench — Blau/Orange* |
+
+| | |
+|---|---|
+| ![C64 Theme](docs/screenshots/05-c64-theme.png) | ![Lyrics](docs/screenshots/04-lyrics.png) |
+| *C64 Theme — YouTube-Links* | *Lyrics — Original (Englisch)* |
 
 ## Installation
 
