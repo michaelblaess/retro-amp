@@ -1,7 +1,10 @@
 """retro-amp — Textual App (Composition Root)."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -151,8 +154,9 @@ class RetroAmpApp(App):
                         yield YoutubePanel(id="youtube-panel")
                     with TabPane("Suchergebnisse", id="tab-search"):
                         yield SearchPanel(id="search-panel")
-        yield Visualizer(id="visualizer")
-        yield TransportBar(id="transport")
+        with Horizontal(id="transport-row"):
+            yield Visualizer(id="visualizer")
+            yield TransportBar(id="transport")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -554,12 +558,13 @@ class RetroAmpApp(App):
     def _scan_directory(self, directory: Path) -> None:
         """Scannt ein Verzeichnis im Background-Thread."""
         tracks = self._metadata_service.scan_directory(directory)
-        self.call_from_thread(self._apply_scan_result, tracks)
+        self.call_from_thread(self._apply_scan_result, tracks, directory)
 
-    def _apply_scan_result(self, tracks: list[AudioTrack]) -> None:
+    def _apply_scan_result(self, tracks: list[AudioTrack], directory: Path) -> None:
         """Wendet Scan-Ergebnis auf die UI an (im Main-Thread)."""
         self._current_tracks = tracks
         file_table = self.query_one("#file-table", FileTable)
+        file_table.set_path(directory)
         file_table.update_tracks(self._current_tracks)
 
     def _play_track(self, track: AudioTrack) -> None:
@@ -624,6 +629,12 @@ class RetroAmpApp(App):
 
     def _on_track_finished(self) -> None:
         """Callback wenn ein Track fertig ist."""
+        state = self._player_service.state
+        self.notify(
+            f"finished: idx={state.current_index} has_next={state.has_next} "
+            f"tracks={len(state.track_list)}",
+            severity="information",
+        )
         self._player_service.check_auto_next()
         self._sync_visualizer()
         if self._player_service.state.is_stopped:

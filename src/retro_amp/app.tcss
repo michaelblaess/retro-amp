@@ -39,3 +39,10 @@ Screen {
 #content-tabs {
     height: 1fr;
 }
+
+#transport-row {
+    height: 5;
+    layout: horizontal;
+    border-top: solid $accent;
+    border-bottom: solid $accent;
+}

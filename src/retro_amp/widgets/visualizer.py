@@ -58,8 +58,9 @@ class Visualizer(Widget):
     DEFAULT_CSS = """
     Visualizer {
         height: 3;
-        padding: 0 1;
-        border-top: solid $accent;
+        width: 38;
+        padding: 0 2;
+        border-right: solid $accent;
     }
     """
 

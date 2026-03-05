@@ -8,7 +8,7 @@ from rich.text import Text
 from textual import on
 from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Static
 
 from ..domain.models import AudioTrack
 
@@ -22,15 +22,12 @@ class FileTable(Widget):
         height: 1fr;
         layout: vertical;
     }
-    FileTable #file-search {
+    FileTable #file-info {
         height: 1;
         padding: 0 1;
-        dock: top;
-    }
-    FileTable #file-count {
-        height: 1;
-        padding: 0 1;
-        color: $text-muted;
+        background: $accent;
+        color: $text;
+        text-style: bold;
     }
     FileTable DataTable {
         height: 1fr;
@@ -57,14 +54,10 @@ class FileTable(Widget):
         self._filtered_tracks: list[AudioTrack] = []
         self._playing_path: Path | None = None
         self._name_col_key: object | None = None
-        self._search_term: str = ""
+        self._current_path: Path | None = None
 
     def compose(self):  # type: ignore[override]
-        yield Input(
-            placeholder="Suche... (Name, Artist, Album)",
-            id="file-search",
-        )
-        yield Static("Keine Dateien", id="file-count")
+        yield Static("", id="file-info")
         yield DataTable(id="file-data", cursor_type="row", zebra_stripes=True)
 
     def on_mount(self) -> None:
@@ -78,22 +71,7 @@ class FileTable(Widget):
     def update_tracks(self, tracks: list[AudioTrack]) -> None:
         """Aktualisiert die Tabelle mit neuen Tracks."""
         self._tracks = tracks
-        self._apply_filter()
-
-    def _apply_filter(self) -> None:
-        """Filtert und zeigt Tracks basierend auf dem Suchbegriff."""
-        term = self._search_term.lower()
-        if term:
-            self._filtered_tracks = [
-                t for t in self._tracks
-                if term in t.display_name.lower()
-                or term in t.artist.lower()
-                or term in t.album.lower()
-                or term in t.name.lower()
-            ]
-        else:
-            self._filtered_tracks = list(self._tracks)
-
+        self._filtered_tracks = list(tracks)
         self._rebuild_table()
 
     def _rebuild_table(self) -> None:
@@ -113,23 +91,25 @@ class FileTable(Widget):
                 key=str(track.path),
             )
 
-        count_label = self.query_one("#file-count", Static)
-        total = len(self._tracks)
-        shown = len(self._filtered_tracks)
-        if total == 0:
-            count_label.update("Keine Audio-Dateien")
-        elif shown < total:
-            count_label.update(f"{shown} von {total} Dateien")
-        elif total == 1:
-            count_label.update("1 Datei")
-        else:
-            count_label.update(f"{total} Dateien")
+        self._update_info_label()
 
-    @on(Input.Changed, "#file-search")
-    def _on_search_changed(self, event: Input.Changed) -> None:
-        """Suchfeld geaendert — Tabelle filtern."""
-        self._search_term = event.value
-        self._apply_filter()
+    def set_path(self, path: Path) -> None:
+        """Setzt den aktuellen Ordner-Pfad."""
+        self._current_path = path
+        self._update_info_label()
+
+    def _update_info_label(self) -> None:
+        """Aktualisiert die kombinierte Pfad + Dateianzahl Zeile."""
+        info = self.query_one("#file-info", Static)
+        path_str = str(self._current_path) if self._current_path else ""
+        total = len(self._tracks)
+        count_str = f"{total} Dateien" if total != 1 else "1 Datei"
+        if total == 0:
+            count_str = "Keine Audio-Dateien"
+        if path_str:
+            info.update(f"{path_str}  [{count_str}]")
+        else:
+            info.update(count_str)
 
     def mark_playing(self, path: Path | None) -> None:
         """Markiert den aktuell spielenden Track visuell."""
