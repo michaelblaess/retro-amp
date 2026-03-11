@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
-    DirectoryTree, Footer, Header, Input, Rule, TabbedContent, TabPane,
+    DirectoryTree, Footer, Header, Input, RichLog, Rule, TabbedContent, TabPane,
 )
 
 from textual import work
@@ -63,6 +64,8 @@ class RetroAmpApp(App):
         Binding("i", "show_about", "Info", priority=True),
         Binding("s", "focus_search", "Suche", priority=True),
         Binding("l", "pick_library", "Library", priority=True),
+        Binding("o", "toggle_log", "Log", priority=True),
+        Binding("c", "copy_log", "Log kopieren", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -125,6 +128,9 @@ class RetroAmpApp(App):
         if not self._initial_scan_path.is_dir():
             self._initial_scan_path = self._tree_root
 
+        # Log-Zeilen fuer Copy-Funktion
+        self._log_lines: list[str] = []
+
         # Timer-Handle fuer Position-Updates
         self._position_timer: object | None = None
 
@@ -157,6 +163,7 @@ class RetroAmpApp(App):
         with Horizontal(id="transport-row"):
             yield Visualizer(id="visualizer")
             yield TransportBar(id="transport")
+        yield RichLog(id="app-log", highlight=True, markup=True)
         yield Footer()
 
     def on_mount(self) -> None:
@@ -216,6 +223,7 @@ class RetroAmpApp(App):
         """Ordner im Baum ausgewaehlt — rechtes Panel aktualisieren."""
         self._scan_directory(event.path)
         self._save_last_path(event.path)
+        self._write_log(f"Ordner: {event.path}")
 
     def on_directory_tree_file_selected(
         self, event: DirectoryTree.FileSelected
@@ -340,6 +348,20 @@ class RetroAmpApp(App):
         search_input = self.query_one("#global-search", Input)
         search_input.focus()
 
+    def action_toggle_log(self) -> None:
+        """Debug-Log ein-/ausblenden."""
+        log_widget = self.query_one("#app-log", RichLog)
+        log_widget.toggle_class("visible")
+
+    def action_copy_log(self) -> None:
+        """Gesamten Log-Inhalt in die Zwischenablage kopieren."""
+        if not self._log_lines:
+            self.notify("Log ist leer", severity="warning")
+            return
+        text = "\n".join(self._log_lines)
+        self.copy_to_clipboard(text)
+        self.notify(f"Log kopiert ({len(self._log_lines)} Zeilen)")
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Suchleiste: Enter gedrueckt → Suche starten."""
         if event.input.id != "global-search":
@@ -347,21 +369,54 @@ class RetroAmpApp(App):
         query = event.value.strip()
         if not query:
             return
+        # Loading-Indikator sofort anzeigen
+        search_panel = self.query_one("#search-panel", SearchPanel)
+        search_panel.show_loading(query)
+        tabs = self.query_one("#content-tabs", TabbedContent)
+        tabs.active = "tab-search"
         # Suche im Background-Thread starten
         self._run_global_search(query)
 
     @work(exclusive=True, group="search", thread=True)
     def _run_global_search(self, query: str) -> None:
         """Globale Dateisuche im Background-Thread."""
-        self.call_from_thread(self._apply_search, query)
+        results = self._do_file_search(query, self._tree_root)
+        self.call_from_thread(self._apply_search_results, query, results)
 
-    def _apply_search(self, query: str) -> None:
-        """Suche ausfuehren und Tab aktivieren (Main-Thread)."""
+    def _do_file_search(
+        self, query: str, root: Path,
+    ) -> list[tuple[Path, str]]:
+        """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff)."""
+        query_lower = query.lower()
+        results: list[tuple[Path, str]] = []
+        audio_exts = {
+            ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
+            ".mod", ".xm", ".s3m", ".sid",
+        }
+        try:
+            for p in sorted(root.rglob("*")):
+                if query_lower in p.name.lower():
+                    try:
+                        rel = p.relative_to(root)
+                    except ValueError:
+                        rel = p
+                    if p.is_dir():
+                        results.append((p, f"\U0001f4c1 {rel}"))
+                    elif p.suffix.lower() in audio_exts:
+                        results.append((p, f"\u266a {rel}"))
+        except PermissionError:
+            pass
+        return results[:200]
+
+    def _apply_search_results(
+        self, query: str, results: list[tuple[Path, str]],
+    ) -> None:
+        """Zeigt Suchergebnisse an (Main-Thread)."""
         search_panel = self.query_one("#search-panel", SearchPanel)
-        search_panel.show_results(query, self._tree_root)
-        # Tab "Suchergebnisse" aktivieren
-        tabs = self.query_one("#content-tabs", TabbedContent)
-        tabs.active = "tab-search"
+        search_panel.display_results(query, results)
+        self._write_log(
+            f"Suche: \"{query}\" \u2192 {len(results)} Treffer"
+        )
 
     def on__search_result_selected(
         self, event: _SearchResult.Selected,
@@ -392,9 +447,28 @@ class RetroAmpApp(App):
         info_panel.show_info(artist, note)
 
     def action_rename_file(self) -> None:
-        """Datei umbenennen — Dialog oeffnen."""
+        """Datei oder Ordner umbenennen — Dialog oeffnen."""
         from .screens.rename_screen import RenameScreen  # Lazy import
 
+        # Kontextabhaengig: Fokus auf Baum → Element im Baum umbenennen
+        folder_browser = self.query_one("#folder-browser", FolderBrowser)
+        if folder_browser.has_focus or folder_browser.has_focus_within:
+            node = folder_browser.cursor_node
+            if node and node.data:
+                target = node.data.path
+                if target == self._tree_root:
+                    self.notify(
+                        "Wurzelordner kann nicht umbenannt werden",
+                        severity="warning",
+                    )
+                    return
+                self.push_screen(
+                    RenameScreen(target),
+                    callback=self._on_rename_result,
+                )
+                return
+
+        # Fallback: markierte Datei in der Tabelle
         file_table = self.query_one("#file-table", FileTable)
         track = file_table.highlighted_track
         if not track:
@@ -418,7 +492,13 @@ class RetroAmpApp(App):
         # Verzeichnis neu scannen
         directory = new_path.parent
         self._scan_directory(directory)
+
+        # Baum aktualisieren (noetig bei Ordner-Umbenennung)
+        folder_browser = self.query_one("#folder-browser", FolderBrowser)
+        folder_browser.reload()
+
         self.notify(f"Umbenannt: {new_path.name}")
+        self._write_log(f"Umbenannt: {new_path}")
 
     def action_delete_file(self) -> None:
         """Datei oder Ordner loeschen — Bestaetigungsdialog oeffnen."""
@@ -497,6 +577,7 @@ class RetroAmpApp(App):
 
         label = "Ordner" if was_dir else "Datei"
         self.notify(f"{label} geloescht: {deleted_path.name}")
+        self._write_log(f"Geloescht: {deleted_path}")
 
     def _on_playlist_selected(self, playlist_name: str | None) -> None:
         """Callback wenn eine Playlist im Dialog gewaehlt wurde."""
@@ -547,10 +628,26 @@ class RetroAmpApp(App):
             return True if has_track and not state.is_stopped else None
         if action == "toggle_favorite":
             return True if has_track else None
+        if action == "copy_log":
+            log_widget = self.query_one("#app-log", RichLog)
+            return True if log_widget.has_class("visible") else None
         if action in ("rename_file", "delete_file"):
+            folder_browser = self.query_one("#folder-browser", FolderBrowser)
+            if folder_browser.has_focus or folder_browser.has_focus_within:
+                node = folder_browser.cursor_node
+                return True if (node and node.data) else None
             file_table = self.query_one("#file-table", FileTable)
             return True if file_table.highlighted_track else None
         return True
+
+    def on_transport_bar_volume_clicked(
+        self, event: TransportBar.VolumeClicked,
+    ) -> None:
+        """Lautstaerke per Mausklick aendern."""
+        self._player_service.set_volume(event.volume)
+        self._update_transport()
+        self._save_volume()
+        self._write_log(f"Lautstaerke: {int(event.volume * 100)}%")
 
     # --- Interne Methoden ---
 
@@ -566,6 +663,9 @@ class RetroAmpApp(App):
         file_table = self.query_one("#file-table", FileTable)
         file_table.set_path(directory)
         file_table.update_tracks(self._current_tracks)
+        self._write_log(
+            f"Verzeichnis: {directory.name} ({len(tracks)} Tracks)"
+        )
 
     def _play_track(self, track: AudioTrack) -> None:
         """Spielt einen Track ab und aktualisiert UI."""
@@ -581,6 +681,7 @@ class RetroAmpApp(App):
         self._update_transport()
         self._highlight_current_track()
         self.sub_title = track.display_name
+        self._write_log(f"\u25b6 {track.display_name}")
 
         # Alle Tabs asynchron laden
         self._load_tabs_for_track(track)
@@ -635,6 +736,7 @@ class RetroAmpApp(App):
             f"tracks={len(state.track_list)}",
             severity="information",
         )
+        self._write_log("Track beendet")
         self._player_service.check_auto_next()
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
@@ -732,6 +834,16 @@ class RetroAmpApp(App):
         self.query_one("#translation-panel", TranslationPanel).show_translation(
             artist, title, translated,
         )
+
+    def _write_log(self, message: str) -> None:
+        """Schreibt eine Nachricht ins Debug-Log."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        try:
+            log_widget = self.query_one("#app-log", RichLog)
+            log_widget.write(f"[dim]{timestamp}[/dim] {message}")
+            self._log_lines.append(f"{timestamp} {message}")
+        except Exception:
+            pass
 
     def on_unmount(self) -> None:
         """Cleanup beim Beenden."""

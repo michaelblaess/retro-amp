@@ -46,3 +46,17 @@ Screen {
     border-top: solid $accent;
     border-bottom: solid $accent;
 }
+
+#app-log {
+    height: 10;
+    min-height: 5;
+    max-height: 15;
+    border-top: solid $accent;
+    background: $surface;
+    padding: 0 1;
+    display: none;
+}
+
+#app-log.visible {
+    display: block;
+}

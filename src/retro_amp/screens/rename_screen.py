@@ -61,7 +61,8 @@ class RenameScreen(ModalScreen[Path | None]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog"):
-            yield Label("Datei umbenennen", id="dialog-title")
+            label = "Ordner umbenennen" if self._file_path.is_dir() else "Datei umbenennen"
+            yield Label(label, id="dialog-title")
             yield Input(
                 value=self._file_path.name,
                 placeholder="Neuer Dateiname...",

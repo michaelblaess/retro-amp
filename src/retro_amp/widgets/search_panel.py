@@ -8,7 +8,7 @@ from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import LoadingIndicator, Static
 
 
 _AUDIO_EXTENSIONS = {".mp3", ".ogg", ".opus", ".flac", ".wav"}
@@ -73,11 +73,42 @@ class SearchPanel(Widget):
         color: $accent;
         margin-bottom: 1;
     }
+    SearchPanel #search-loading {
+        height: 3;
+        display: none;
+    }
     """
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="search-scroll"):
             yield Static("", id="search-status")
+            yield LoadingIndicator(id="search-loading")
+
+    def show_loading(self, query: str) -> None:
+        """Zeigt Lade-Zustand an."""
+        for old in list(self.query("_SearchResult")):
+            old.remove()
+        self.query_one("#search-status", Static).update(
+            f"\U0001f50d Suche nach \"{query}\" ..."
+        )
+        self.query_one("#search-loading", LoadingIndicator).display = True
+
+    def display_results(
+        self, query: str, results: list[tuple[Path, str]],
+    ) -> None:
+        """Zeigt vorberechnete Suchergebnisse an."""
+        self.query_one("#search-loading", LoadingIndicator).display = False
+        status = self.query_one("#search-status", Static)
+        scroll = self.query_one("#search-scroll", VerticalScroll)
+
+        if results:
+            status.update(
+                f"\U0001f50d \"{query}\" \u2014 {len(results)} Treffer"
+            )
+            for path, display in results:
+                scroll.mount(_SearchResult(path, display))
+        else:
+            status.update(f"\U0001f50d \"{query}\" \u2014 keine Treffer")
 
     def show_results(self, query: str, root: Path) -> None:
         """Sucht rekursiv und zeigt Ergebnisse an."""
@@ -125,6 +156,7 @@ class SearchPanel(Widget):
 
     def clear(self) -> None:
         """Leert das Panel."""
+        self.query_one("#search-loading", LoadingIndicator).display = False
         self.query_one("#search-status", Static).update("")
         for old in list(self.query("_SearchResult")):
             old.remove()
