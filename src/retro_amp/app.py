@@ -30,6 +30,7 @@ from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
 from .widgets.file_table import FileTable
+from .widgets.favorites_tree import FavoritesTree
 from .widgets.folder_browser import FolderBrowser
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricsPanel
@@ -66,6 +67,7 @@ class RetroAmpApp(App):
         Binding("l", "pick_library", "Library", priority=True),
         Binding("o", "toggle_log", "Log", priority=True),
         Binding("c", "copy_log", "Log kopieren", priority=True),
+        Binding("tab", "toggle_view", "Dateien/Fav", key_display="TAB", priority=True),
     ]
 
     def __init__(self, start_path: str = "") -> None:
@@ -131,6 +133,9 @@ class RetroAmpApp(App):
         # Log-Zeilen fuer Copy-Funktion
         self._log_lines: list[str] = []
 
+        # Ansicht: Datei-Explorer vs. Favoriten
+        self._showing_favorites: bool = False
+
         # Timer-Handle fuer Position-Updates
         self._position_timer: object | None = None
 
@@ -146,6 +151,7 @@ class RetroAmpApp(App):
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
                 yield FolderBrowser(str(self._tree_root), id="folder-browser")
+                yield FavoritesTree(id="favorites-tree")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
                 yield Rule(id="tab-separator")
@@ -307,6 +313,10 @@ class RetroAmpApp(App):
         else:
             self.notify(f"☆ {track.display_name} aus Favoriten entfernt")
 
+        # Favoriten-Baum aktualisieren wenn sichtbar
+        if self._showing_favorites:
+            self._refresh_favorites_tree()
+
     def action_show_playlists(self) -> None:
         """Playlist-Dialog oeffnen."""
         from .screens.playlist_screen import PlaylistScreen  # Lazy import
@@ -347,6 +357,25 @@ class RetroAmpApp(App):
         """Fokus auf Suchleiste setzen."""
         search_input = self.query_one("#global-search", Input)
         search_input.focus()
+
+    def action_toggle_view(self) -> None:
+        """Wechselt zwischen Datei-Explorer und Favoriten-Ansicht."""
+        browser = self.query_one("#folder-browser", FolderBrowser)
+        fav_tree = self.query_one("#favorites-tree", FavoritesTree)
+
+        self._showing_favorites = not self._showing_favorites
+
+        if self._showing_favorites:
+            browser.display = False
+            fav_tree.display = True
+            self._refresh_favorites_tree()
+            fav_tree.focus()
+            self._write_log("Ansicht: Favoriten")
+        else:
+            fav_tree.display = False
+            browser.display = True
+            browser.focus()
+            self._write_log("Ansicht: Datei-Explorer")
 
     def action_toggle_log(self) -> None:
         """Debug-Log ein-/ausblenden."""
@@ -617,6 +646,10 @@ class RetroAmpApp(App):
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Bindings bedingt ein-/ausblenden."""
+        # ModalScreen aktiv → alle App-Bindings deaktivieren
+        if len(self.screen_stack) > 1:
+            return None
+
         state = self._player_service.state
         has_track = state.current_track is not None
 
@@ -632,6 +665,10 @@ class RetroAmpApp(App):
             log_widget = self.query_one("#app-log", RichLog)
             return True if log_widget.has_class("visible") else None
         if action in ("rename_file", "delete_file"):
+            # In Favoriten-Ansicht: App-Delete/Rename ausblenden
+            # (FavoritesTree hat eigenes DEL-Binding fuer Favoriten-Entfernung)
+            if self._showing_favorites:
+                return None
             folder_browser = self.query_one("#folder-browser", FolderBrowser)
             if folder_browser.has_focus or folder_browser.has_focus_within:
                 node = folder_browser.cursor_node
@@ -639,6 +676,31 @@ class RetroAmpApp(App):
             file_table = self.query_one("#file-table", FileTable)
             return True if file_table.highlighted_track else None
         return True
+
+    def on_favorites_tree_track_selected(
+        self, event: FavoritesTree.TrackSelected,
+    ) -> None:
+        """Favoriten-Track ausgewaehlt — navigieren und abspielen."""
+        path = event.path
+        if path.is_file():
+            parent = path.parent
+            self._scan_directory(parent)
+            self._save_last_path(parent)
+            if self._metadata_service.is_audio_file(path):
+                track = self._metadata_service.read_track(path)
+                self._play_track(track)
+        else:
+            self.notify("Datei nicht gefunden", severity="warning")
+
+    def on_favorites_tree_track_remove_requested(
+        self, event: FavoritesTree.TrackRemoveRequested,
+    ) -> None:
+        """Track aus Favoriten entfernen."""
+        removed = self._playlist_service.remove_from_favorites(event.path)
+        if removed:
+            self.notify(f"☆ Aus Favoriten entfernt: {event.path.name}")
+            self._refresh_favorites_tree()
+            self._write_log(f"Favorit entfernt: {event.path.name}")
 
     def on_transport_bar_volume_clicked(
         self, event: TransportBar.VolumeClicked,
@@ -664,7 +726,7 @@ class RetroAmpApp(App):
         file_table.set_path(directory)
         file_table.update_tracks(self._current_tracks)
         self._write_log(
-            f"Verzeichnis: {directory.name} ({len(tracks)} Tracks)"
+            f"Verzeichnis: {directory} ({len(tracks)} Tracks)"
         )
 
     def _play_track(self, track: AudioTrack) -> None:
@@ -681,7 +743,11 @@ class RetroAmpApp(App):
         self._update_transport()
         self._highlight_current_track()
         self.sub_title = track.display_name
-        self._write_log(f"\u25b6 {track.display_name}")
+        if track.artist and track.title:
+            log_name = f"{track.artist} \u2013 {track.title}"
+        else:
+            log_name = track.display_name
+        self._write_log(f"\u25b6 {log_name}")
 
         # Alle Tabs asynchron laden
         self._load_tabs_for_track(track)
@@ -736,7 +802,11 @@ class RetroAmpApp(App):
             f"tracks={len(state.track_list)}",
             severity="information",
         )
-        self._write_log("Track beendet")
+        finished_track = state.current_track
+        if finished_track:
+            self._write_log(f"Track beendet: {finished_track.display_name}")
+        else:
+            self._write_log("Track beendet")
         self._player_service.check_auto_next()
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
@@ -748,6 +818,11 @@ class RetroAmpApp(App):
             track = self._player_service.state.current_track
             if track:
                 self.sub_title = track.display_name
+                if track.artist and track.title:
+                    next_name = f"{track.artist} \u2013 {track.title}"
+                else:
+                    next_name = track.display_name
+                self._write_log(f"\u25b6 {next_name}")
                 self._load_tabs_for_track(track)
         self._update_transport()
 
@@ -834,6 +909,13 @@ class RetroAmpApp(App):
         self.query_one("#translation-panel", TranslationPanel).show_translation(
             artist, title, translated,
         )
+
+    def _refresh_favorites_tree(self) -> None:
+        """Aktualisiert den Favoriten-Baum mit aktuellen Daten."""
+        fav_tree = self.query_one("#favorites-tree", FavoritesTree)
+        favorites = self._playlist_service.get_favorites()
+        paths = [entry.path for entry in favorites.entries]
+        fav_tree.load_favorites(paths, self._tree_root)
 
     def _write_log(self, message: str) -> None:
         """Schreibt eine Nachricht ins Debug-Log."""

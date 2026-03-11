@@ -47,6 +47,10 @@ Screen {
     border-bottom: solid $accent;
 }
 
+#favorites-tree {
+    display: none;
+}
+
 #app-log {
     height: 10;
     min-height: 5;
