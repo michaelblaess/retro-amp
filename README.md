@@ -67,20 +67,26 @@ retro-amp
 ```bash
 retro-amp                     # Startet mit Standard-Musikordner / Start with default music folder
 retro-amp /pfad/zur/musik     # Startet in einem bestimmten Ordner / Start in specific folder
+retro-amp --lang en           # Startet mit englischer Oberflaeche / Start with English UI
 retro-amp --version           # Zeigt die Version / Show version
 ```
 
 ## Features
 
 - **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch
+- **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
+- **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
 - **Audio-Playback** — MP3, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
+- **Globale Suche** — Dateien in der gesamten Bibliothek suchen (Taste S)
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **6 Retro-Themes** — C64, Amiga Workbench, Atari ST GEM, IBM Terminal, NeXTSTEP, BeOS
+- **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
+- **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
-- **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme werden gespeichert
+- **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
 
 ## Tastenbelegung / Keybindings
 
@@ -93,8 +99,13 @@ retro-amp --version           # Zeigt die Version / Show version
 | `↑` `↓` | Navigation in der Liste / Navigate list |
 | `Enter` | Song abspielen / Ordner oeffnen / Play track / Open folder |
 | `+` `-` | Lautstaerke / Volume |
+| `TAB` | Ansicht wechseln: Explorer → Favoriten → Playlists / Cycle view |
 | `F` | Favorit hinzufuegen/entfernen / Toggle favorite |
 | `P` | Playlist-Menue / Playlist menu |
+| `S` | Globale Suche / Global search |
+| `L` | Musik-Bibliothek waehlen / Select music library |
+| `O` | Debug-Log ein-/ausblenden / Toggle debug log |
+| `C` | Debug-Log kopieren / Copy debug log |
 | `U` | Datei umbenennen / Rename file |
 | `DEL` | Datei loeschen / Delete file |
 | `T` | Theme wechseln / Cycle theme |
@@ -161,6 +172,8 @@ src/retro_amp/
 │   └── settings.py        # JsonSettingsStore
 ├── widgets/          # Textual Widgets
 ├── screens/          # Textual ModalScreens
+├── i18n.py           # Internationalisierung (de/en)
+├── locale/           # JSON-Sprachpakete (de.json, en.json)
 ├── themes.py         # Re-Export aus textual-themes
 └── app.py            # Composition Root
 ```
