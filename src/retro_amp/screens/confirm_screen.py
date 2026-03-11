@@ -12,6 +12,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Label
 
+from ..i18n import t
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,8 +57,8 @@ class ConfirmScreen(ModalScreen[Path | None]):
     """
 
     BINDINGS = [
-        Binding("escape,q", "close", "Abbrechen"),
-        Binding("j", "confirm", "Ja"),
+        Binding("escape,q", "close", "ESC"),
+        Binding("j", "confirm", "j"),
     ]
 
     def __init__(self, message: str, file_path: Path) -> None:
@@ -66,15 +68,15 @@ class ConfirmScreen(ModalScreen[Path | None]):
         self._is_dir = file_path.is_dir()
 
     def compose(self) -> ComposeResult:
-        title = "Ordner loeschen" if self._is_dir else "Datei loeschen"
+        title = t("confirm.title_dir") if self._is_dir else t("confirm.title_file")
         with Vertical(id="dialog"):
             yield Label(title, id="dialog-title")
             yield Label(self._message, id="message")
             with Horizontal(id="button-row"):
                 yield Button(
-                    "Ja, loeschen (j)", id="btn-confirm", variant="error"
+                    t("confirm.btn_yes"), id="btn-confirm", variant="error"
                 )
-                yield Button("Abbrechen (q)", id="btn-close", variant="default")
+                yield Button(t("confirm.btn_cancel"), id="btn-close", variant="default")
 
     @on(Button.Pressed, "#btn-confirm")
     def _on_confirm(self) -> None:
@@ -94,7 +96,7 @@ class ConfirmScreen(ModalScreen[Path | None]):
             self.dismiss(self._file_path)
         except OSError as e:
             logger.exception("Fehler beim Loeschen")
-            self.notify(f"Fehler: {e}", severity="error")
+            self.notify(t("confirm.error", error=e), severity="error")
 
     def action_close(self) -> None:
         self.dismiss(None)

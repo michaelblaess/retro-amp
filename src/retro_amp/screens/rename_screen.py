@@ -11,6 +11,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 
+from ..i18n import t
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +54,7 @@ class RenameScreen(ModalScreen[Path | None]):
     """
 
     BINDINGS = [
-        Binding("escape", "close", "Abbrechen"),
+        Binding("escape", "close", "ESC"),
     ]
 
     def __init__(self, file_path: Path) -> None:
@@ -61,18 +63,18 @@ class RenameScreen(ModalScreen[Path | None]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog"):
-            label = "Ordner umbenennen" if self._file_path.is_dir() else "Datei umbenennen"
+            label = t("rename.title_dir") if self._file_path.is_dir() else t("rename.title_file")
             yield Label(label, id="dialog-title")
             yield Input(
                 value=self._file_path.name,
-                placeholder="Neuer Dateiname...",
+                placeholder=t("rename.placeholder"),
                 id="new-name",
             )
             with Horizontal(id="button-row"):
                 yield Button(
-                    "Umbenennen (Enter)", id="btn-save", variant="primary"
+                    t("rename.btn_save"), id="btn-save", variant="primary"
                 )
-                yield Button("Abbrechen (Esc)", id="btn-close", variant="default")
+                yield Button(t("rename.btn_cancel"), id="btn-close", variant="default")
 
     def on_mount(self) -> None:
         """Input fokussieren und Text selektieren."""
@@ -100,7 +102,7 @@ class RenameScreen(ModalScreen[Path | None]):
         new_name = name_input.value.strip()
 
         if not new_name:
-            self.notify("Bitte einen Namen eingeben", severity="warning")
+            self.notify(t("rename.empty_name"), severity="warning")
             return
 
         if new_name == self._file_path.name:
@@ -111,7 +113,7 @@ class RenameScreen(ModalScreen[Path | None]):
 
         if new_path.exists():
             self.notify(
-                f"Datei '{new_name}' existiert bereits", severity="error"
+                t("rename.exists", name=new_name), severity="error"
             )
             return
 
@@ -120,7 +122,7 @@ class RenameScreen(ModalScreen[Path | None]):
             self.dismiss(new_path)
         except OSError as e:
             logger.exception("Fehler beim Umbenennen")
-            self.notify(f"Fehler: {e}", severity="error")
+            self.notify(t("rename.error", error=e), severity="error")
 
     def action_close(self) -> None:
         self.dismiss(None)

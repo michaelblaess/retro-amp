@@ -7,6 +7,8 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import Tree
 
+from ..i18n import t
+
 
 class FavoritesTree(Tree[Path | None]):
     """Baum-Ansicht fuer Favoriten, gruppiert nach Ordner."""
@@ -19,7 +21,7 @@ class FavoritesTree(Tree[Path | None]):
     """
 
     BINDINGS = [
-        Binding("delete", "remove_favorite", "Entfernen", key_display="DEL"),
+        Binding("delete", "remove_favorite", "DEL", key_display="DEL"),
     ]
 
     ICON_MUSIC = "\u266a "
@@ -38,7 +40,7 @@ class FavoritesTree(Tree[Path | None]):
             self.path = path
 
     def __init__(self, **kwargs: object) -> None:
-        super().__init__("\u2605 Favoriten", **kwargs)
+        super().__init__(t("favorites.title"), **kwargs)
         self._music_root: Path | None = None
 
     def load_favorites(
@@ -50,11 +52,11 @@ class FavoritesTree(Tree[Path | None]):
 
         count = len(paths)
         self.root.set_label(
-            f"\u2605 Favoriten ({count})" if count else "\u2605 Favoriten"
+            t("favorites.title_count", count=count) if count else t("favorites.title")
         )
 
         if not paths:
-            self.root.add_leaf("(keine Favoriten)", data=None)
+            self.root.add_leaf(t("favorites.empty"), data=None)
             self.root.expand()
             return
 

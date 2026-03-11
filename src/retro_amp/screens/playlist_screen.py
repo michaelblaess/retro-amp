@@ -8,6 +8,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Label, Static
 
+from ..i18n import t
+
 
 class PlaylistScreen(ModalScreen[str | None]):
     """Modal-Dialog fuer Playlist-Auswahl und -Erstellung.
@@ -53,7 +55,7 @@ class PlaylistScreen(ModalScreen[str | None]):
     """
 
     BINDINGS = [
-        Binding("escape,q", "close", "Abbrechen"),
+        Binding("escape,q", "close", "ESC"),
     ]
 
     def __init__(self, playlists: list[str], current_track_name: str = "") -> None:
@@ -65,29 +67,29 @@ class PlaylistScreen(ModalScreen[str | None]):
         with Vertical(id="dialog"):
             if self._current_track_name:
                 yield Label(
-                    f"Track: {self._current_track_name}",
+                    t("playlist_screen.track_title", name=self._current_track_name),
                     id="dialog-title",
                 )
             else:
-                yield Label("Playlists", id="dialog-title")
+                yield Label(t("playlist_screen.title"), id="dialog-title")
 
             if self._playlists:
                 yield DataTable(id="playlist-table", cursor_type="row")
 
             yield Input(
-                placeholder="Neue Playlist erstellen...",
+                placeholder=t("playlist_screen.placeholder"),
                 id="new-name",
             )
 
             with Horizontal(id="button-row"):
-                yield Button("Speichern (Enter)", id="btn-save", variant="primary")
-                yield Button("Abbrechen (q)", id="btn-close", variant="default")
+                yield Button(t("playlist_screen.btn_save"), id="btn-save", variant="primary")
+                yield Button(t("playlist_screen.btn_cancel"), id="btn-close", variant="default")
 
     def on_mount(self) -> None:
         """Tabelle mit Playlists fuellen."""
         try:
             table = self.query_one("#playlist-table", DataTable)
-            table.add_columns("Playlist")
+            table.add_columns(t("playlist_screen.column"))
             for name in self._playlists:
                 table.add_row(name, key=name)
         except Exception:
@@ -121,7 +123,7 @@ class PlaylistScreen(ModalScreen[str | None]):
         if name:
             self.dismiss(name)
         else:
-            self.notify("Bitte einen Namen eingeben", severity="warning")
+            self.notify(t("playlist_screen.empty_name"), severity="warning")
 
     def action_close(self) -> None:
         """ESC oder q gedrueckt."""

@@ -9,6 +9,8 @@ from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
 
+from ..i18n import t
+
 
 class _YTLink(Static, can_focus=True):
     """Klickbarer YouTube-Link — oeffnet den Browser bei Klick oder Enter."""
@@ -31,7 +33,7 @@ class _YTLink(Static, can_focus=True):
     """
 
     BINDINGS = [
-        ("enter", "open_link", "Oeffnen"),
+        ("enter", "open_link", "Enter"),
     ]
 
     def __init__(self, **kwargs: object) -> None:
@@ -115,7 +117,7 @@ class YoutubePanel(Widget):
         )
 
         self.query_one("#yt-hint", Static).update(
-            "Anklicken um YouTube im Browser zu oeffnen"
+            t("youtube.hint")
         )
         self.query_one("#yt-scroll", VerticalScroll).scroll_home(animate=False)
 

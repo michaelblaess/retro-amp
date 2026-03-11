@@ -6,6 +6,8 @@ from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
 
+from ..i18n import t
+
 
 class TranslationPanel(Widget):
     """Scrollbares Panel fuer uebersetzte Lyrics."""
@@ -39,7 +41,7 @@ class TranslationPanel(Widget):
         self.query_one("#translation-title", Static).update(
             f"\u266a {artist} \u2014 {title}"
         )
-        self.query_one("#translation-text", Static).update("Uebersetze...")
+        self.query_one("#translation-text", Static).update(t("translation.loading"))
 
     def show_translation(self, artist: str, title: str, text: str) -> None:
         """Zeigt uebersetzte Lyrics an."""
@@ -47,12 +49,7 @@ class TranslationPanel(Widget):
             f"\u266a {artist} \u2014 {title}"
         )
         self.query_one("#translation-text", Static).update(
-            text if text else
-            "Keine Uebersetzung verfuegbar.\n\n"
-            "Moegliche Gruende:\n"
-            "- API Rate Limit erreicht (max. 50.000 Zeichen/Tag)\n"
-            "- Kein Internet\n"
-            "- Lyrics nicht auf Englisch"
+            text if text else t("translation.not_found")
         )
         self.query_one("#translation-scroll", VerticalScroll).scroll_home(
             animate=False,

@@ -11,6 +11,8 @@ from textual.widget import Widget
 from textual.widgets import LoadingIndicator, Static
 
 
+from ..i18n import t
+
 _AUDIO_EXTENSIONS = {".mp3", ".ogg", ".opus", ".flac", ".wav"}
 
 
@@ -33,7 +35,7 @@ class _SearchResult(Static, can_focus=True):
     }
     """
 
-    BINDINGS = [("enter", "select_result", "Oeffnen")]
+    BINDINGS = [("enter", "select_result", "Enter")]
 
     class Selected(Message):
         """Wird gesendet wenn ein Suchergebnis gewaehlt wird."""
@@ -89,7 +91,7 @@ class SearchPanel(Widget):
         for old in list(self.query("_SearchResult")):
             old.remove()
         self.query_one("#search-status", Static).update(
-            f"\U0001f50d Suche nach \"{query}\" ..."
+            t("search.loading", query=query)
         )
         self.query_one("#search-loading", LoadingIndicator).display = True
 
@@ -102,13 +104,11 @@ class SearchPanel(Widget):
         scroll = self.query_one("#search-scroll", VerticalScroll)
 
         if results:
-            status.update(
-                f"\U0001f50d \"{query}\" \u2014 {len(results)} Treffer"
-            )
+            status.update(t("search.results", query=query, count=len(results)))
             for path, display in results:
                 scroll.mount(_SearchResult(path, display))
         else:
-            status.update(f"\U0001f50d \"{query}\" \u2014 keine Treffer")
+            status.update(t("search.no_results", query=query))
 
     def show_results(self, query: str, root: Path) -> None:
         """Sucht rekursiv und zeigt Ergebnisse an."""
@@ -119,7 +119,7 @@ class SearchPanel(Widget):
         for old in list(self.query("_SearchResult")):
             old.remove()
 
-        status.update(f"Suche nach \"{query}\" ...")
+        status.update(t("search.loading", query=query))
 
         # Rekursive Suche (case-insensitive)
         query_lower = query.lower()
@@ -146,13 +146,11 @@ class SearchPanel(Widget):
             pass
 
         if results:
-            status.update(
-                f"\U0001f50d \"{query}\" — {len(results)} Treffer"
-            )
+            status.update(t("search.results", query=query, count=len(results)))
             for path, display in results[:200]:  # Max 200 Ergebnisse
                 scroll.mount(_SearchResult(path, display))
         else:
-            status.update(f"\U0001f50d \"{query}\" — keine Treffer")
+            status.update(t("search.no_results", query=query))
 
     def clear(self) -> None:
         """Leert das Panel."""

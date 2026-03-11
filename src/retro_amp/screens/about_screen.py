@@ -10,6 +10,7 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from .. import __author__, __version__, __year__
+from ..i18n import t
 
 
 class AboutContent(Widget):
@@ -32,17 +33,15 @@ class AboutContent(Widget):
         text.append(__year__, style="bold")
         text.append("\n\n")
 
-        text.append("Terminal-Musikplayer mit Retro-Charme.\n")
-        text.append("C64, Amiga, Atari ST \u2014 alles im Terminal.\n\n")
+        text.append(t("about.description"))
+        text.append(t("about.subtitle"))
 
         text.append("MP3 \u00b7 OGG \u00b7 FLAC \u00b7 WAV \u00b7 MOD \u00b7 XM \u00b7 S3M \u00b7 SID\n\n")
 
         text.append("\u2500" * 44 + "\n\n", style="dim")
 
         text.append(
-            "\u201eMusik drueckt das aus, was nicht gesagt\n"
-            "werden kann und worueber zu schweigen\n"
-            "unmoeglich ist.\u201c\n\n",
+            t("about.quote") + "\n\n",
             style="italic",
         )
         text.append(" \u2014 Victor Hugo", style="bold")
@@ -84,8 +83,8 @@ class AboutScreen(ModalScreen[None]):
     """
 
     BINDINGS = [
-        Binding("escape", "close", "Schliessen"),
-        Binding("i", "close", "Schliessen"),
+        Binding("escape", "close", "ESC"),
+        Binding("i", "close", "i"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -93,7 +92,7 @@ class AboutScreen(ModalScreen[None]):
         with VerticalScroll():
             yield Static("retro-amp", id="about-title")
             yield AboutContent()
-            yield Static("ESC = Schliessen", id="about-footer")
+            yield Static(t("about.footer"), id="about-footer")
 
     def action_close(self) -> None:
         """Schliesst den Dialog."""

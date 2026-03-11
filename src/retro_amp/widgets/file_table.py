@@ -11,6 +11,7 @@ from textual.widget import Widget
 from textual.widgets import DataTable, Static
 
 from ..domain.models import AudioTrack
+from ..i18n import t
 
 
 class FileTable(Widget):
@@ -64,7 +65,8 @@ class FileTable(Widget):
         """Initialisiert die Tabellen-Spalten."""
         table = self.query_one("#file-data", DataTable)
         col_keys = table.add_columns(
-            "Name", "Format", "Bitrate", "Dauer", "Datum", "Groesse",
+            t("file_table.name"), t("file_table.format"), t("file_table.bitrate"),
+            t("file_table.duration"), t("file_table.date"), t("file_table.size"),
         )
         self._name_col_key = col_keys[0]
 
@@ -103,9 +105,12 @@ class FileTable(Widget):
         info = self.query_one("#file-info", Static)
         path_str = str(self._current_path) if self._current_path else ""
         total = len(self._tracks)
-        count_str = f"{total} Dateien" if total != 1 else "1 Datei"
         if total == 0:
-            count_str = "Keine Audio-Dateien"
+            count_str = t("file_table.empty")
+        elif total == 1:
+            count_str = t("file_table.count_one")
+        else:
+            count_str = t("file_table.count", count=total)
         if path_str:
             info.update(f"{path_str}  [{count_str}]")
         else:

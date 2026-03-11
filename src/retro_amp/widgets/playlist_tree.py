@@ -7,6 +7,8 @@ from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import Tree
 
+from ..i18n import t
+
 
 class PlaylistTree(Tree[Path | str | None]):
     """Baum-Ansicht fuer Playlists, gruppiert nach Playlist-Name."""
@@ -19,7 +21,7 @@ class PlaylistTree(Tree[Path | str | None]):
     """
 
     BINDINGS = [
-        Binding("delete", "remove_track", "Entfernen", key_display="DEL"),
+        Binding("delete", "remove_track", "DEL", key_display="DEL"),
     ]
 
     ICON_MUSIC = "\u266a "
@@ -40,26 +42,22 @@ class PlaylistTree(Tree[Path | str | None]):
             self.playlist_name = playlist_name
 
     def __init__(self, **kwargs: object) -> None:
-        super().__init__("\U0001f3b6 Playlists", **kwargs)
+        super().__init__(t("playlists.title"), **kwargs)
 
     def load_playlists(
         self,
         playlists: dict[str, list[Path]],
     ) -> None:
-        """Laedt alle Playlists in den Baum.
-
-        Args:
-            playlists: Dict mit Playlist-Name → Liste von Track-Pfaden.
-        """
+        """Laedt alle Playlists in den Baum."""
         self.clear()
 
         count = len(playlists)
         self.root.set_label(
-            f"\U0001f3b6 Playlists ({count})" if count else "\U0001f3b6 Playlists"
+            t("playlists.title_count", count=count) if count else t("playlists.title")
         )
 
         if not playlists:
-            self.root.add_leaf("(keine Playlists)", data=None)
+            self.root.add_leaf(t("playlists.empty"), data=None)
             self.root.expand()
             return
 
@@ -67,7 +65,6 @@ class PlaylistTree(Tree[Path | str | None]):
             tracks = playlists[name]
             track_count = len(tracks)
             label = f"{self.ICON_PLAYLIST}{name} ({track_count})"
-            # Playlist-Name als String-Data speichern
             playlist_node = self.root.add(label, data=name)
             for track in tracks:
                 playlist_node.add_leaf(
@@ -81,7 +78,6 @@ class PlaylistTree(Tree[Path | str | None]):
         """Track-Node ausgewaehlt — abspielen."""
         node = event.node
         if node.data and isinstance(node.data, Path):
-            # Playlist-Name aus Parent-Node holen
             parent = node.parent
             playlist_name = parent.data if parent and isinstance(parent.data, str) else ""
             self.post_message(self.TrackSelected(node.data, playlist_name))

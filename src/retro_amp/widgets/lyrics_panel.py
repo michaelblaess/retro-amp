@@ -6,6 +6,8 @@ from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
 
+from ..i18n import t
+
 
 class LyricsPanel(Widget):
     """Scrollbares Panel fuer Original-Lyrics."""
@@ -39,7 +41,7 @@ class LyricsPanel(Widget):
         self.query_one("#lyrics-title", Static).update(
             f"\u266a {artist} \u2014 {title}"
         )
-        self.query_one("#lyrics-text", Static).update("Lade Lyrics...")
+        self.query_one("#lyrics-text", Static).update(t("lyrics.loading"))
 
     def show_lyrics(self, artist: str, title: str, text: str) -> None:
         """Zeigt Original-Lyrics an."""
@@ -47,7 +49,7 @@ class LyricsPanel(Widget):
             f"\u266a {artist} \u2014 {title}"
         )
         self.query_one("#lyrics-text", Static).update(
-            text if text else "Keine Lyrics gefunden."
+            text if text else t("lyrics.not_found")
         )
         self.query_one("#lyrics-scroll", VerticalScroll).scroll_home(animate=False)
 

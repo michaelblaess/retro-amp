@@ -8,6 +8,7 @@ from textual.message import Message
 from textual.widget import Widget
 
 from ..domain.models import PlayerState
+from ..i18n import t
 
 
 _VOL_BAR_WIDTH = 10
@@ -102,7 +103,7 @@ class TransportBar(Widget):
             text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style="dim")
             text.append(f" {vol_pct}%", style="dim")
         else:
-            text.append("Kein Track geladen", style="dim")
+            text.append(t("transport.no_track"), style="dim")
             text.append("\n")
 
             # Lautstaerke

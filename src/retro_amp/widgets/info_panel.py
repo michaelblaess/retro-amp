@@ -10,6 +10,9 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 
+from ..i18n import t
+
+
 class _SourceLink(Static, can_focus=True):
     """Klickbarer Quellen-Link (Wikipedia etc.)."""
 
@@ -30,7 +33,7 @@ class _SourceLink(Static, can_focus=True):
     }
     """
 
-    BINDINGS = [("enter", "open_link", "Oeffnen")]
+    BINDINGS = [("enter", "open_link", "Enter")]
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
@@ -81,7 +84,7 @@ class InfoPanel(Widget):
     def show_loading(self, artist: str) -> None:
         """Zeigt Ladezustand an."""
         self.query_one("#info-title", Static).update(f"\u266a {artist}")
-        self.query_one("#info-body", Static).update("Suche Informationen...")
+        self.query_one("#info-body", Static).update(t("info.loading"))
         source = self.query_one("#info-source", _SourceLink)
         source._url = ""
         source.update("")
@@ -100,13 +103,7 @@ class InfoPanel(Widget):
                 source._url = ""
                 source.update("")
         else:
-            self.query_one("#info-body", Static).update(
-                "Keine Informationen gefunden.\n\n"
-                "Moegliche Gruende:\n"
-                "- Kein Internet\n"
-                "- Artist nicht auf Wikipedia\n"
-                "- Kein Artist-Tag in der Datei"
-            )
+            self.query_one("#info-body", Static).update(t("info.not_found"))
             source = self.query_one("#info-source", _SourceLink)
             source._url = ""
             source.update("")
@@ -135,7 +132,7 @@ class InfoPanel(Widget):
             # Markdown-Link erkennen: — [Wikipedia](URL)
             m = re.match(r"^.*\[([^\]]+)\]\(([^)]+)\)\s*$", line)
             if m:
-                source_label = f"\u2014 {m.group(1)} (anklicken zum Oeffnen)"
+                source_label = t("info.source_label", source=m.group(1))
                 source_url = m.group(2)
                 continue
             body_lines.append(line)
