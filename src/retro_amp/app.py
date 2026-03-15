@@ -657,6 +657,12 @@ class RetroAmpApp(App):
         if len(self.screen_stack) > 1:
             return None
 
+        # Input-Widget fokussiert → Priority-Bindings deaktivieren,
+        # damit Cursor-Navigation und Textbearbeitung funktionieren
+        if isinstance(self.focused, Input):
+            if action in ("seek_forward", "seek_backward", "delete_file"):
+                return None
+
         state = self._player_service.state
         has_track = state.current_track is not None
 
