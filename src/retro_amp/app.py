@@ -838,6 +838,17 @@ class RetroAmpApp(App):
         file_table.update_tracks(self._current_tracks)
         self._write_log(t("log.directory", path=directory, count=len(tracks)))
 
+        # Tracklist im Player synchronisieren wenn der aktuelle Track enthalten ist
+        playing = self._player_service.state.current_track
+        if playing and tracks:
+            for idx, t_ in enumerate(tracks):
+                if t_.path == playing.path:
+                    self._player_service.state.track_list = tracks
+                    self._player_service.state.current_index = idx
+                    self._player_service.state.current_track = t_
+                    self._highlight_current_track()
+                    break
+
     def _play_track(self, track: AudioTrack) -> None:
         """Spielt einen Track ab und aktualisiert UI."""
         # Tracklist laden falls noetig
@@ -856,7 +867,7 @@ class RetroAmpApp(App):
             log_name = f"{track.artist} \u2013 {track.title}"
         else:
             log_name = track.display_name
-        self._write_log(t("log.play", name=log_name))
+        self._write_log(t("log.play", name=f"{log_name} ({track.path.parent})"))
 
         # Alle Tabs asynchron laden
         self._load_tabs_for_track(track)
@@ -936,7 +947,7 @@ class RetroAmpApp(App):
                     next_name = f"{track.artist} \u2013 {track.title}"
                 else:
                     next_name = track.display_name
-                self._write_log(t("log.play", name=next_name))
+                self._write_log(t("log.play", name=f"{next_name} ({track.path.parent})"))
                 self._load_tabs_for_track(track)
         self._update_transport()
 

@@ -151,7 +151,11 @@ class SpectrumAnalyzer:
         if ext in {".mp3", ".flac"}:
             return self._decode_via_miniaudio(path)
 
-        # Tracker (MOD/S3M/XM): Fallback auf pygame.mixer.Sound
+        # Tracker (MOD/S3M/XM): pygame.mixer.Sound blockiert endlos,
+        # da Module keine feste PCM-Laenge haben — kein Spectrum moeglich
+        if ext in {".mod", ".s3m", ".xm"}:
+            return None, 0, 0
+
         return self._decode_via_pygame(path)
 
     def _decode_wav(self, path: Path) -> tuple[bytes | None, int, int]:
