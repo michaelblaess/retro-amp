@@ -197,6 +197,15 @@ class PygameAudioPlayer:
             pygame.mixer.music.stop()
             self._current_path = None
 
+    def unload(self) -> None:
+        """Entlaedt die aktuelle Datei und gibt den File-Handle frei."""
+        if self._initialized:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            self._current_path = None
+            self._opus_wav = None
+            self._sid_wav = None
+
     def set_volume(self, volume: float) -> None:
         """Setzt die Lautstaerke (0.0 bis 1.0)."""
         if self._initialized:

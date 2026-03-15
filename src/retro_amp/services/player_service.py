@@ -83,6 +83,12 @@ class PlayerService:
         self._state.state = PlaybackState.STOPPED
         self._state.position_seconds = 0.0
 
+    def unload(self) -> None:
+        """Entlaedt die aktuelle Datei und gibt den File-Handle frei."""
+        self._player.unload()
+        self._state.state = PlaybackState.STOPPED
+        self._state.position_seconds = 0.0
+
     def next_track(self) -> None:
         """Spielt den naechsten Track."""
         if self._state.has_next:

@@ -30,6 +30,10 @@ class AudioPlayer(Protocol):
         """Stoppt die Wiedergabe."""
         ...
 
+    def unload(self) -> None:
+        """Entlaedt die aktuelle Datei und gibt den File-Handle frei."""
+        ...
+
     def set_volume(self, volume: float) -> None:
         """Setzt die Lautstaerke (0.0 bis 1.0)."""
         ...

@@ -192,6 +192,9 @@ class RetroAmpApp(App):
         else:
             # Initial: letzten Ordner in Tabelle laden
             self._scan_directory(self._initial_scan_path)
+            # Baum zum letzten Verzeichnis aufklappen
+            if self._initial_scan_path != self._tree_root:
+                self._expand_tree_to_last_path()
 
     def _show_library_picker(self) -> None:
         """Zeigt den Library-Picker-Dialog."""
@@ -222,6 +225,14 @@ class RetroAmpApp(App):
         browser.path = str(chosen)
         browser.reload()
         self._scan_directory(chosen)
+
+    @work
+    async def _expand_tree_to_last_path(self) -> None:
+        """Klappt den Baum zum zuletzt besuchten Verzeichnis auf."""
+        browser = self.query_one("#folder-browser", FolderBrowser)
+        # Warten bis der Root-Knoten geladen ist
+        await browser._add_to_load_queue(browser.root)
+        await browser.expand_to_path(self._initial_scan_path)
 
     # --- Event-Handler fuer Widget-Messages ---
 
@@ -498,10 +509,7 @@ class RetroAmpApp(App):
                         severity="warning",
                     )
                     return
-                self.push_screen(
-                    RenameScreen(target),
-                    callback=self._on_rename_result,
-                )
+                self._rename_with_unload(target)
                 return
 
         # Fallback: markierte Datei in der Tabelle
@@ -511,19 +519,48 @@ class RetroAmpApp(App):
             self.notify(t("notify.no_track"), severity="warning")
             return
 
-        self.push_screen(
-            RenameScreen(track.path),
-            callback=self._on_rename_result,
+        self._rename_with_unload(track.path)
+
+    def _rename_with_unload(self, target: Path) -> None:
+        """Player entladen falls noetig, dann Rename-Dialog oeffnen."""
+        from .screens.rename_screen import RenameScreen  # Lazy import
+
+        playing = self._player_service.state.current_track
+        # Pruefen ob der gespielte Track von der Umbenennung betroffen ist
+        is_playing_target = (
+            playing
+            and not self._player_service.state.is_stopped
+            and (playing.path == target or str(playing.path).startswith(f"{target}\\"))
         )
 
-    def _on_rename_result(self, new_path: Path | None) -> None:
+        resume_position = 0.0
+        if is_playing_target:
+            resume_position = self._player_service.state.position_seconds
+            self._player_service.unload()
+
+        self.push_screen(
+            RenameScreen(target),
+            callback=lambda new_path: self._on_rename_result(
+                new_path, is_playing_target, resume_position, playing,
+            ),
+        )
+
+    def _on_rename_result(
+        self,
+        new_path: Path | None,
+        was_playing: bool,
+        resume_position: float,
+        old_track: AudioTrack | None,
+    ) -> None:
         """Callback nach Umbenennen-Dialog."""
         if not new_path:
+            # Abbruch — falls Player entladen wurde, weiterspielen
+            if was_playing and old_track:
+                self._player_service.play_file(old_track)
+                if resume_position > 0:
+                    self._player_service._player.seek(resume_position)
+                    self._player_service.state.position_seconds = resume_position
             return
-
-        # Wenn der umbenannte Track gerade spielt, merken
-        playing = self._player_service.state.current_track
-        was_playing = playing and playing.path != new_path
 
         # Verzeichnis neu scannen
         directory = new_path.parent
@@ -532,6 +569,21 @@ class RetroAmpApp(App):
         # Baum aktualisieren (noetig bei Ordner-Umbenennung)
         folder_browser = self.query_one("#folder-browser", FolderBrowser)
         folder_browser.reload()
+
+        # Track mit neuem Pfad weiterspielen
+        if was_playing and old_track:
+            # Neuen Pfad berechnen (Datei oder Datei in umbenanntem Ordner)
+            if old_track.path == new_path or new_path.is_file():
+                new_track_path = new_path
+            else:
+                # Ordner umbenannt — relativen Pfad auf neuen Ordner umrechnen
+                rel = old_track.path.relative_to(old_track.path)
+                new_track_path = new_path / old_track.path.name
+            new_track = self._metadata_service.read_track(new_track_path)
+            self._player_service.play_file(new_track)
+            if resume_position > 0:
+                self._player_service._player.seek(resume_position)
+                self._player_service.state.position_seconds = resume_position
 
         self.notify(t("notify.renamed", name=new_path.name))
         self._write_log(t("log.renamed", path=new_path))
@@ -563,10 +615,7 @@ class RetroAmpApp(App):
                     )
                 else:
                     msg = f"Datei wirklich loeschen?\n\n{target.name}"
-                self.push_screen(
-                    ConfirmScreen(msg, file_path=target),
-                    callback=self._on_delete_result,
-                )
+                self._delete_with_unload(msg, target)
                 return
 
         # Fallback: markierte Datei in der Tabelle
@@ -576,29 +625,51 @@ class RetroAmpApp(App):
             self.notify(t("notify.no_track"), severity="warning")
             return
 
-        self.push_screen(
-            ConfirmScreen(
-                f"Datei wirklich loeschen?\n\n{track.name}",
-                file_path=track.path,
-            ),
-            callback=self._on_delete_result,
+        self._delete_with_unload(
+            f"Datei wirklich loeschen?\n\n{track.name}",
+            track.path,
         )
 
-    def _on_delete_result(self, deleted_path: Path | None) -> None:
+    def _delete_with_unload(self, msg: str, target: Path) -> None:
+        """Player entladen falls noetig, dann Loeschen-Dialog oeffnen."""
+        from .screens.confirm_screen import ConfirmScreen  # Lazy import
+
+        playing = self._player_service.state.current_track
+        is_playing_target = (
+            playing
+            and not self._player_service.state.is_stopped
+            and (playing.path == target or str(playing.path).startswith(f"{target}\\"))
+        )
+
+        if is_playing_target:
+            self._player_service.unload()
+
+        self.push_screen(
+            ConfirmScreen(msg, file_path=target),
+            callback=lambda deleted_path: self._on_delete_result(
+                deleted_path, is_playing_target, playing,
+            ),
+        )
+
+    def _on_delete_result(
+        self,
+        deleted_path: Path | None,
+        was_playing: bool,
+        old_track: AudioTrack | None,
+    ) -> None:
         """Callback nach Loeschen-Bestaetigung."""
         if not deleted_path:
+            # Abbruch — falls Player entladen wurde, weiterspielen
+            if was_playing and old_track:
+                self._player_service.play_file(old_track)
             return
 
         was_dir = not deleted_path.exists() or deleted_path.is_dir()
 
-        # Pruefen ob der geloeschte Track gerade spielt
-        playing = self._player_service.state.current_track
-        if playing and (playing.path == deleted_path
-                        or str(playing.path).startswith(str(deleted_path))):
+        # Falls der Track gespielt wurde: zum naechsten oder stoppen
+        if was_playing:
             if self._player_service.state.has_next:
                 self._player_service.next_track()
-            else:
-                self._player_service.stop()
             self._sync_visualizer()
             self._highlight_current_track()
             self._update_transport()

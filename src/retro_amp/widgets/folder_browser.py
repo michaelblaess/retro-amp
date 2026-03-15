@@ -66,6 +66,48 @@ class FolderBrowser(DirectoryTree):
             return Text.assemble(prefix, node_label)
         return super().render_label(node, base_style, style)
 
+    async def expand_to_path(self, target: Path) -> None:
+        """Klappt den Baum schrittweise bis zum Zielverzeichnis auf.
+
+        Expandiert jede Ebene und wartet auf das Laden der Kinder,
+        bevor die naechste Ebene geoeffnet wird.
+        """
+        try:
+            rel = target.relative_to(Path(self.path))
+        except ValueError:
+            return
+
+        parts = rel.parts
+        if not parts:
+            return
+
+        current_node = self.root
+        for part in parts:
+            # Knoten expandieren und Kinder laden lassen
+            if not current_node.is_expanded:
+                current_node.expand()
+            if current_node.data and not current_node.data.loaded:
+                await self._add_to_load_queue(current_node)
+
+            # Passenden Kind-Knoten finden
+            found = None
+            for child in current_node.children:
+                if child.data and child.data.path.name == part:
+                    found = child
+                    break
+
+            if found is None:
+                break
+            current_node = found
+
+        # Letzten gefundenen Knoten expandieren (Zielverzeichnis)
+        if current_node != self.root and current_node._allow_expand:
+            if not current_node.is_expanded:
+                current_node.expand()
+
+        self.move_cursor(current_node)
+        self.scroll_to_node(current_node)
+
     def highlight_path(self, target: Path) -> None:
         """Markiert einen Pfad im Baum und scrollt dorthin.
 
