@@ -923,9 +923,14 @@ class RetroAmpApp(App):
             self._clear_all_tabs()
             self._lyrics_generation += 1
         else:
-            self._highlight_current_track()
             track = self._player_service.state.current_track
             if track:
+                # Rechte Tabelle synchronisieren wenn Track in anderem Verzeichnis
+                file_table = self.query_one("#file-table", FileTable)
+                if file_table._current_path != track.path.parent:
+                    self._scan_directory(track.path.parent)
+                    self._save_last_path(track.path.parent)
+                self._highlight_current_track()
                 self.sub_title = track.display_name
                 if track.artist and track.title:
                     next_name = f"{track.artist} \u2013 {track.title}"
