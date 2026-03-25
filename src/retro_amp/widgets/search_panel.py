@@ -13,7 +13,7 @@ from textual.widgets import LoadingIndicator, Static
 
 from ..i18n import t
 
-_AUDIO_EXTENSIONS = {".mp3", ".ogg", ".opus", ".flac", ".wav"}
+_AUDIO_EXTENSIONS = {".mp3", ".ogg", ".opus", ".flac", ".wav", ".m4a"}
 
 
 class _SearchResult(Static, can_focus=True):

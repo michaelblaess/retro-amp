@@ -23,6 +23,7 @@ from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
+from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
 from .services.liner_notes_service import LinerNotesService
 from .services.lyrics_service import LyricsService
@@ -50,7 +51,7 @@ class RetroAmpApp(App):
     CSS_PATH = "app.tcss"
     TITLE = f"retro-amp v{__version__}"
 
-    def __init__(self, start_path: str = "") -> None:
+    def __init__(self, start_path: str = "", play_file: str = "") -> None:
         super().__init__()
 
         # Bindings mit uebersetzten Labels
@@ -125,11 +126,28 @@ class RetroAmpApp(App):
         if not self._tree_root.is_dir():
             self._tree_root = Path.home()
 
+        # Autoplay-Datei (z.B. Doppelklick auf MP3)
+        self._autoplay_file: Path | None = None
+        if play_file:
+            pf = Path(play_file).expanduser().resolve()
+            if pf.is_file():
+                self._autoplay_file = pf
+                parent = pf.parent
+                self._needs_library_picker = False
+                # Datei ausserhalb der Library: Tree-Root temporaer anpassen
+                try:
+                    parent.relative_to(self._tree_root)
+                except ValueError:
+                    self._tree_root = parent
+
         # Letzter besuchter Ordner (fuer rechte Tabelle beim Start)
-        last_path_str = str(settings.get("last_path", ""))
-        self._initial_scan_path = Path(last_path_str) if last_path_str else self._tree_root
-        if not self._initial_scan_path.is_dir():
-            self._initial_scan_path = self._tree_root
+        if self._autoplay_file:
+            self._initial_scan_path = self._autoplay_file.parent
+        else:
+            last_path_str = str(settings.get("last_path", ""))
+            self._initial_scan_path = Path(last_path_str) if last_path_str else self._tree_root
+            if not self._initial_scan_path.is_dir():
+                self._initial_scan_path = self._tree_root
 
         # Log-Zeilen fuer Copy-Funktion
         self._log_lines: list[str] = []
@@ -176,7 +194,9 @@ class RetroAmpApp(App):
 
     def on_mount(self) -> None:
         """App ist bereit — Timer starten, Callbacks setzen."""
+        acquire_lock()
         self._position_timer = self.set_interval(0.5, self._tick_position)
+        self.set_interval(0.5, self._check_play_request)
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
         )
@@ -195,6 +215,10 @@ class RetroAmpApp(App):
             # Baum zum letzten Verzeichnis aufklappen
             if self._initial_scan_path != self._tree_root:
                 self._expand_tree_to_last_path()
+            # Auto-Play: Datei per CLI uebergeben (z.B. Doppelklick auf MP3)
+            if self._autoplay_file and self._autoplay_file.is_file():
+                track = self._metadata_service.read_track(self._autoplay_file)
+                self._play_track(track)
 
     def _show_library_picker(self) -> None:
         """Zeigt den Library-Picker-Dialog."""
@@ -849,6 +873,20 @@ class RetroAmpApp(App):
                     self._highlight_current_track()
                     break
 
+    def _check_play_request(self) -> None:
+        """Timer: prueft ob eine andere Instanz eine Datei gesendet hat."""
+        path_str = read_play_request()
+        if not path_str:
+            return
+        path = Path(path_str)
+        if not path.is_file() or not self._metadata_service.is_audio_file(path):
+            return
+        parent = path.parent
+        self._scan_directory(parent)
+        self._save_last_path(parent)
+        track = self._metadata_service.read_track(path)
+        self._play_track(track)
+
     def _play_track(self, track: AudioTrack) -> None:
         """Spielt einen Track ab und aktualisiert UI."""
         # Tracklist laden falls noetig
@@ -1067,3 +1105,4 @@ class RetroAmpApp(App):
         self._lyrics_generation += 1  # Offene Lyrics-Threads ignorieren
         self._spectrum_analyzer.unload()
         self._audio_player.cleanup()
+        release_lock()

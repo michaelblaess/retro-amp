@@ -67,6 +67,7 @@ retro-amp
 ```bash
 retro-amp                     # Startet mit Standard-Musikordner / Start with default music folder
 retro-amp /pfad/zur/musik     # Startet in einem bestimmten Ordner / Start in specific folder
+retro-amp song.mp3            # Spielt eine Datei direkt ab / Play a file directly
 retro-amp --lang en           # Startet mit englischer Oberflaeche / Start with English UI
 retro-amp --version           # Zeigt die Version / Show version
 ```
@@ -77,7 +78,7 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
-- **Audio-Playback** — MP3, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg)
+- **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Globale Suche** — Dateien in der gesamten Bibliothek suchen (Taste S)
@@ -87,6 +88,8 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
 - **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
+- **Datei-Verknuepfung** — Doppelklick auf Audio-Datei oeffnet retro-amp direkt
+- **Single-Instance** — Zweiter Doppelklick sendet den Track an die laufende Instanz
 
 ## Tastenbelegung / Keybindings
 
@@ -111,6 +114,32 @@ retro-amp --version           # Zeigt die Version / Show version
 | `T` | Theme wechseln / Cycle theme |
 | `I` | Artist-Info (Wikipedia) / Artist info |
 | `Q` | Beenden / Quit |
+
+## Dateiverknuepfung / File Association
+
+retro-amp kann als Standard-Player fuer Audio-Dateien registriert werden. / retro-amp can be registered as default player for audio files.
+
+**Windows (PowerShell):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File register-file-types.ps1
+```
+
+**Windows (CMD):**
+
+```batch
+register-file-types.bat
+```
+
+**Linux:**
+
+```bash
+./register-file-types.sh
+```
+
+Doppelklick auf eine Audio-Datei startet retro-amp. Bei laufender Instanz wird der neue Track automatisch uebernommen (Single-Instance).
+
+Double-click an audio file to start retro-amp. If already running, the new track is sent to the existing instance (single-instance).
 
 ## Themes
 
@@ -169,7 +198,8 @@ src/retro_amp/
 │   ├── spectrum.py        # SpectrumAnalyzer (FFT)
 │   ├── metadata_reader.py # MutagenMetadataReader
 │   ├── playlist_store.py  # MarkdownPlaylistStore
-│   └── settings.py        # JsonSettingsStore
+│   ├── settings.py        # JsonSettingsStore
+│   └── single_instance.py # Single-Instance Lock + Play-Request
 ├── widgets/          # Textual Widgets
 ├── screens/          # Textual ModalScreens
 ├── i18n.py           # Internationalisierung (de/en)

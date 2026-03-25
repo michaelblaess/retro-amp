@@ -137,7 +137,7 @@ exe = EXE(
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    icon=None,
+    icon="retro-amp.ico",
 )
 
 coll = COLLECT(

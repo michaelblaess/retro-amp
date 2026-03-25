@@ -22,7 +22,7 @@ import pygame.mixer
 logger = logging.getLogger(__name__)
 
 # Unterstuetzte Formate fuer pygame.mixer
-_PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m"}
+_PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m", ".m4a"}
 
 # OGG-Endungen die Opus enthalten koennten
 _OGG_EXTENSIONS = {".ogg", ".oga", ".opus"}

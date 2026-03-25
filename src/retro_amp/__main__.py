@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from retro_amp import __version__
@@ -28,7 +29,7 @@ def main() -> None:
         "path",
         nargs="?",
         default="",
-        help="Start directory for the music browser",
+        help="Music directory or audio file to play",
     )
     parser.add_argument(
         "--lang",
@@ -48,8 +49,21 @@ def main() -> None:
         settings["language"] = lang
         settings_store.save(settings)
 
+    # Pruefen ob der Pfad eine Datei ist (z.B. Doppelklick auf MP3)
+    start_path = args.path
+    play_file = ""
+    if start_path and os.path.isfile(start_path):
+        play_file = start_path
+        start_path = ""
+
+    # Single-Instance: Datei an laufende Instanz senden
+    if play_file:
+        from retro_amp.infrastructure.single_instance import send_play_request
+        if send_play_request(os.path.abspath(play_file)):
+            sys.exit(0)
+
     from retro_amp.app import RetroAmpApp
-    app = RetroAmpApp(start_path=args.path)
+    app = RetroAmpApp(start_path=start_path, play_file=play_file)
     app.run()
 
 

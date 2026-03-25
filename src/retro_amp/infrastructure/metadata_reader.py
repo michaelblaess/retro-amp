@@ -177,10 +177,10 @@ class MutagenMetadataReader:
             if hasattr(audio, "info") and hasattr(audio.info, "sample_rate"):
                 track.sample_rate = audio.info.sample_rate or 0
 
-            # Tags lesen (verschiedene Formate)
-            track.title = self._read_tag(audio, "title", "TIT2")
-            track.artist = self._read_tag(audio, "artist", "TPE1")
-            track.album = self._read_tag(audio, "album", "TALB")
+            # Tags lesen (verschiedene Formate: Vorbis/FLAC, ID3, MP4/M4A)
+            track.title = self._read_tag(audio, "title", "TIT2", "\u00a9nam")
+            track.artist = self._read_tag(audio, "artist", "TPE1", "\u00a9ART")
+            track.album = self._read_tag(audio, "album", "TALB", "\u00a9alb")
 
         except Exception:
             logger.debug("Metadaten konnten nicht gelesen werden: %s", path)
