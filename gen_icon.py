@@ -237,10 +237,10 @@ for size in sizes:
     images.append(img)
 
 images[-1].save(
-    "C:/REPOS/retro-amp/retro-amp.ico",
+    "C:/Users/Michael/Repos/retro-amp/retro-amp.ico",
     format="ICO",
     sizes=[(s, s) for s in sizes],
     append_images=images[:-1],
 )
-images[-1].save("C:/REPOS/retro-amp/retro-amp-preview.png", format="PNG")
+images[-1].save("C:/Users/Michael/Repos/retro-amp/retro-amp-preview.png", format="PNG")
 print("Icon erstellt (Jiji v2)")

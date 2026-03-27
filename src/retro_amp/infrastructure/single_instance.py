@@ -23,16 +23,20 @@ def _is_process_alive(pid: int) -> bool:
     if pid <= 0:
         return False
     if sys.platform == "win32":
-        # Windows: os.kill(pid, 0) funktioniert nicht zuverlaessig.
-        # OpenProcess mit SYNCHRONIZE-Recht ist der korrekte Weg.
+        # Windows: OpenProcess allein reicht nicht — gibt auch fuer beendete
+        # Prozesse ein Handle zurueck wenn das Kernel-Objekt noch existiert.
+        # WaitForSingleObject(handle, 0) ist zuverlaessig:
+        # WAIT_TIMEOUT (258) = Prozess laeuft, WAIT_OBJECT_0 (0) = beendet.
         import ctypes
         kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
         SYNCHRONIZE = 0x00100000
         handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
-        if handle:
-            kernel32.CloseHandle(handle)
-            return True
-        return False
+        if not handle:
+            return False
+        WAIT_TIMEOUT = 258
+        result = kernel32.WaitForSingleObject(handle, 0)
+        kernel32.CloseHandle(handle)
+        return result == WAIT_TIMEOUT
     # Unix: Signal 0 prueft nur ob der Prozess existiert
     try:
         os.kill(pid, 0)

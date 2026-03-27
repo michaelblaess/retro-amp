@@ -1,7 +1,10 @@
 """retro-amp — Textual App (Composition Root)."""
 from __future__ import annotations
 
+import dataclasses
 import logging
+import random
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -73,6 +76,7 @@ class RetroAmpApp(App):
         self._bindings.bind("l", "pick_library", t("binding.library"), priority=True)
         self._bindings.bind("o", "toggle_log", t("binding.log"), priority=True)
         self._bindings.bind("c", "copy_log", t("binding.copy_log"), priority=True)
+        self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), priority=True)
         self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
 
         # Retro-Themes registrieren
@@ -160,6 +164,11 @@ class RetroAmpApp(App):
 
         # Aktuelle Tracks im rechten Panel
         self._current_tracks: list[AudioTrack] = []
+
+        # Shuffle-Modus
+        self._shuffle_mode: bool = False
+        # Shuffle-History pro Ordner: dir_path -> (gespielte Pfade, letzter Zugriff)
+        self._shuffle_history: dict[str, tuple[set[str], float]] = {}
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -302,7 +311,13 @@ class RetroAmpApp(App):
         self._update_transport()
 
     def action_next_track(self) -> None:
-        """Naechster Track."""
+        """Naechster Track (Shuffle-aware)."""
+        if self._shuffle_mode:
+            next_track = self._pick_shuffle_next()
+            if next_track:
+                self._play_track(next_track)
+                self._write_log(t("log.shuffle_play", name=next_track.display_name))
+            return
         self._player_service.next_track()
         self._sync_visualizer()
         self._update_transport()
@@ -314,6 +329,28 @@ class RetroAmpApp(App):
         self._sync_visualizer()
         self._update_transport()
         self._highlight_current_track()
+
+    def action_toggle_shuffle(self) -> None:
+        """Shuffle-Modus umschalten."""
+        self._shuffle_mode = not self._shuffle_mode
+
+        # Binding-Label aktualisieren (frozen → dataclasses.replace)
+        label = t("binding.shuffle_on") if self._shuffle_mode else t("binding.shuffle")
+        bindings_list = self._bindings.key_to_bindings.get("x", [])
+        for i, binding in enumerate(bindings_list):
+            if binding.action == "toggle_shuffle":
+                self._bindings.key_to_bindings["x"][i] = dataclasses.replace(
+                    binding, description=label,
+                )
+                break
+        self.refresh_bindings()
+
+        if self._shuffle_mode:
+            self.notify(t("notify.shuffle_on"))
+            self._write_log(t("log.shuffle_on"))
+        else:
+            self.notify(t("notify.shuffle_off"))
+            self._write_log(t("log.shuffle_off"))
 
     def action_seek_forward(self) -> None:
         """5 Sekunden vorwaerts springen."""
@@ -762,6 +799,8 @@ class RetroAmpApp(App):
         has_track = state.current_track is not None
 
         if action == "next_track":
+            if self._shuffle_mode and has_track:
+                return True
             return True if state.has_next else None
         if action == "previous_track":
             return True if state.has_previous else None
@@ -873,6 +912,44 @@ class RetroAmpApp(App):
                     self._highlight_current_track()
                     break
 
+    def _pick_shuffle_next(self) -> AudioTrack | None:
+        """Waehlt einen zufaelligen ungespielten Track aus dem aktuellen Ordner."""
+        state = self._player_service.state
+        tracks = state.track_list
+        if not tracks:
+            return None
+
+        current_track = state.current_track
+        if not current_track:
+            return None
+
+        dir_key = str(current_track.path.parent)
+        now = time.monotonic()
+
+        # History laden oder erstellen, abgelaufen nach 20 Minuten
+        if dir_key in self._shuffle_history:
+            played, last_access = self._shuffle_history[dir_key]
+            if now - last_access > 20 * 60:
+                played = set()
+        else:
+            played = set()
+
+        # Aktuellen Track als gespielt markieren
+        played.add(str(current_track.path))
+
+        # Ungespielte Tracks finden
+        unplayed = [t_ for t_ in tracks if str(t_.path) not in played]
+
+        if not unplayed:
+            # Alles gespielt — History leeren, stoppen
+            self._shuffle_history[dir_key] = (set(), now)
+            return None
+
+        next_track = random.choice(unplayed)
+        played.add(str(next_track.path))
+        self._shuffle_history[dir_key] = (played, now)
+        return next_track
+
     def _check_play_request(self) -> None:
         """Timer: prueft ob eine andere Instanz eine Datei gesendet hat."""
         path_str = read_play_request()
@@ -955,16 +1032,28 @@ class RetroAmpApp(App):
     def _on_track_finished(self) -> None:
         """Callback wenn ein Track fertig ist."""
         state = self._player_service.state
-        self.notify(
-            f"finished: idx={state.current_index} has_next={state.has_next} "
-            f"tracks={len(state.track_list)}",
-            severity="information",
-        )
         finished_track = state.current_track
         if finished_track:
             self._write_log(t("log.track_finished", name=finished_track.display_name))
         else:
             self._write_log(t("log.track_finished_unknown"))
+
+        # Shuffle: zufaelligen naechsten Track waehlen
+        if self._shuffle_mode:
+            next_track = self._pick_shuffle_next()
+            if next_track:
+                self._play_track(next_track)
+                self._write_log(t("log.shuffle_play", name=next_track.display_name))
+            else:
+                self._write_log(t("log.shuffle_all_played"))
+                self.sub_title = ""
+                self._clear_all_tabs()
+                self._lyrics_generation += 1
+            self._sync_visualizer()
+            self._update_transport()
+            return
+
+        # Normal: sequenziell naechsten Track
         self._player_service.check_auto_next()
         self._sync_visualizer()
         if self._player_service.state.is_stopped:

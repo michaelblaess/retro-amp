@@ -14,6 +14,8 @@
   "binding.log": "Log",
   "binding.copy_log": "Log kopieren",
   "binding.cycle_view": "Dateien/Fav/Playlist",
+  "binding.shuffle": "Shuffle",
+  "binding.shuffle_on": "Shuffle AN",
   "binding.remove": "Entfernen",
   "binding.open": "Oeffnen",
   "binding.close": "Schliessen",
@@ -48,6 +50,8 @@
   "notify.playlist_empty_files": "Playlist ist leer oder Dateien fehlen",
   "notify.playlist_empty": "Playlist '{name}' ist leer",
   "notify.file_not_found": "Datei nicht gefunden",
+  "notify.shuffle_on": "\u21c4 Shuffle aktiviert",
+  "notify.shuffle_off": "\u21c4 Shuffle deaktiviert",
   "notify.favorite_tree_removed": "\u2606 Aus Favoriten entfernt: {name}",
   "notify.playlist_track_removed": "Entfernt aus \"{playlist}\": {name}",
 
@@ -65,6 +69,10 @@
   "log.play": "\u25b6 {name}",
   "log.track_finished": "Track beendet: {name}",
   "log.track_finished_unknown": "Track beendet",
+  "log.shuffle_on": "Shuffle aktiviert",
+  "log.shuffle_off": "Shuffle deaktiviert",
+  "log.shuffle_play": "\u21c4 Shuffle: {name}",
+  "log.shuffle_all_played": "Shuffle: Alle Tracks im Ordner gespielt",
 
   "transport.no_track": "Kein Track geladen",
 
