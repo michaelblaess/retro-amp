@@ -22,6 +22,8 @@ a = Analysis(
     datas=[
         # App TCSS
         (os.path.join(src_pkg, "app.tcss"), "retro_amp"),
+        # Locale JSON-Dateien (i18n)
+        (os.path.join(src_pkg, "locale"), os.path.join("retro_amp", "locale")),
     ],
     hiddenimports=[
         "retro_amp",
