@@ -106,7 +106,7 @@ class TransportBar(Widget):
             vol_prefix = "    Vol: "
             text.append(vol_prefix)
             self._vol_line = 1
-            self._vol_col = bar_width + len(time_str) + len(vol_prefix)
+            self._vol_col = self._bar_width + len(time_str) + len(vol_prefix)
 
             vol_pct = int(state.volume * 100)
             vol_bars = int(state.volume * _VOL_BAR_WIDTH)
