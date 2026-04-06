@@ -889,6 +889,13 @@ class RetroAmpApp(App):
         self._save_volume()
         self._write_log(t("log.volume", pct=int(event.volume * 100)))
 
+    def on_transport_bar_seek_clicked(
+        self, event: TransportBar.SeekClicked,
+    ) -> None:
+        """Position per Mausklick im Fortschrittsbalken aendern."""
+        self._player_service.seek_to(event.position)
+        self._update_transport()
+
     # --- Interne Methoden ---
 
     @work(exclusive=True, group="scan", thread=True)

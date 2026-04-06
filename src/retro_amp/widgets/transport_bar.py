@@ -32,11 +32,20 @@ class TransportBar(Widget):
             super().__init__()
             self.volume = volume
 
+    class SeekClicked(Message):
+        """Wird gesendet wenn per Mausklick im Fortschrittsbalken geseekt wird."""
+        def __init__(self, position: float) -> None:
+            super().__init__()
+            self.position = position
+
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._state = PlayerState()
         self._vol_line: int = -1
         self._vol_col: int = -1
+        self._bar_line: int = -1
+        self._bar_col: int = 0
+        self._bar_width: int = 30
 
     def update_state(self, state: PlayerState) -> None:
         """Aktualisiert den angezeigten Status."""
@@ -83,10 +92,12 @@ class TransportBar(Widget):
             text.append("\n")
 
             # Zeile 2: Fortschrittsbalken + Zeit + Lautstaerke
-            bar_width = 30
-            filled = int(state.progress * bar_width)
+            self._bar_line = 1
+            self._bar_col = 0
+            self._bar_width = 30
+            filled = int(state.progress * self._bar_width)
             text.append("\u2588" * filled, style="green")
-            text.append("\u2591" * (bar_width - filled), style="dim")
+            text.append("\u2591" * (self._bar_width - filled), style="dim")
 
             time_str = f"  {state.position_display} / {track.duration_display}"
             text.append(time_str, style="dim")
@@ -121,10 +132,11 @@ class TransportBar(Widget):
         return text
 
     def on_click(self, event: Click) -> None:
-        """Mausklick auf die Volume-Bar verarbeiten."""
+        """Mausklick auf Volume-Bar oder Fortschrittsbalken verarbeiten."""
         cx = event.offset.x - _PADDING_LEFT
         cy = event.offset.y
 
+        # Volume-Bar
         if (
             self._vol_line >= 0
             and cy == self._vol_line
@@ -133,3 +145,16 @@ class TransportBar(Widget):
             vol = (cx - self._vol_col + 0.5) / _VOL_BAR_WIDTH
             vol = max(0.0, min(1.0, vol))
             self.post_message(self.VolumeClicked(vol))
+
+        # Fortschrittsbalken (Seek)
+        elif (
+            self._bar_line >= 0
+            and cy == self._bar_line
+            and self._bar_col <= cx < self._bar_col + self._bar_width
+            and self._state.current_track
+            and self._state.current_track.duration_seconds > 0
+        ):
+            ratio = (cx - self._bar_col + 0.5) / self._bar_width
+            ratio = max(0.0, min(1.0, ratio))
+            position = ratio * self._state.current_track.duration_seconds
+            self.post_message(self.SeekClicked(position))

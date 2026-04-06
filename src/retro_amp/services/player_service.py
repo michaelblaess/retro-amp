@@ -104,6 +104,13 @@ class PlayerService:
         self._state.volume = max(0.0, min(1.0, volume))
         self._player.set_volume(self._state.volume)
 
+    def seek_to(self, position: float) -> None:
+        """Springt zu einer absoluten Position in Sekunden."""
+        if self._state.current_track and not self._state.is_stopped:
+            new_pos = max(0.0, min(position, self._state.current_track.duration_seconds))
+            self._player.seek(new_pos)
+            self._state.position_seconds = new_pos
+
     def seek_forward(self, seconds: float = 5.0) -> None:
         """Springt vorwaerts."""
         if self._state.current_track and not self._state.is_stopped:
