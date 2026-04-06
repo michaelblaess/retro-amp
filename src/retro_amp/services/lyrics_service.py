@@ -129,7 +129,7 @@ class LyricsService:
         return ""
 
     def _translate(self, text: str) -> str:
-        """Uebersetzt Text per MyMemory API (EN → DE)."""
+        """Uebersetzt Text per MyMemory API (Autodetect → DE)."""
         if not text:
             return ""
 
@@ -162,7 +162,7 @@ class LyricsService:
         try:
             params = urllib.parse.urlencode({
                 "q": text,
-                "langpair": "en|de",
+                "langpair": "autodetect|de",
                 "de": _MYMEMORY_EMAIL,
             })
             url = f"https://api.mymemory.translated.net/get?{params}"
