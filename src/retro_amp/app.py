@@ -4,6 +4,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 import random
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -493,11 +494,13 @@ class RetroAmpApp(App):
         results = self._do_file_search(query, self._tree_root)
         self.call_from_thread(self._apply_search_results, query, results)
 
+    _SEPARATOR_RE = re.compile(r"[.\-_]")
+
     def _do_file_search(
         self, query: str, root: Path,
     ) -> list[tuple[Path, str]]:
         """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff)."""
-        query_lower = query.lower()
+        query_norm = self._SEPARATOR_RE.sub(" ", query.lower())
         results: list[tuple[Path, str]] = []
         audio_exts = {
             ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
@@ -505,7 +508,7 @@ class RetroAmpApp(App):
         }
         try:
             for p in sorted(root.rglob("*")):
-                if query_lower in p.name.lower():
+                if query_norm in self._SEPARATOR_RE.sub(" ", p.name.lower()):
                     try:
                         rel = p.relative_to(root)
                     except ValueError:
