@@ -5,6 +5,9 @@ da pygame's SDL_mixer nur Vorbis (nicht Opus) unterstuetzt.
 
 SID-Dateien (C64) werden per sidplayfp Subprocess zu WAV dekodiert,
 falls sidplayfp installiert ist.
+
+M4A/AAC-Dateien werden per ffmpeg Subprocess zu WAV dekodiert,
+da pygame's SDL_mixer keinen AAC-Decoder hat.
 """
 from __future__ import annotations
 
@@ -21,11 +24,14 @@ import pygame.mixer
 
 logger = logging.getLogger(__name__)
 
-# Unterstuetzte Formate fuer pygame.mixer
+# Unterstuetzte Formate fuer pygame.mixer (nativ)
 _PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m", ".m4a"}
 
 # OGG-Endungen die Opus enthalten koennten
 _OGG_EXTENSIONS = {".ogg", ".oga", ".opus"}
+
+# Formate die ffmpeg-Dekodierung benoetigen
+_FFMPEG_FORMATS = {".m4a", ".aac", ".wma"}
 
 
 def _is_opus(path: Path) -> bool:
@@ -119,6 +125,60 @@ def _decode_sid_to_wav(path: Path, duration: int = 180) -> io.BytesIO | None:
         return None
 
 
+def _find_ffmpeg() -> str | None:
+    """Sucht nach ffmpeg im PATH."""
+    return shutil.which("ffmpeg")
+
+
+def _decode_with_ffmpeg(path: Path) -> io.BytesIO | None:
+    """Dekodiert eine Audio-Datei zu einem WAV-Stream per ffmpeg.
+
+    Args:
+        path: Pfad zur Audio-Datei (M4A, AAC, WMA etc.)
+
+    Returns:
+        WAV-Stream oder None wenn ffmpeg nicht verfuegbar
+    """
+    ffmpeg_bin = _find_ffmpeg()
+    if not ffmpeg_bin:
+        logger.warning(
+            "ffmpeg nicht gefunden — M4A/AAC-Playback nicht verfuegbar. "
+            "Installation: winget install ffmpeg (Windows), "
+            "apt install ffmpeg (Linux), brew install ffmpeg (macOS)"
+        )
+        return None
+
+    try:
+        result = subprocess.run(
+            [
+                ffmpeg_bin,
+                "-i", str(path),
+                "-f", "wav",
+                "-acodec", "pcm_s16le",
+                "-ar", "44100",
+                "-ac", "2",
+                "-",  # WAV nach stdout
+            ],
+            capture_output=True,
+            timeout=60,
+        )
+        if result.returncode != 0 or len(result.stdout) < 44:
+            stderr = result.stderr.decode("utf-8", errors="replace")[:200]
+            logger.warning("ffmpeg Fehler fuer %s: %s", path, stderr)
+            return None
+        wav = io.BytesIO(result.stdout)
+        return wav
+    except FileNotFoundError:
+        logger.warning("ffmpeg nicht gefunden")
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning("ffmpeg Timeout fuer %s", path)
+        return None
+    except Exception:
+        logger.exception("ffmpeg-Dekodierung fehlgeschlagen fuer %s", path)
+        return None
+
+
 class PygameAudioPlayer:
     """AudioPlayer-Implementation mit pygame.mixer.
 
@@ -135,6 +195,7 @@ class PygameAudioPlayer:
         self._seek_offset: float = 0.0
         self._opus_wav: io.BytesIO | None = None
         self._sid_wav: io.BytesIO | None = None
+        self._ffmpeg_wav: io.BytesIO | None = None
         self._init_mixer()
 
     def _init_mixer(self) -> None:
@@ -162,6 +223,7 @@ class PygameAudioPlayer:
         try:
             self._opus_wav = None
             self._sid_wav = None
+            self._ffmpeg_wav = None
             ext = path.suffix.lower()
 
             if ext == ".sid":
@@ -173,6 +235,12 @@ class PygameAudioPlayer:
             elif ext in _OGG_EXTENSIONS and _is_opus(path):
                 self._opus_wav = _decode_opus_to_wav(path)
                 pygame.mixer.music.load(self._opus_wav)
+            elif ext in _FFMPEG_FORMATS:
+                self._ffmpeg_wav = _decode_with_ffmpeg(path)
+                if self._ffmpeg_wav is None:
+                    logger.warning("Playback nicht moeglich (ffmpeg fehlt): %s", path)
+                    return
+                pygame.mixer.music.load(self._ffmpeg_wav)
             else:
                 pygame.mixer.music.load(str(path))
             pygame.mixer.music.play()
@@ -205,6 +273,7 @@ class PygameAudioPlayer:
             self._current_path = None
             self._opus_wav = None
             self._sid_wav = None
+            self._ffmpeg_wav = None
 
     def set_volume(self, volume: float) -> None:
         """Setzt die Lautstaerke (0.0 bis 1.0)."""

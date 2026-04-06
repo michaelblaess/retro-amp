@@ -43,6 +43,21 @@ irm https://github.com/michaelblaess/retro-amp/releases/latest/download/install.
 | macOS | `/usr/local/bin/retro-amp` |
 | Windows | `C:\Program Files\retro-amp\retro-amp.exe` |
 
+### Optionale Abhaengigkeit / Optional Dependency
+
+Fuer M4A/AAC-Playback wird **ffmpeg** benoetigt. Ohne ffmpeg werden alle anderen Formate normal abgespielt — nur M4A/AAC wird uebersprungen (mit Log-Hinweis). / For M4A/AAC playback, **ffmpeg** is required. Without ffmpeg, all other formats play normally — only M4A/AAC is skipped (with log message).
+
+```bash
+# Windows
+winget install ffmpeg
+
+# Linux
+sudo apt install ffmpeg
+
+# macOS
+brew install ffmpeg
+```
+
 ### Manuell / Manual (Python >= 3.12)
 
 ```bash
@@ -78,7 +93,7 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
-- **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg)
+- **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Globale Suche** — Dateien in der gesamten Bibliothek suchen (Taste S)
