@@ -143,7 +143,7 @@ def _decode_with_ffmpeg(path: Path) -> io.BytesIO | None:
     if not ffmpeg_bin:
         logger.warning(
             "ffmpeg nicht gefunden — M4A/AAC-Playback nicht verfuegbar. "
-            "Installation: winget install ffmpeg (Windows), "
+            "Installation: choco install ffmpeg (Windows), "
             "apt install ffmpeg (Linux), brew install ffmpeg (macOS)"
         )
         return None
@@ -239,7 +239,7 @@ class PygameAudioPlayer:
                 if self._ffmpeg_wav is None:
                     raise RuntimeError(
                         "ffmpeg nicht gefunden — M4A/AAC-Playback nicht verfuegbar. "
-                        "Installation: winget install ffmpeg (Windows), "
+                        "Installation: choco install ffmpeg (Windows), "
                         "apt install ffmpeg (Linux), brew install ffmpeg (macOS)"
                     )
                 pygame.mixer.music.load(self._ffmpeg_wav)

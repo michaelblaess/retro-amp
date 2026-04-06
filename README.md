@@ -49,7 +49,7 @@ Fuer M4A/AAC-Playback wird **ffmpeg** benoetigt. Ohne ffmpeg werden alle anderen
 
 ```bash
 # Windows
-winget install ffmpeg
+choco install ffmpeg        # oder: scoop install ffmpeg / winget install ffmpeg
 
 # Linux
 sudo apt install ffmpeg
