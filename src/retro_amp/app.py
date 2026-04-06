@@ -209,6 +209,7 @@ class RetroAmpApp(App):
         self.set_interval(0.5, self._check_play_request)
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
+            on_error=self._on_playback_error,
         )
         # Theme-Name in Titelleiste
         display = THEME_DISPLAY_NAMES.get(self.theme, self.theme)
@@ -1031,6 +1032,11 @@ class RetroAmpApp(App):
         """Transport-Leiste mit aktuellem State aktualisieren."""
         transport = self.query_one("#transport", TransportBar)
         transport.update_state(self._player_service.state)
+
+    def _on_playback_error(self, error: str) -> None:
+        """Callback bei Playback-Fehlern."""
+        self._write_log(f"[bold red]{error}[/bold red]")
+        self.notify(error, severity="warning", timeout=8)
 
     def _on_track_finished(self) -> None:
         """Callback wenn ein Track fertig ist."""

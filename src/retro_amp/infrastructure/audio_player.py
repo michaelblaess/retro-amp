@@ -229,8 +229,7 @@ class PygameAudioPlayer:
             if ext == ".sid":
                 self._sid_wav = _decode_sid_to_wav(path)
                 if self._sid_wav is None:
-                    logger.warning("SID-Playback nicht moeglich: %s", path)
-                    return
+                    raise RuntimeError("sidplayfp nicht gefunden — SID-Playback nicht verfuegbar")
                 pygame.mixer.music.load(self._sid_wav)
             elif ext in _OGG_EXTENSIONS and _is_opus(path):
                 self._opus_wav = _decode_opus_to_wav(path)
@@ -238,14 +237,19 @@ class PygameAudioPlayer:
             elif ext in _FFMPEG_FORMATS:
                 self._ffmpeg_wav = _decode_with_ffmpeg(path)
                 if self._ffmpeg_wav is None:
-                    logger.warning("Playback nicht moeglich (ffmpeg fehlt): %s", path)
-                    return
+                    raise RuntimeError(
+                        "ffmpeg nicht gefunden — M4A/AAC-Playback nicht verfuegbar. "
+                        "Installation: winget install ffmpeg (Windows), "
+                        "apt install ffmpeg (Linux), brew install ffmpeg (macOS)"
+                    )
                 pygame.mixer.music.load(self._ffmpeg_wav)
             else:
                 pygame.mixer.music.load(str(path))
             pygame.mixer.music.play()
             self._current_path = path
             self._seek_offset = 0.0
+        except RuntimeError:
+            raise
         except Exception:
             logger.exception("Fehler beim Abspielen von %s", path)
 
