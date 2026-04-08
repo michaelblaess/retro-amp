@@ -39,7 +39,7 @@ from .widgets.favorites_tree import FavoritesTree
 from .widgets.folder_browser import FolderBrowser
 from .widgets.playlist_tree import PlaylistTree
 from .widgets.info_panel import InfoPanel
-from .widgets.lyrics_panel import LyricsPanel
+from .widgets.lyrics_panel import LyricLine, LyricsPanel
 from .widgets.search_panel import SearchPanel, _SearchResult
 from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
@@ -898,6 +898,13 @@ class RetroAmpApp(App):
         self._player_service.seek_to(event.position)
         self._update_transport()
 
+    def on_lyric_line_clicked(
+        self, event: LyricLine.Clicked,
+    ) -> None:
+        """Position per Klick auf Lyrics-Zeile aendern."""
+        self._player_service.seek_to(event.timestamp)
+        self._update_transport()
+
     # --- Interne Methoden ---
 
     @work(exclusive=True, group="scan", thread=True)
@@ -1014,6 +1021,12 @@ class RetroAmpApp(App):
         """Timer-Callback: Position aktualisieren."""
         self._player_service.update_position()
         self._update_transport()
+        # Synced Lyrics aktualisieren
+        state = self._player_service.state
+        if state.is_playing:
+            self.query_one("#lyrics-panel", LyricsPanel).update_position(
+                state.position_seconds,
+            )
 
     def _sync_visualizer(self) -> None:
         """Synchronisiert Visualizer mit Player-State."""
@@ -1152,13 +1165,16 @@ class RetroAmpApp(App):
         self, artist: str, title: str, generation: int,
     ) -> None:
         """Holt Lyrics im Background-Thread."""
-        original, translated = self._lyrics_service.get_lyrics(artist, title)
+        original, translated, synced_lines = self._lyrics_service.get_lyrics(
+            artist, title,
+        )
 
         if generation != self._lyrics_generation:
             return
 
         self.call_from_thread(
-            self._apply_lyrics, artist, title, original, translated, generation,
+            self._apply_lyrics, artist, title, original, translated,
+            synced_lines, generation,
         )
 
     def _apply_lyrics(
@@ -1167,6 +1183,7 @@ class RetroAmpApp(App):
         title: str,
         original: str,
         translated: str,
+        synced_lines: list[tuple[float, str]],
         generation: int,
     ) -> None:
         """Wendet Lyrics auf die UI an (Main-Thread)."""
@@ -1174,7 +1191,7 @@ class RetroAmpApp(App):
             return
 
         self.query_one("#lyrics-panel", LyricsPanel).show_lyrics(
-            artist, title, original,
+            artist, title, original, synced_lines,
         )
         self.query_one("#translation-panel", TranslationPanel).show_translation(
             artist, title, translated,
