@@ -95,11 +95,15 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
 - **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
+- **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
+- **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
 - **Globale Suche** — Dateien in der gesamten Bibliothek suchen (Taste S)
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
+- **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **6 Retro-Themes** — C64, Amiga Workbench, Atari ST GEM, IBM Terminal, NeXTSTEP, BeOS
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
+- **Session-Recovery** — Nach einem Crash wird der letzte Track und Ordner wiederhergestellt (ohne Auto-Play)
 - **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
 - **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
@@ -117,6 +121,8 @@ retro-amp --version           # Zeigt die Version / Show version
 | `↑` `↓` | Navigation in der Liste / Navigate list |
 | `Enter` | Song abspielen / Ordner oeffnen / Play track / Open folder |
 | `+` `-` | Lautstaerke / Volume |
+| `X` | Shuffle ein/aus / Toggle shuffle |
+| `R` | Repeat: Off → All → One / Cycle repeat mode |
 | `TAB` | Ansicht wechseln: Explorer → Favoriten → Playlists / Cycle view |
 | `F` | Favorit hinzufuegen/entfernen / Toggle favorite |
 | `P` | Playlist-Menue / Playlist menu |
@@ -211,9 +217,10 @@ src/retro_amp/
 ├── infrastructure/   # Implementierungen — pygame, mutagen, JSON
 │   ├── audio_player.py   # PygameAudioPlayer
 │   ├── spectrum.py        # SpectrumAnalyzer (FFT)
-│   ├── metadata_reader.py # MutagenMetadataReader
+│   ├── metadata_reader.py # MutagenMetadataReader + Cover-Art-Extraktion
 │   ├── playlist_store.py  # MarkdownPlaylistStore
 │   ├── settings.py        # JsonSettingsStore
+│   ├── session.py         # Crash-Recovery (session.json)
 │   └── single_instance.py # Single-Instance Lock + Play-Request
 ├── widgets/          # Textual Widgets
 ├── screens/          # Textual ModalScreens
@@ -260,9 +267,17 @@ git push origin v0.4.0
 | Rich Text | [Rich](https://rich.readthedocs.io/) >= 13.0 |
 | Audio-Playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
 | Audio-Metadaten | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
+| Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.1 |
+| Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
+
+## Inspiration
+
+Synced Lyrics, Album Art Rendering und Session-Recovery wurden inspiriert von [ytm-player](https://github.com/peternaame-boop/ytm-player) — einem YouTube-Music-Player in Textual.
+
+Synced lyrics, album art rendering, and session recovery were inspired by [ytm-player](https://github.com/peternaame-boop/ytm-player) — a YouTube Music player built with Textual.
 
 ## Lizenz / License
 
