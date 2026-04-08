@@ -27,6 +27,7 @@ from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.playlist_store import MarkdownPlaylistStore
 from .infrastructure.settings import JsonSettingsStore
+from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
 from .services.liner_notes_service import LinerNotesService
@@ -173,6 +174,9 @@ class RetroAmpApp(App):
         # Repeat-Modus
         self._repeat_mode: RepeatMode = RepeatMode.OFF
 
+        # Session-Save Throttling (alle 10 Ticks = 5 Sekunden)
+        self._session_tick_counter: int = 0
+
     def compose(self) -> ComposeResult:
         yield Header()
         yield Input(
@@ -238,6 +242,9 @@ class RetroAmpApp(App):
             if self._autoplay_file and self._autoplay_file.is_file():
                 track = self._metadata_service.read_track(self._autoplay_file)
                 self._play_track(track)
+            else:
+                # Session-Recovery: nach Crash letzten Track wiederherstellen
+                self._restore_session()
 
     def _show_library_picker(self) -> None:
         """Zeigt den Library-Picker-Dialog."""
@@ -1072,6 +1079,15 @@ class RetroAmpApp(App):
             self.query_one("#lyrics-panel", LyricsPanel).update_position(
                 state.position_seconds,
             )
+            # Session-State periodisch speichern (alle 5 Sekunden)
+            self._session_tick_counter += 1
+            if self._session_tick_counter >= 10 and state.current_track:
+                self._session_tick_counter = 0
+                save_session(
+                    track_path=str(state.current_track.path),
+                    position_seconds=state.position_seconds,
+                    volume=state.volume,
+                )
 
     def _sync_visualizer(self) -> None:
         """Synchronisiert Visualizer mit Player-State."""
@@ -1175,6 +1191,42 @@ class RetroAmpApp(App):
                 self._write_log(t("log.play", name=f"{next_name} ({track.path.parent})"))
                 self._load_tabs_for_track(track)
         self._update_transport()
+
+    def _restore_session(self) -> None:
+        """Stellt den letzten Track nach einem Crash wieder her (ohne Auto-Play)."""
+        session = load_session()
+        if not session:
+            return
+
+        track_path = Path(str(session.get("track_path", "")))
+        if not track_path.is_file():
+            clear_session()
+            return
+
+        position = float(session.get("position_seconds", 0.0))
+        track = self._metadata_service.read_track(track_path)
+
+        # Ordner laden und Baum aufklappen
+        parent = track_path.parent
+        self._scan_directory(parent)
+        self._save_last_path(parent)
+
+        # Track in UI anzeigen (NICHT abspielen)
+        self.sub_title = track.display_name
+        self._load_tabs_for_track(track)
+        self._highlight_current_track()
+
+        # Notification
+        self.notify(
+            t("notify.session_restored", name=track.display_name),
+            timeout=5,
+        )
+        self._write_log(
+            t("log.session_restored", name=track.display_name, pos=int(position)),
+        )
+
+        # Session aufraemen (einmalig restauriert)
+        clear_session()
 
     def _save_last_path(self, path: Path) -> None:
         """Speichert den letzten Ordner in Settings."""
@@ -1322,4 +1374,5 @@ class RetroAmpApp(App):
         self._lyrics_generation += 1  # Offene Lyrics-Threads ignorieren
         self._spectrum_analyzer.unload()
         self._audio_player.cleanup()
+        clear_session()  # Sauberer Exit → Session loeschen
         release_lock()
