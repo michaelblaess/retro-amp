@@ -157,9 +157,6 @@ class RetroAmpApp(App):
         # Log-Zeilen fuer Copy-Funktion
         self._log_lines: list[str] = []
 
-        # Ansicht: Datei-Explorer / Favoriten / Playlists
-        self._left_view: str = "browser"  # "browser" | "favorites" | "playlists"
-
         # Timer-Handle fuer Position-Updates
         self._position_timer: object | None = None
 
@@ -179,9 +176,13 @@ class RetroAmpApp(App):
         )
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
-                yield FolderBrowser(str(self._tree_root), id="folder-browser")
-                yield FavoritesTree(id="favorites-tree")
-                yield PlaylistTree(id="playlist-tree")
+                with TabbedContent(id="left-tabs"):
+                    with TabPane(t("tab.browser"), id="tab-browser"):
+                        yield FolderBrowser(str(self._tree_root), id="folder-browser")
+                    with TabPane(t("tab.favorites"), id="tab-favorites"):
+                        yield FavoritesTree(id="favorites-tree")
+                    with TabPane(t("tab.playlists"), id="tab-playlists"):
+                        yield PlaylistTree(id="playlist-tree")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
                 yield Rule(id="tab-separator")
@@ -390,7 +391,8 @@ class RetroAmpApp(App):
             self.notify(t("notify.favorite_removed", name=track.display_name))
 
         # Favoriten-Baum aktualisieren wenn sichtbar
-        if self._left_view == "favorites":
+        left_tabs = self.query_one("#left-tabs", TabbedContent)
+        if left_tabs.active == "tab-favorites":
             self._refresh_favorites_tree()
 
     def action_show_playlists(self) -> None:
@@ -436,28 +438,27 @@ class RetroAmpApp(App):
 
     def action_cycle_view(self) -> None:
         """Wechselt zwischen Datei-Explorer, Favoriten und Playlists."""
-        browser = self.query_one("#folder-browser", FolderBrowser)
-        fav_tree = self.query_one("#favorites-tree", FavoritesTree)
-        pl_tree = self.query_one("#playlist-tree", PlaylistTree)
+        tabs = self.query_one("#left-tabs", TabbedContent)
+        tab_ids = ["tab-browser", "tab-favorites", "tab-playlists"]
+        idx = tab_ids.index(tabs.active)
+        tabs.active = tab_ids[(idx + 1) % len(tab_ids)]
 
-        views = ["browser", "favorites", "playlists"]
-        idx = views.index(self._left_view)
-        self._left_view = views[(idx + 1) % len(views)]
-
-        browser.display = self._left_view == "browser"
-        fav_tree.display = self._left_view == "favorites"
-        pl_tree.display = self._left_view == "playlists"
-
-        if self._left_view == "browser":
-            browser.focus()
+    def on_tabbed_content_tab_activated(
+        self, event: TabbedContent.TabActivated,
+    ) -> None:
+        """Reagiert auf Tab-Wechsel im linken Panel."""
+        if event.tabbed_content.id != "left-tabs":
+            return
+        if event.pane.id == "tab-browser":
+            self.query_one("#folder-browser", FolderBrowser).focus()
             self._write_log(t("log.view_explorer"))
-        elif self._left_view == "favorites":
+        elif event.pane.id == "tab-favorites":
             self._refresh_favorites_tree()
-            fav_tree.focus()
+            self.query_one("#favorites-tree", FavoritesTree).focus()
             self._write_log(t("log.view_favorites"))
-        else:
+        elif event.pane.id == "tab-playlists":
             self._refresh_playlist_tree()
-            pl_tree.focus()
+            self.query_one("#playlist-tree", PlaylistTree).focus()
             self._write_log(t("log.view_playlists"))
 
     def action_toggle_log(self) -> None:
@@ -818,7 +819,8 @@ class RetroAmpApp(App):
         if action in ("rename_file", "delete_file"):
             # In Favoriten/Playlist-Ansicht: App-Delete/Rename ausblenden
             # (Tree-Widgets haben eigene DEL-Bindings zum Entfernen)
-            if self._left_view != "browser":
+            left_tabs = self.query_one("#left-tabs", TabbedContent)
+            if left_tabs.active != "tab-browser":
                 return None
             folder_browser = self.query_one("#folder-browser", FolderBrowser)
             if folder_browser.has_focus or folder_browser.has_focus_within:

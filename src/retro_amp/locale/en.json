@@ -27,6 +27,9 @@
   "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} results",
   "search.no_results": "\ud83d\udd0d \"{query}\" \u2014 no results",
 
+  "tab.browser": "Files",
+  "tab.favorites": "Favorites",
+  "tab.playlists": "Playlists",
   "tab.lyrics": "Lyrics",
   "tab.translation": "Lyrics (translated)",
   "tab.info": "Info",

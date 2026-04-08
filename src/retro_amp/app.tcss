@@ -47,12 +47,16 @@ Screen {
     border-bottom: solid $accent;
 }
 
-#favorites-tree {
-    display: none;
+#left-tabs {
+    height: 1fr;
 }
 
-#playlist-tree {
-    display: none;
+#left-tabs ContentSwitcher {
+    height: 1fr;
+}
+
+#left-tabs TabPane {
+    height: 1fr;
 }
 
 #app-log {
