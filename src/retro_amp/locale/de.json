@@ -33,6 +33,7 @@
   "tab.browser": "Dateien",
   "tab.favorites": "Favoriten",
   "tab.playlists": "Playlists",
+  "tab.cover": "Cover",
   "tab.lyrics": "Lyrics",
   "tab.translation": "Lyrics (deutsch)",
   "tab.info": "Info",
@@ -145,6 +146,10 @@
   "info.loading": "Suche Informationen...",
   "info.not_found": "Keine Informationen gefunden.\n\nMoegliche Gruende:\n- Kein Internet\n- Artist nicht auf Wikipedia\n- Kein Artist-Tag in der Datei",
   "info.source_label": "\u2014 {source} (anklicken zum Oeffnen)",
+
+  "cover.loading": "Lade Cover...",
+  "cover.not_found": "Kein Cover gefunden.",
+  "cover.error": "Cover konnte nicht geladen werden.",
 
   "lyrics.loading": "Lade Lyrics...",
   "lyrics.not_found": "Keine Lyrics gefunden.",

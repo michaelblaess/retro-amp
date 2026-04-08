@@ -33,6 +33,7 @@
   "tab.browser": "Files",
   "tab.favorites": "Favorites",
   "tab.playlists": "Playlists",
+  "tab.cover": "Cover",
   "tab.lyrics": "Lyrics",
   "tab.translation": "Lyrics (translated)",
   "tab.info": "Info",
@@ -145,6 +146,10 @@
   "info.loading": "Searching for information...",
   "info.not_found": "No information found.\n\nPossible reasons:\n- No internet connection\n- Artist not on Wikipedia\n- No artist tag in the file",
   "info.source_label": "\u2014 {source} (click to open)",
+
+  "cover.loading": "Loading cover...",
+  "cover.not_found": "No cover art found.",
+  "cover.error": "Could not load cover art.",
 
   "lyrics.loading": "Loading lyrics...",
   "lyrics.not_found": "No lyrics found.",

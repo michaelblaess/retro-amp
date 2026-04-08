@@ -58,6 +58,10 @@ class MetadataReader(Protocol):
         """Liest Metadaten einer Audio-Datei."""
         ...
 
+    def extract_cover_art(self, path: Path) -> bytes | None:
+        """Extrahiert Cover-Art als Bilddaten (JPEG/PNG) oder None."""
+        ...
+
 
 class PlaylistRepository(Protocol):
     """Interface fuer Playlist-Persistenz."""

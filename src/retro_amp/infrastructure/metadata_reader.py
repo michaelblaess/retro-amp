@@ -202,6 +202,94 @@ class MutagenMetadataReader:
 
         return track
 
+    def extract_cover_art(self, path: Path) -> bytes | None:
+        """Extrahiert Cover-Art aus Audio-Datei oder Ordner.
+
+        Reihenfolge: 1) Eingebettetes Cover aus Tags,
+        2) Bilddatei im selben Ordner (cover.jpg, folder.jpg, front.jpg, ...).
+        """
+        # 1) Eingebettetes Cover aus Audio-Tags
+        embedded = self._extract_embedded_cover(path)
+        if embedded:
+            return embedded
+
+        # 2) Fallback: Bilddatei im Ordner
+        return self._find_folder_cover(path.parent)
+
+    def _extract_embedded_cover(self, path: Path) -> bytes | None:
+        """Extrahiert Cover-Art aus Audio-Tags (ID3 APIC, FLAC Picture, MP4)."""
+        if path.suffix.lower() in _HEADER_EXTENSIONS:
+            return None
+        try:
+            import mutagen
+
+            audio = mutagen.File(str(path))
+            if audio is None:
+                return None
+
+            # ID3v2 (MP3): APIC Frames
+            if hasattr(audio, "tags") and audio.tags is not None:
+                for key in audio.tags:
+                    if key.startswith("APIC"):
+                        tag = audio.tags[key]
+                        if hasattr(tag, "data") and tag.data:
+                            return tag.data  # type: ignore[return-value]
+
+            # FLAC: eingebettete Pictures
+            if hasattr(audio, "pictures"):
+                for pic in audio.pictures:  # type: ignore[union-attr]
+                    if pic.data:
+                        return pic.data  # type: ignore[return-value]
+
+            # MP4/M4A: covr-Tag
+            if hasattr(audio, "get"):
+                covr = audio.get("covr")  # type: ignore[union-attr]
+                if covr and isinstance(covr, list) and covr[0]:
+                    return bytes(covr[0])
+
+            # Vorbis/Opus: metadata_block_picture
+            if hasattr(audio, "get"):
+                import base64
+                from mutagen.flac import Picture
+                pics = audio.get("metadata_block_picture")  # type: ignore[union-attr]
+                if pics and isinstance(pics, list):
+                    pic = Picture(base64.b64decode(pics[0]))
+                    if pic.data:
+                        return pic.data
+
+        except Exception:
+            logger.debug("Cover-Art konnte nicht gelesen werden: %s", path)
+        return None
+
+    def _find_folder_cover(self, directory: Path) -> bytes | None:
+        """Sucht nach Cover-Bilddateien im Ordner.
+
+        Prueft bekannte Dateinamen (cover.jpg, folder.jpg, front.jpg, etc.)
+        und faellt auf die erste Bilddatei im Ordner zurueck.
+        """
+        _COVER_NAMES = {
+            "cover", "folder", "front", "album", "albumart",
+            "album_art", "albumartsmall", "thumb", "artwork",
+        }
+        _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
+
+        try:
+            # Bekannte Dateinamen pruefen
+            for name in _COVER_NAMES:
+                for ext in (".jpg", ".jpeg", ".png"):
+                    candidate = directory / f"{name}{ext}"
+                    if candidate.is_file():
+                        return candidate.read_bytes()
+
+            # Fallback: erste Bilddatei im Ordner
+            for child in sorted(directory.iterdir()):
+                if child.is_file() and child.suffix.lower() in _IMAGE_EXTENSIONS:
+                    return child.read_bytes()
+
+        except Exception:
+            logger.debug("Ordner-Cover konnte nicht gelesen werden: %s", directory)
+        return None
+
     def _read_tag(self, audio: object, *tag_names: str) -> str:
         """Versucht einen Tag unter verschiedenen Namen zu lesen."""
         # Versuch ueber get() (Vorbis, FLAC, MP4)

@@ -34,6 +34,7 @@ from .services.lyrics_service import LyricsService
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
+from .widgets.cover_art_panel import CoverArtPanel
 from .widgets.file_table import FileTable
 from .widgets.favorites_tree import FavoritesTree
 from .widgets.folder_browser import FolderBrowser
@@ -197,6 +198,8 @@ class RetroAmpApp(App):
                         yield TranslationPanel(id="translation-panel")
                     with TabPane(t("tab.info"), id="tab-info"):
                         yield InfoPanel(id="info-panel")
+                    with TabPane(t("tab.cover"), id="tab-cover"):
+                        yield CoverArtPanel(id="cover-panel")
                     with TabPane(t("tab.youtube"), id="tab-youtube"):
                         yield YoutubePanel(id="youtube-panel")
                     with TabPane(t("tab.search"), id="tab-search"):
@@ -1214,7 +1217,14 @@ class RetroAmpApp(App):
 
             # YouTube-Links
             self.query_one("#youtube-panel", YoutubePanel).show_links(artist, title)
-        else:
+
+        # Cover-Art (unabhaengig von Artist — direkt aus Datei)
+        self.query_one("#cover-panel", CoverArtPanel).show_loading(
+            artist or track.path.parent.name, title,
+        )
+        self._fetch_cover_art_async(track, artist or track.path.parent.name, title)
+
+        if not artist:
             self._clear_all_tabs()
 
     def _clear_all_tabs(self) -> None:
@@ -1222,6 +1232,7 @@ class RetroAmpApp(App):
         self.query_one("#lyrics-panel", LyricsPanel).clear()
         self.query_one("#translation-panel", TranslationPanel).clear()
         self.query_one("#info-panel", InfoPanel).clear()
+        self.query_one("#cover-panel", CoverArtPanel).clear()
         self.query_one("#youtube-panel", YoutubePanel).clear()
 
     @work(exclusive=True, group="lyrics", thread=True)
@@ -1259,6 +1270,24 @@ class RetroAmpApp(App):
         )
         self.query_one("#translation-panel", TranslationPanel).show_translation(
             artist, title, translated,
+        )
+
+    @work(exclusive=True, group="cover", thread=True)
+    def _fetch_cover_art_async(
+        self, track: AudioTrack, artist: str, title: str,
+    ) -> None:
+        """Extrahiert Cover-Art im Background-Thread."""
+        image_data = self._metadata_reader.extract_cover_art(track.path)
+        self.call_from_thread(
+            self._apply_cover_art, artist, title, image_data,
+        )
+
+    def _apply_cover_art(
+        self, artist: str, title: str, image_data: bytes | None,
+    ) -> None:
+        """Zeigt Cover-Art in der UI an (Main-Thread)."""
+        self.query_one("#cover-panel", CoverArtPanel).show_cover(
+            artist, title, image_data,
         )
 
     def _refresh_favorites_tree(self) -> None:
