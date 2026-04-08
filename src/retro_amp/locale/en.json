@@ -16,6 +16,9 @@
   "binding.cycle_view": "Files/Fav/Playlist",
   "binding.shuffle": "Shuffle",
   "binding.shuffle_on": "Shuffle ON",
+  "binding.repeat": "\u21bb Repeat",
+  "binding.repeat_all": "\u21bb Repeat ALL",
+  "binding.repeat_one": "\u21bb Repeat ONE",
   "binding.remove": "Remove",
   "binding.open": "Open",
   "binding.close": "Close",
@@ -55,6 +58,9 @@
   "notify.file_not_found": "File not found",
   "notify.shuffle_on": "\u21c4 Shuffle enabled",
   "notify.shuffle_off": "\u21c4 Shuffle disabled",
+  "notify.repeat_off": "\u21bb Repeat disabled",
+  "notify.repeat_all": "\u21bb Repeat: All",
+  "notify.repeat_one": "\u21bb Repeat: Track",
   "notify.favorite_tree_removed": "\u2606 Removed from favorites: {name}",
   "notify.playlist_track_removed": "Removed from \"{playlist}\": {name}",
 
@@ -76,6 +82,9 @@
   "log.shuffle_off": "Shuffle disabled",
   "log.shuffle_play": "\u21c4 Shuffle: {name}",
   "log.shuffle_all_played": "Shuffle: All tracks in folder played",
+  "log.repeat_off": "Repeat disabled",
+  "log.repeat_all": "Repeat: All tracks",
+  "log.repeat_one": "Repeat: Single track",
 
   "transport.no_track": "No track loaded",
 

@@ -15,6 +15,14 @@ class PlaybackState(Enum):
     PAUSED = "paused"
 
 
+class RepeatMode(Enum):
+    """Wiederholungs-Modus."""
+
+    OFF = "off"
+    ALL = "all"
+    ONE = "one"
+
+
 class AudioFormat(Enum):
     """Unterstuetzte Audio-Formate."""
 

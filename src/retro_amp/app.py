@@ -21,7 +21,7 @@ from textual.widgets import (
 from textual import work
 
 from . import __version__
-from .domain.models import AudioTrack
+from .domain.models import AudioTrack, PlaybackState, RepeatMode
 from .themes import RETRO_THEMES, RETRO_THEME_NAMES, THEME_DISPLAY_NAMES
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
@@ -78,6 +78,7 @@ class RetroAmpApp(App):
         self._bindings.bind("o", "toggle_log", t("binding.log"), priority=True)
         self._bindings.bind("c", "copy_log", t("binding.copy_log"), priority=True)
         self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), priority=True)
+        self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), priority=True)
         self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
 
         # Retro-Themes registrieren
@@ -167,6 +168,9 @@ class RetroAmpApp(App):
         self._shuffle_mode: bool = False
         # Shuffle-History pro Ordner: dir_path -> (gespielte Pfade, letzter Zugriff)
         self._shuffle_history: dict[str, tuple[set[str], float]] = {}
+
+        # Repeat-Modus
+        self._repeat_mode: RepeatMode = RepeatMode.OFF
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -354,6 +358,44 @@ class RetroAmpApp(App):
         else:
             self.notify(t("notify.shuffle_off"))
             self._write_log(t("log.shuffle_off"))
+
+    def action_cycle_repeat(self) -> None:
+        """Repeat-Modus durchschalten: Off → All → One → Off."""
+        cycle = {
+            RepeatMode.OFF: RepeatMode.ALL,
+            RepeatMode.ALL: RepeatMode.ONE,
+            RepeatMode.ONE: RepeatMode.OFF,
+        }
+        self._repeat_mode = cycle[self._repeat_mode]
+
+        # Binding-Label aktualisieren
+        labels = {
+            RepeatMode.OFF: t("binding.repeat"),
+            RepeatMode.ALL: t("binding.repeat_all"),
+            RepeatMode.ONE: t("binding.repeat_one"),
+        }
+        label = labels[self._repeat_mode]
+        bindings_list = self._bindings.key_to_bindings.get("r", [])
+        for i, binding in enumerate(bindings_list):
+            if binding.action == "cycle_repeat":
+                self._bindings.key_to_bindings["r"][i] = dataclasses.replace(
+                    binding, description=label,
+                )
+                break
+        self.refresh_bindings()
+
+        notifications = {
+            RepeatMode.OFF: t("notify.repeat_off"),
+            RepeatMode.ALL: t("notify.repeat_all"),
+            RepeatMode.ONE: t("notify.repeat_one"),
+        }
+        logs = {
+            RepeatMode.OFF: t("log.repeat_off"),
+            RepeatMode.ALL: t("log.repeat_all"),
+            RepeatMode.ONE: t("log.repeat_one"),
+        }
+        self.notify(notifications[self._repeat_mode])
+        self._write_log(logs[self._repeat_mode])
 
     def action_seek_forward(self) -> None:
         """5 Sekunden vorwaerts springen."""
@@ -1069,12 +1111,26 @@ class RetroAmpApp(App):
         else:
             self._write_log(t("log.track_finished_unknown"))
 
+        # Repeat One: gleichen Track nochmal abspielen
+        if self._repeat_mode == RepeatMode.ONE and finished_track:
+            self._play_track(finished_track)
+            self._sync_visualizer()
+            self._update_transport()
+            return
+
         # Shuffle: zufaelligen naechsten Track waehlen
         if self._shuffle_mode:
             next_track = self._pick_shuffle_next()
             if next_track:
                 self._play_track(next_track)
                 self._write_log(t("log.shuffle_play", name=next_track.display_name))
+            elif self._repeat_mode == RepeatMode.ALL:
+                # Shuffle + Repeat All: History zuruecksetzen, neuer Durchlauf
+                self._shuffle_history.clear()
+                next_track = self._pick_shuffle_next()
+                if next_track:
+                    self._play_track(next_track)
+                    self._write_log(t("log.shuffle_play", name=next_track.display_name))
             else:
                 self._write_log(t("log.shuffle_all_played"))
                 self.sub_title = ""
@@ -1085,7 +1141,15 @@ class RetroAmpApp(App):
             return
 
         # Normal: sequenziell naechsten Track
-        self._player_service.check_auto_next()
+        if state.has_next:
+            self._player_service.next_track()
+        elif self._repeat_mode == RepeatMode.ALL and state.track_list:
+            # Repeat All: zurueck zum ersten Track
+            self._player_service.play_track(0)
+        else:
+            # Kein naechster Track, kein Repeat
+            self._player_service.state.state = PlaybackState.STOPPED
+
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
             self.sub_title = ""
