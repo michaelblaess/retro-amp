@@ -62,9 +62,31 @@ def main() -> None:
         if send_play_request(os.path.abspath(play_file)):
             sys.exit(0)
 
+    # Grafik-Backend BEVOR Textual stdin kapert initialisieren, sonst
+    # bleeden DA1/Cell-Size-Query-Antworten von textual-image in Input-Widgets.
+    if str(settings.get("cover_renderer", "halfblock")) == "graphics":
+        _preinit_graphics_backend()
+
     from retro_amp.app import RetroAmpApp
     app = RetroAmpApp(start_path=start_path, play_file=play_file)
     app.run()
+
+
+def _preinit_graphics_backend() -> None:
+    """Eager-Import der textual-image Widgets und Cell-Size-Query.
+
+    textual-image sendet beim Import DA1- und Cell-Size-Escape-Sequenzen an
+    das Terminal. Wenn das nach `App.run()` passiert, landen die Antworten
+    als Muell in der Textual-Eingabe. Darum: vor dem App-Start einmal
+    anstossen und die Queries abarbeiten lassen.
+    """
+    try:
+        import textual_image.renderable  # noqa: F401
+        import textual_image.widget  # noqa: F401
+        from textual_image._terminal import get_cell_size
+        get_cell_size()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

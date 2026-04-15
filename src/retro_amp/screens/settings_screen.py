@@ -54,6 +54,12 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
         margin-top: 1;
         border: round $surface-lighten-2;
     }
+    SettingsScreen .credit {
+        color: $text-muted;
+        padding: 0 2;
+        margin-top: 1;
+        text-align: center;
+    }
     SettingsScreen .button-row {
         height: 3;
         margin-top: 1;
@@ -106,6 +112,11 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
                 id="check-cover-graphics",
             )
         yield Static(t("settings.cover_graphics_hint"), classes="hint")
+        yield Static(
+            t("settings.cover_graphics_credit"),
+            classes="credit",
+            markup=True,
+        )
 
     @on(Button.Pressed, "#btn-save")
     def _on_save(self) -> None:
