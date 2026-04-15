@@ -31,7 +31,7 @@ _PYGAME_FORMATS = {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".x
 _OGG_EXTENSIONS = {".ogg", ".oga", ".opus"}
 
 # Formate die ffmpeg-Dekodierung benoetigen
-_FFMPEG_FORMATS = {".m4a", ".aac", ".wma"}
+_FFMPEG_FORMATS = {".m4a", ".aac", ".wma", ".mpc", ".mp+"}
 
 
 def _is_opus(path: Path) -> bool:

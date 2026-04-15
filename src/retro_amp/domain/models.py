@@ -36,6 +36,7 @@ class AudioFormat(Enum):
     S3M = "s3m"
     SID = "sid"
     M4A = "m4a"
+    MPC = "mpc"
     UNKNOWN = "unknown"
 
     @classmethod
@@ -53,13 +54,18 @@ class AudioFormat(Enum):
             ".s3m": cls.S3M,
             ".sid": cls.SID,
             ".m4a": cls.M4A,
+            ".mpc": cls.MPC,
+            ".mp+": cls.MPC,
         }
         return mapping.get(ext.lower(), cls.UNKNOWN)
 
     @classmethod
     def supported_extensions(cls) -> set[str]:
         """Alle unterstuetzten Dateiendungen."""
-        return {".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav", ".mod", ".xm", ".s3m", ".sid", ".m4a"}
+        return {
+            ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
+            ".mod", ".xm", ".s3m", ".sid", ".m4a", ".mpc", ".mp+",
+        }
 
 
 @dataclass

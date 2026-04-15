@@ -9,6 +9,8 @@ from textual.widgets import DirectoryTree
 from textual.widgets._directory_tree import DirEntry
 from textual.widgets._tree import TreeNode
 
+from ..domain.models import AudioFormat
+
 
 class FolderBrowser(DirectoryTree):
     """Verzeichnisbaum der nur Ordner und Audio-Dateien zeigt."""
@@ -20,10 +22,7 @@ class FolderBrowser(DirectoryTree):
     }
     """
 
-    _AUDIO_EXTENSIONS = {
-        ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
-        ".mod", ".xm", ".s3m", ".sid", ".m4a",
-    }
+    _AUDIO_EXTENSIONS = AudioFormat.supported_extensions()
 
     ICON_MUSIC = "\u266a "  # ♪
 
