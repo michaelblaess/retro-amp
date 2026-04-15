@@ -11,6 +11,7 @@
   "binding.info": "Info",
   "binding.search": "Search",
   "binding.library": "Library",
+  "binding.settings": "Settings",
   "binding.log": "Log",
   "binding.copy_log": "Copy log",
   "binding.cycle_view": "Files/Fav/Playlist",
@@ -25,7 +26,7 @@
   "binding.cancel": "Cancel",
   "binding.yes": "Yes",
 
-  "search.placeholder": "\ud83d\udd0d Search ... (s)",
+  "search.placeholder": "\ud83d\udd0d Search ... (/)",
   "search.loading": "\ud83d\udd0d Searching for \"{query}\" ...",
   "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} results",
   "search.no_results": "\ud83d\udd0d \"{query}\" \u2014 no results",
@@ -152,6 +153,16 @@
   "cover.loading": "Loading cover...",
   "cover.not_found": "No cover art found.",
   "cover.error": "Could not load cover art.",
+
+  "settings.title": "Settings",
+  "settings.tab_cover": "Cover",
+  "settings.cover_graphics_label": "Rendering mode:",
+  "settings.cover_graphics_checkbox": "Use terminal graphics protocol (pixel-perfect covers)",
+  "settings.cover_graphics_hint": "Uses the best available graphics protocol for pixel-perfect covers:\n\n\u2022 TGP (Kitty protocol): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nOn unsupported terminals we automatically fall back to the\nprevious Unicode half-block rendering.\n\nThe change takes effect on the next restart of the player.",
+  "settings.btn_save": "Save (Ctrl+S)",
+  "settings.btn_cancel": "Cancel (Esc)",
+  "settings.saved": "Settings saved",
+  "settings.restart_hint": "Restart required",
 
   "lyrics.loading": "Loading lyrics...",
   "lyrics.not_found": "No lyrics found.",

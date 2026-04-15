@@ -16,6 +16,7 @@ _DEFAULTS: dict[str, object] = {
     "volume": 0.8,
     "last_path": "",
     "music_library": "",
+    "cover_renderer": "halfblock",  # halfblock | graphics (TGP/Sixel)
 }
 
 

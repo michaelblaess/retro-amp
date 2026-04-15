@@ -75,7 +75,8 @@ class RetroAmpApp(App):
         self._bindings.bind("delete", "delete_file", t("binding.delete"), key_display="DEL", priority=True)
         self._bindings.bind("t", "cycle_theme", t("binding.theme"), priority=True)
         self._bindings.bind("i", "show_about", t("binding.info"), priority=True)
-        self._bindings.bind("s", "focus_search", t("binding.search"), priority=True)
+        self._bindings.bind("s", "show_settings", t("binding.settings"), priority=True)
+        self._bindings.bind("slash", "focus_search", t("binding.search"), key_display="/", priority=True)
         self._bindings.bind("l", "pick_library", t("binding.library"), priority=True)
         self._bindings.bind("o", "toggle_log", t("binding.log"), priority=True)
         self._bindings.bind("c", "copy_log", t("binding.copy_log"), priority=True)
@@ -203,7 +204,10 @@ class RetroAmpApp(App):
                     with TabPane(t("tab.info"), id="tab-info"):
                         yield InfoPanel(id="info-panel")
                     with TabPane(t("tab.cover"), id="tab-cover"):
-                        yield CoverArtPanel(id="cover-panel")
+                        yield CoverArtPanel(
+                            renderer=str(self._settings_store.load().get("cover_renderer", "halfblock")),
+                            id="cover-panel",
+                        )
                     with TabPane(t("tab.youtube"), id="tab-youtube"):
                         yield YoutubePanel(id="youtube-panel")
                     with TabPane(t("tab.search"), id="tab-search"):
@@ -478,6 +482,28 @@ class RetroAmpApp(App):
         """About-Dialog anzeigen."""
         from .screens.about_screen import AboutScreen  # Lazy import
         self.push_screen(AboutScreen())
+
+    def action_show_settings(self) -> None:
+        """Settings-Dialog anzeigen."""
+        from .screens.settings_screen import SettingsScreen  # Lazy import
+        current = self._settings_store.load()
+        self.push_screen(SettingsScreen(current), callback=self._on_settings_closed)
+
+    def _on_settings_closed(self, new_settings: dict[str, object] | None) -> None:
+        """Callback nach Schliessen des Settings-Dialogs."""
+        if new_settings is None:
+            return
+        current = self._settings_store.load()
+        changed_renderer = current.get("cover_renderer") != new_settings.get("cover_renderer")
+        current.update(new_settings)
+        self._settings_store.save(current)
+        if changed_renderer:
+            self.notify(
+                f"{t('settings.saved')} — {t('settings.restart_hint')}",
+                severity="information",
+            )
+        else:
+            self.notify(t("settings.saved"), severity="information")
 
     def action_pick_library(self) -> None:
         """Library-Picker-Dialog oeffnen."""

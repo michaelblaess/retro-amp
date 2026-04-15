@@ -11,6 +11,7 @@
   "binding.info": "Info",
   "binding.search": "Suche",
   "binding.library": "Library",
+  "binding.settings": "Settings",
   "binding.log": "Log",
   "binding.copy_log": "Log kopieren",
   "binding.cycle_view": "Dateien/Fav/Playlist",
@@ -25,7 +26,7 @@
   "binding.cancel": "Abbrechen",
   "binding.yes": "Ja",
 
-  "search.placeholder": "\ud83d\udd0d Suche ... (s)",
+  "search.placeholder": "\ud83d\udd0d Suche ... (/)",
   "search.loading": "\ud83d\udd0d Suche nach \"{query}\" ...",
   "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} Treffer",
   "search.no_results": "\ud83d\udd0d \"{query}\" \u2014 keine Treffer",
@@ -152,6 +153,16 @@
   "cover.loading": "Lade Cover...",
   "cover.not_found": "Kein Cover gefunden.",
   "cover.error": "Cover konnte nicht geladen werden.",
+
+  "settings.title": "Einstellungen",
+  "settings.tab_cover": "Cover",
+  "settings.cover_graphics_label": "Rendering-Modus:",
+  "settings.cover_graphics_checkbox": "Terminal-Grafik-Protokoll verwenden (pixelgenaue Cover)",
+  "settings.cover_graphics_hint": "Nutzt das beste verfuegbare Grafik-Protokoll fuer pixelgenaue Cover:\n\n\u2022 TGP (Kitty-Protokoll): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nAuf nicht unterstuetzten Terminals fallen wir automatisch auf das\nbisherige Unicode-Halfblock-Rendering zurueck.\n\nDie Aenderung wird beim naechsten Start des Players aktiv.",
+  "settings.btn_save": "Speichern (Ctrl+S)",
+  "settings.btn_cancel": "Abbrechen (Esc)",
+  "settings.saved": "Einstellungen gespeichert",
+  "settings.restart_hint": "Neustart erforderlich",
 
   "lyrics.loading": "Lade Lyrics...",
   "lyrics.not_found": "Keine Lyrics gefunden.",
