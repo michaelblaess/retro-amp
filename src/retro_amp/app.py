@@ -21,7 +21,7 @@ from textual.widgets import (
 from textual import work
 
 from . import __version__
-from .domain.models import AudioTrack, PlaybackState, RepeatMode
+from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode
 from .themes import RETRO_THEMES, RETRO_THEME_NAMES, THEME_DISPLAY_NAMES
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.metadata_reader import MutagenMetadataReader
@@ -177,6 +177,9 @@ class RetroAmpApp(App):
 
         # Session-Save Throttling (alle 10 Ticks = 5 Sekunden)
         self._session_tick_counter: int = 0
+
+        # Letztes Cover-Art-Ergebnis fuer Now-Playing-Screen
+        self._last_cover: tuple[str, str, bytes | None] | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -515,11 +518,81 @@ class RetroAmpApp(App):
         search_input.focus()
 
     def action_cycle_view(self) -> None:
-        """Wechselt zwischen Datei-Explorer, Favoriten und Playlists."""
+        """Wechselt zwischen Dateien, Favoriten, Playlists und Now Playing."""
+        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
+
+        # Wenn Now-Playing offen ist, schliessen und zurueck zum Datei-Explorer
+        if isinstance(self.screen, NowPlayingScreen):
+            self.pop_screen()
+            return
+
         tabs = self.query_one("#left-tabs", TabbedContent)
         tab_ids = ["tab-browser", "tab-favorites", "tab-playlists"]
         idx = tab_ids.index(tabs.active)
-        tabs.active = tab_ids[(idx + 1) % len(tab_ids)]
+        next_idx = idx + 1
+        if next_idx < len(tab_ids):
+            tabs.active = tab_ids[next_idx]
+        else:
+            # 4. Zustand: Now-Playing nur oeffnen wenn ein Track geladen ist,
+            # sonst zurueck zum Datei-Explorer
+            if self._player_service.state.current_track is None:
+                tabs.active = "tab-browser"
+            else:
+                self._show_now_playing()
+
+    def _show_now_playing(self) -> None:
+        """Oeffnet den Now-Playing-Vollbild-Screen.
+
+        Pausiert Position-Timer, Visualizer und leert das Main-Cover-Widget,
+        damit der Main-Screen dahinter keine TGP/Sixel-Updates mehr ans
+        Terminal schickt, die das Now-Playing-Cover zum Flackern bringen.
+        """
+        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
+
+        settings = self._settings_store.load()
+        renderer = str(settings.get("cover_renderer", "halfblock"))
+        screen = NowPlayingScreen(renderer=renderer)
+        screen.set_initial(self._last_cover, self._player_service.state)
+
+        # Main-Screen "ruhig stellen": Timer pausieren, Visualizer stoppen,
+        # Main-Cover leeren (sonst schickt dessen TGP-Widget weiter Befehle)
+        if self._position_timer is not None:
+            try:
+                self._position_timer.pause()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        try:
+            vis = self.query_one("#visualizer", Visualizer)
+            vis.set_spectrum_source(None)
+            vis.stop()
+        except Exception:
+            pass
+        try:
+            self.query_one("#cover-panel", CoverArtPanel).clear()
+        except Exception:
+            pass
+
+        self.push_screen(screen, callback=self._on_now_playing_closed)
+        self._write_log(t("log.view_now_playing"))
+
+    def _on_now_playing_closed(self, _result: object) -> None:
+        """Callback beim Schliessen von Now-Playing — Main-Screen reaktivieren."""
+        if self._position_timer is not None:
+            try:
+                self._position_timer.resume()  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        # Visualizer wieder starten falls Track laeuft
+        self._sync_visualizer()
+        # Main-Cover aus Cache wiederherstellen
+        if self._last_cover is not None:
+            artist, title, data = self._last_cover
+            try:
+                self.query_one("#cover-panel", CoverArtPanel).show_cover(
+                    artist, title, data,
+                )
+            except Exception:
+                pass
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated,
@@ -582,10 +655,7 @@ class RetroAmpApp(App):
         """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff)."""
         query_norm = self._SEPARATOR_RE.sub(" ", query.lower())
         results: list[tuple[Path, str]] = []
-        audio_exts = {
-            ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
-            ".mod", ".xm", ".s3m", ".sid",
-        }
+        audio_exts = AudioFormat.supported_extensions()
         try:
             for p in sorted(root.rglob("*")):
                 if query_norm in self._SEPARATOR_RE.sub(" ", p.name.lower()):
@@ -1364,9 +1434,16 @@ class RetroAmpApp(App):
         self, artist: str, title: str, image_data: bytes | None,
     ) -> None:
         """Zeigt Cover-Art in der UI an (Main-Thread)."""
+        self._last_cover = (artist, title, image_data)
         self.query_one("#cover-panel", CoverArtPanel).show_cover(
             artist, title, image_data,
         )
+        # Now-Playing-Screen aktualisieren falls geoeffnet
+        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
+        for screen in self.screen_stack:
+            if isinstance(screen, NowPlayingScreen):
+                screen.update_cover(artist, title, image_data)
+                break
 
     def _refresh_favorites_tree(self) -> None:
         """Aktualisiert den Favoriten-Baum mit aktuellen Daten."""

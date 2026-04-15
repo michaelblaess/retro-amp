@@ -268,16 +268,25 @@ git push origin v0.4.0
 | Audio-Playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
 | Audio-Metadaten | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
+| Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.1 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
 
-## Inspiration
+## Inspiration & Dank / Credits
 
 Synced Lyrics, Album Art Rendering und Session-Recovery wurden inspiriert von [ytm-player](https://github.com/peternaame-boop/ytm-player) — einem YouTube-Music-Player in Textual.
 
+Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel basiert auf der grossartigen [textual-image](https://github.com/lnqs/textual-image) von **[@lnqs](https://github.com/lnqs)** — herzlichen Dank!
+
+Der Now-Playing-Vollbild-Screen wurde inspiriert von [textual-musicplayer](https://github.com/bluematt/textual-musicplayer) von **[@bluematt](https://github.com/bluematt)** — ebenfalls ein Textual-basierter Musik-Player.
+
 Synced lyrics, album art rendering, and session recovery were inspired by [ytm-player](https://github.com/peternaame-boop/ytm-player) — a YouTube Music player built with Textual.
+
+Pixel-perfect cover rendering via TGP (Kitty protocol) and Sixel is powered by the wonderful [textual-image](https://github.com/lnqs/textual-image) library by **[@lnqs](https://github.com/lnqs)** — many thanks!
+
+The Now-Playing fullscreen view was inspired by [textual-musicplayer](https://github.com/bluematt/textual-musicplayer) by **[@bluematt](https://github.com/bluematt)** — another Textual-based music player.
 
 ## Lizenz / License
 
