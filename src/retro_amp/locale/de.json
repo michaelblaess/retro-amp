@@ -14,7 +14,7 @@
   "binding.settings": "Settings",
   "binding.log": "Log",
   "binding.copy_log": "Log kopieren",
-  "binding.cycle_view": "Dateien/Fav/Playlist/Now",
+  "binding.cycle_view": "Dateien/Fav/Playlist",
   "binding.shuffle": "Shuffle",
   "binding.shuffle_on": "Shuffle AN",
   "binding.repeat": "\u21bb Repeat",
@@ -26,7 +26,7 @@
   "binding.cancel": "Abbrechen",
   "binding.yes": "Ja",
 
-  "search.placeholder": "\ud83d\udd0d Suche ... (/)",
+  "search.placeholder": "\ud83d\udd0d Suche ...",
   "search.loading": "\ud83d\udd0d Suche nach \"{query}\" ...",
   "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} Treffer",
   "search.no_results": "\ud83d\udd0d \"{query}\" \u2014 keine Treffer",
@@ -71,7 +71,6 @@
   "log.view_explorer": "Ansicht: Datei-Explorer",
   "log.view_favorites": "Ansicht: Favoriten",
   "log.view_playlists": "Ansicht: Playlists",
-  "log.view_now_playing": "Ansicht: Now Playing",
   "log.search_results": "Suche: \"{query}\" \u2192 {count} Treffer",
   "log.renamed": "Umbenannt: {path}",
   "log.deleted": "Geloescht: {path}",
@@ -90,6 +89,7 @@
   "log.repeat_off": "Repeat deaktiviert",
   "log.repeat_all": "Repeat: Alle Tracks wiederholen",
   "log.repeat_one": "Repeat: Track wiederholen",
+  "log.stop": "\u25a0 Wiedergabe gestoppt",
 
   "transport.no_track": "Kein Track geladen",
 

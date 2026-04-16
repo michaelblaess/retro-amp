@@ -44,6 +44,7 @@ from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
 from .widgets.search_panel import SearchPanel, _SearchResult
 from .widgets.translation_panel import TranslationPanel
+from .widgets.control_panel import ControlPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
 from .i18n import t
@@ -60,13 +61,10 @@ class RetroAmpApp(App):
     def __init__(self, start_path: str = "", play_file: str = "") -> None:
         super().__init__()
 
-        # Bindings mit uebersetzten Labels
+        # Bindings im Footer (sichtbar)
+        self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
         self._bindings.bind("q", "quit", t("binding.quit"))
         self._bindings.bind("space", "toggle_pause", t("binding.play_pause"), key_display="SPC", priority=True)
-        self._bindings.bind("n", "next_track", t("binding.next"), priority=True)
-        self._bindings.bind("b", "previous_track", t("binding.previous"), priority=True)
-        self._bindings.bind("right", "seek_forward", ">>", key_display="→", priority=True)
-        self._bindings.bind("left", "seek_backward", "<<", key_display="←", priority=True)
         self._bindings.bind("plus,equal", "volume_up", "Vol+", key_display="+", priority=True)
         self._bindings.bind("minus", "volume_down", "Vol-", key_display="-", priority=True)
         self._bindings.bind("f", "toggle_favorite", t("binding.favorite"), priority=True)
@@ -74,15 +72,14 @@ class RetroAmpApp(App):
         self._bindings.bind("u", "rename_file", t("binding.rename"), priority=True)
         self._bindings.bind("delete", "delete_file", t("binding.delete"), key_display="DEL", priority=True)
         self._bindings.bind("t", "cycle_theme", t("binding.theme"), priority=True)
-        self._bindings.bind("i", "show_about", t("binding.info"), priority=True)
         self._bindings.bind("s", "show_settings", t("binding.settings"), priority=True)
-        self._bindings.bind("slash", "focus_search", t("binding.search"), key_display="/", priority=True)
-        self._bindings.bind("l", "pick_library", t("binding.library"), priority=True)
-        self._bindings.bind("o", "toggle_log", t("binding.log"), priority=True)
-        self._bindings.bind("c", "copy_log", t("binding.copy_log"), priority=True)
-        self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), priority=True)
-        self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), priority=True)
-        self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
+        self._bindings.bind("i", "show_about", t("binding.info"), priority=True)
+        # Versteckte Bindings (nur Tastatur, nicht im Footer)
+        self._bindings.bind("l", "pick_library", t("binding.library"), show=False, priority=True)
+        self._bindings.bind("o", "toggle_log", t("binding.log"), show=False, priority=True)
+        self._bindings.bind("c", "copy_log", t("binding.copy_log"), show=False, priority=True)
+        self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), show=False, priority=True)
+        self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), show=False, priority=True)
 
         # Retro-Themes registrieren
         for retro_theme in RETRO_THEMES:
@@ -217,6 +214,7 @@ class RetroAmpApp(App):
                         yield SearchPanel(id="search-panel")
         with Horizontal(id="transport-row"):
             yield Visualizer(id="visualizer")
+            yield ControlPanel(id="control-panel")
             yield TransportBar(id="transport")
         yield RichLog(id="app-log", highlight=True, markup=True)
         yield Footer()
@@ -334,6 +332,34 @@ class RetroAmpApp(App):
         self._sync_visualizer()
         self._update_transport()
 
+    def action_stop(self) -> None:
+        """Wiedergabe stoppen und Position auf 0:00 zuruecksetzen."""
+        state = self._player_service.state
+        if state.is_playing or state.is_paused:
+            self._player_service.stop()
+            self._sync_visualizer()
+            self._update_transport()
+            self._write_log(t("log.stop"))
+
+    def on_control_panel_button_clicked(
+        self, event: ControlPanel.ButtonClicked,
+    ) -> None:
+        """Control-Panel Button geklickt — Action dispatchen."""
+        actions = {
+            "prev": self.action_previous_track,
+            "seek_back": self.action_seek_backward,
+            "play_pause": self.action_toggle_pause,
+            "seek_fwd": self.action_seek_forward,
+            "next": self.action_next_track,
+            "stop": self.action_stop,
+            "shuffle": self.action_toggle_shuffle,
+            "repeat": self.action_cycle_repeat,
+            "favorite": self.action_toggle_favorite,
+        }
+        handler = actions.get(event.action)
+        if handler:
+            handler()
+
     def action_next_track(self) -> None:
         """Naechster Track (Shuffle-aware)."""
         if self._shuffle_mode:
@@ -375,6 +401,7 @@ class RetroAmpApp(App):
         else:
             self.notify(t("notify.shuffle_off"))
             self._write_log(t("log.shuffle_off"))
+        self._update_control_panel()
 
     def action_cycle_repeat(self) -> None:
         """Repeat-Modus durchschalten: Off → All → One → Off."""
@@ -413,6 +440,7 @@ class RetroAmpApp(App):
         }
         self.notify(notifications[self._repeat_mode])
         self._write_log(logs[self._repeat_mode])
+        self._update_control_panel()
 
     def action_seek_forward(self) -> None:
         """5 Sekunden vorwaerts springen."""
@@ -453,6 +481,7 @@ class RetroAmpApp(App):
         left_tabs = self.query_one("#left-tabs", TabbedContent)
         if left_tabs.active == "tab-favorites":
             self._refresh_favorites_tree()
+        self._update_control_panel()
 
     def action_show_playlists(self) -> None:
         """Playlist-Dialog oeffnen."""
@@ -518,81 +547,12 @@ class RetroAmpApp(App):
         search_input.focus()
 
     def action_cycle_view(self) -> None:
-        """Wechselt zwischen Dateien, Favoriten, Playlists und Now Playing."""
-        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
-
-        # Wenn Now-Playing offen ist, schliessen und zurueck zum Datei-Explorer
-        if isinstance(self.screen, NowPlayingScreen):
-            self.pop_screen()
-            return
-
+        """Wechselt zwischen Dateien, Favoriten und Playlists."""
         tabs = self.query_one("#left-tabs", TabbedContent)
         tab_ids = ["tab-browser", "tab-favorites", "tab-playlists"]
         idx = tab_ids.index(tabs.active)
-        next_idx = idx + 1
-        if next_idx < len(tab_ids):
-            tabs.active = tab_ids[next_idx]
-        else:
-            # 4. Zustand: Now-Playing nur oeffnen wenn ein Track geladen ist,
-            # sonst zurueck zum Datei-Explorer
-            if self._player_service.state.current_track is None:
-                tabs.active = "tab-browser"
-            else:
-                self._show_now_playing()
-
-    def _show_now_playing(self) -> None:
-        """Oeffnet den Now-Playing-Vollbild-Screen.
-
-        Pausiert Position-Timer, Visualizer und leert das Main-Cover-Widget,
-        damit der Main-Screen dahinter keine TGP/Sixel-Updates mehr ans
-        Terminal schickt, die das Now-Playing-Cover zum Flackern bringen.
-        """
-        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
-
-        settings = self._settings_store.load()
-        renderer = str(settings.get("cover_renderer", "halfblock"))
-        screen = NowPlayingScreen(renderer=renderer)
-        screen.set_initial(self._last_cover, self._player_service.state)
-
-        # Main-Screen "ruhig stellen": Timer pausieren, Visualizer stoppen,
-        # Main-Cover leeren (sonst schickt dessen TGP-Widget weiter Befehle)
-        if self._position_timer is not None:
-            try:
-                self._position_timer.pause()  # type: ignore[attr-defined]
-            except Exception:
-                pass
-        try:
-            vis = self.query_one("#visualizer", Visualizer)
-            vis.set_spectrum_source(None)
-            vis.stop()
-        except Exception:
-            pass
-        try:
-            self.query_one("#cover-panel", CoverArtPanel).clear()
-        except Exception:
-            pass
-
-        self.push_screen(screen, callback=self._on_now_playing_closed)
-        self._write_log(t("log.view_now_playing"))
-
-    def _on_now_playing_closed(self, _result: object) -> None:
-        """Callback beim Schliessen von Now-Playing — Main-Screen reaktivieren."""
-        if self._position_timer is not None:
-            try:
-                self._position_timer.resume()  # type: ignore[attr-defined]
-            except Exception:
-                pass
-        # Visualizer wieder starten falls Track laeuft
-        self._sync_visualizer()
-        # Main-Cover aus Cache wiederherstellen
-        if self._last_cover is not None:
-            artist, title, data = self._last_cover
-            try:
-                self.query_one("#cover-panel", CoverArtPanel).show_cover(
-                    artist, title, data,
-                )
-            except Exception:
-                pass
+        next_idx = (idx + 1) % len(tab_ids)
+        tabs.active = tab_ids[next_idx]
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated,
@@ -942,23 +902,14 @@ class RetroAmpApp(App):
         if len(self.screen_stack) > 1:
             return None
 
-        # Input-Widget fokussiert → Priority-Bindings deaktivieren,
-        # damit Cursor-Navigation und Textbearbeitung funktionieren
+        # Input-Widget fokussiert → Delete deaktivieren
         if isinstance(self.focused, Input):
-            if action in ("seek_forward", "seek_backward", "delete_file"):
+            if action == "delete_file":
                 return None
 
         state = self._player_service.state
         has_track = state.current_track is not None
 
-        if action == "next_track":
-            if self._shuffle_mode and has_track:
-                return True
-            return True if state.has_next else None
-        if action == "previous_track":
-            return True if state.has_previous else None
-        if action in ("seek_forward", "seek_backward"):
-            return True if has_track and not state.is_stopped else None
         if action == "toggle_favorite":
             return True if has_track else None
         if action == "copy_log":
@@ -1208,9 +1159,28 @@ class RetroAmpApp(App):
         self._spectrum_analyzer.load(path)
 
     def _update_transport(self) -> None:
-        """Transport-Leiste mit aktuellem State aktualisieren."""
+        """Transport-Leiste und Control-Panel mit aktuellem State aktualisieren."""
         transport = self.query_one("#transport", TransportBar)
         transport.update_state(self._player_service.state)
+        self._update_control_panel()
+
+    def _update_control_panel(self) -> None:
+        """Control-Panel mit aktuellem State aktualisieren."""
+        try:
+            panel = self.query_one("#control-panel", ControlPanel)
+        except Exception:
+            return
+        state = self._player_service.state
+        track = state.current_track
+        is_fav = self._playlist_service.is_favorite(track.path) if track else False
+        panel.update_state(
+            is_playing=state.is_playing,
+            is_paused=state.is_paused,
+            shuffle_on=self._shuffle_mode,
+            repeat_mode=self._repeat_mode,
+            is_favorite=is_fav,
+            has_track=track is not None,
+            )
 
     def _on_playback_error(self, error: str) -> None:
         """Callback bei Playback-Fehlern."""
@@ -1438,12 +1408,6 @@ class RetroAmpApp(App):
         self.query_one("#cover-panel", CoverArtPanel).show_cover(
             artist, title, image_data,
         )
-        # Now-Playing-Screen aktualisieren falls geoeffnet
-        from .screens.now_playing_screen import NowPlayingScreen  # Lazy import
-        for screen in self.screen_stack:
-            if isinstance(screen, NowPlayingScreen):
-                screen.update_cover(artist, title, image_data)
-                break
 
     def _refresh_favorites_tree(self) -> None:
         """Aktualisiert den Favoriten-Baum mit aktuellen Daten."""
