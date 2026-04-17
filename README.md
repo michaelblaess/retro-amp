@@ -118,26 +118,24 @@ retro-amp --version           # Zeigt die Version / Show version
 | Taste / Key | Aktion / Action |
 |-------------|-----------------|
 | `Space` | Play / Pause |
-| `N` | Naechster Song / Next track |
-| `B` | Vorheriger Song / Previous track |
-| `←` `→` | Vor- / Zurueckspulen (5s) / Seek forward/backward |
+| `+` `-` | Lautstaerke / Volume |
+| `TAB` | Ansicht wechseln: Dateien → Favoriten → Playlists → Verlauf / Cycle view |
 | `↑` `↓` | Navigation in der Liste / Navigate list |
 | `Enter` | Song abspielen / Ordner oeffnen / Play track / Open folder |
-| `+` `-` | Lautstaerke / Volume |
-| `X` | Shuffle ein/aus / Toggle shuffle |
-| `R` | Repeat: Off → All → One / Cycle repeat mode |
-| `TAB` | Ansicht wechseln: Explorer → Favoriten → Playlists / Cycle view |
 | `F` | Favorit hinzufuegen/entfernen / Toggle favorite |
 | `P` | Playlist-Menue / Playlist menu |
-| `S` | Globale Suche / Global search |
-| `L` | Musik-Bibliothek waehlen / Select music library |
-| `O` | Debug-Log ein-/ausblenden / Toggle debug log |
-| `C` | Debug-Log kopieren / Copy debug log |
 | `U` | Datei umbenennen / Rename file |
 | `DEL` | Datei loeschen / Delete file |
 | `T` | Theme wechseln / Cycle theme |
-| `I` | Artist-Info (Wikipedia) / Artist info |
+| `S` | Einstellungen / Settings |
+| `I` | Info / About |
+| `L` | Debug-Log ein-/ausblenden / Toggle debug log |
+| `C` | Debug-Log kopieren / Copy debug log |
+| `X` | Shuffle ein/aus / Toggle shuffle |
+| `R` | Repeat: Off → All → One / Cycle repeat mode |
 | `Q` | Beenden / Quit |
+
+Naechster/Vorheriger Track, Seek (5 s) und Globale Suche sind ueber die Steuerleiste und die Suchleiste per Maus erreichbar. / Next/previous track, seeking (5 s) and global search are available via the control bar and search field (mouse).
 
 ## Dateiverknuepfung / File Association
 
