@@ -24,9 +24,11 @@ from . import __version__
 from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode
 from .themes import RETRO_THEMES, RETRO_THEME_NAMES, THEME_DISPLAY_NAMES
 from .infrastructure.audio_player import PygameAudioPlayer
+from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
-from .infrastructure.playlist_store import MarkdownPlaylistStore
+from .infrastructure.playlist_migration import migrate_markdown_playlists
 from .infrastructure.settings import JsonSettingsStore
+from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
@@ -89,7 +91,15 @@ class RetroAmpApp(App):
         self._audio_player = PygameAudioPlayer()
         self._metadata_reader = MutagenMetadataReader()
         self._settings_store = JsonSettingsStore()
-        self._playlist_store = MarkdownPlaylistStore()
+        self._database = Database()
+        self._database.open()
+        self._playlist_store = SqlitePlaylistRepository(self._database.connection)
+        # Einmalige Migration der alten ~/.retro-amp/playlists/*.md-Dateien.
+        # Entfernt MD-Dateien nach erfolgreichem Import; spaetere Starts sind No-Ops.
+        migrate_markdown_playlists(
+            Path.home() / ".retro-amp" / "playlists",
+            self._playlist_store,
+        )
         self._spectrum_analyzer = SpectrumAnalyzer()
 
         # Services
@@ -518,17 +528,37 @@ class RetroAmpApp(App):
         """Settings-Dialog anzeigen."""
         from .screens.settings_screen import SettingsScreen  # Lazy import
         current = self._settings_store.load()
-        self.push_screen(SettingsScreen(current), callback=self._on_settings_closed)
+        db_settings = {
+            "db_journal_mode": self._database.get_setting("db_journal_mode", "DELETE"),
+        }
+        self.push_screen(
+            SettingsScreen(current, db_settings),
+            callback=self._on_settings_closed,
+        )
 
-    def _on_settings_closed(self, new_settings: dict[str, object] | None) -> None:
+    def _on_settings_closed(
+        self, result: dict[str, dict[str, object]] | None,
+    ) -> None:
         """Callback nach Schliessen des Settings-Dialogs."""
-        if new_settings is None:
+        if result is None:
             return
+        new_settings = result.get("settings", {})
+        new_db_settings = result.get("db_settings", {})
+
         current = self._settings_store.load()
         changed_renderer = current.get("cover_renderer") != new_settings.get("cover_renderer")
         current.update(new_settings)
         self._settings_store.save(current)
-        if changed_renderer:
+
+        # DB-Settings persistieren — journal_mode greift erst nach Neustart
+        old_journal = self._database.get_setting("db_journal_mode", "DELETE")
+        new_journal = str(new_db_settings.get("db_journal_mode", old_journal))
+        changed_journal = old_journal.upper() != new_journal.upper()
+        if changed_journal:
+            self._database.set_setting("db_journal_mode", new_journal)
+
+        needs_restart = changed_renderer or changed_journal
+        if needs_restart:
             self.notify(
                 f"{t('settings.saved')} — {t('settings.restart_hint')}",
                 severity="information",
@@ -1444,5 +1474,9 @@ class RetroAmpApp(App):
         self._lyrics_generation += 1  # Offene Lyrics-Threads ignorieren
         self._spectrum_analyzer.unload()
         self._audio_player.cleanup()
+        try:
+            self._database.close()
+        except Exception:
+            pass
         clear_session()  # Sauberer Exit → Session loeschen
         release_lock()

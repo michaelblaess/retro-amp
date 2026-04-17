@@ -6,16 +6,25 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, Label, Static, TabbedContent, TabPane
+from textual.widgets import Button, Checkbox, Label, Select, Static, TabbedContent, TabPane
 
 from ..i18n import t
 
 
-class SettingsScreen(ModalScreen[dict[str, object] | None]):
+# Resultat-Typ des Dialogs: enthaelt beide Dicts (settings.json + DB-Settings)
+SettingsResult = dict[str, dict[str, object]]
+
+_JOURNAL_MODES: tuple[str, ...] = ("DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF")
+
+
+class SettingsScreen(ModalScreen[SettingsResult | None]):
     """Modal-Dialog fuer retro-amp Einstellungen.
 
-    Gibt die geaenderten Settings zurueck (oder None bei Abbruch).
-    Die App ist verantwortlich fuer das Speichern via JsonSettingsStore.
+    Gibt ein Dict mit zwei Keys zurueck (oder None bei Abbruch):
+      - ``settings``: Werte fuer settings.json (Theme, Cover-Renderer, ...)
+      - ``db_settings``: Werte fuer die DB-settings-Tabelle (journal_mode, ...)
+
+    Die App ist verantwortlich fuer das Speichern in den jeweiligen Stores.
     """
 
     DEFAULT_CSS = """
@@ -76,10 +85,18 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
         Binding("ctrl+s", "save", "Save"),
     ]
 
-    def __init__(self, settings: dict[str, object]) -> None:
+    def __init__(
+        self,
+        settings: dict[str, object],
+        db_settings: dict[str, object] | None = None,
+    ) -> None:
         super().__init__()
         self._settings = dict(settings)
+        self._db_settings = dict(db_settings or {})
         self._cover_renderer = str(settings.get("cover_renderer", "halfblock"))
+        self._journal_mode = str(self._db_settings.get("db_journal_mode", "DELETE")).upper()
+        if self._journal_mode not in _JOURNAL_MODES:
+            self._journal_mode = "DELETE"
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -89,6 +106,9 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
                 with TabPane(t("settings.tab_cover"), id="tab-cover"):
                     with VerticalScroll():
                         yield from self._cover_fields()
+                with TabPane(t("settings.tab_database"), id="tab-database"):
+                    with VerticalScroll():
+                        yield from self._database_fields()
 
             with Horizontal(classes="button-row"):
                 yield Button(
@@ -118,6 +138,18 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
             markup=True,
         )
 
+    def _database_fields(self) -> ComposeResult:
+        """Felder fuer den Datenbank-Tab."""
+        with Horizontal(classes="form-row"):
+            yield Label(t("settings.db_journal_label"))
+            yield Select[str](
+                options=[(mode, mode) for mode in _JOURNAL_MODES],
+                value=self._journal_mode,
+                allow_blank=False,
+                id="select-journal-mode",
+            )
+        yield Static(t("settings.db_journal_hint"), classes="hint")
+
     @on(Button.Pressed, "#btn-save")
     def _on_save(self) -> None:
         self.action_save()
@@ -127,10 +159,16 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
         self.action_cancel()
 
     def action_save(self) -> None:
-        """Sammelt alle Werte und schliesst den Dialog mit dem neuen Settings-Dict."""
+        """Sammelt alle Werte und schliesst den Dialog mit beiden Settings-Dicts."""
         graphics_enabled = self._get_checkbox("check-cover-graphics")
         self._settings["cover_renderer"] = "graphics" if graphics_enabled else "halfblock"
-        self.dismiss(self._settings)
+
+        journal_mode = self._get_select_value("select-journal-mode", self._journal_mode)
+        if journal_mode not in _JOURNAL_MODES:
+            journal_mode = "DELETE"
+        self._db_settings["db_journal_mode"] = journal_mode
+
+        self.dismiss({"settings": self._settings, "db_settings": self._db_settings})
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -140,3 +178,10 @@ class SettingsScreen(ModalScreen[dict[str, object] | None]):
             return self.query_one(f"#{checkbox_id}", Checkbox).value
         except Exception:
             return False
+
+    def _get_select_value(self, select_id: str, fallback: str) -> str:
+        try:
+            value = self.query_one(f"#{select_id}", Select).value
+            return str(value) if value is not Select.BLANK else fallback
+        except Exception:
+            return fallback

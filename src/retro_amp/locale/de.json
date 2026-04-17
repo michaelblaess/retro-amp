@@ -157,6 +157,9 @@
 
   "settings.title": "Einstellungen",
   "settings.tab_cover": "Cover",
+  "settings.tab_database": "Datenbank",
+  "settings.db_journal_label": "Journal-Modus:",
+  "settings.db_journal_hint": "SQLite Journal-Modus der retro-amp.db:\n\n\u2022 DELETE: Standard, Dropbox-/OneDrive-sicher (empfohlen).\n\u2022 WAL: Schneller bei Parallelzugriffen, erzeugt .wal/.shm-Sidecars.\n\u2022 TRUNCATE / PERSIST: Journal-Datei wird nicht geloescht.\n\u2022 MEMORY: Journal im RAM, schnell, aber Datenverlust bei Absturz.\n\u2022 OFF: Kein Rollback-Schutz \u2014 nicht empfohlen.\n\nDie Aenderung wird beim naechsten Start von retro-amp aktiv.",
   "settings.cover_graphics_label": "Rendering-Modus:",
   "settings.cover_graphics_checkbox": "Terminal-Grafik-Protokoll verwenden (pixelgenaue Cover)",
   "settings.cover_graphics_hint": "Nutzt das beste verfuegbare Grafik-Protokoll fuer pixelgenaue Cover:\n\n\u2022 TGP (Kitty-Protokoll): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nAuf nicht unterstuetzten Terminals fallen wir automatisch auf das\nbisherige Unicode-Halfblock-Rendering zurueck.\n\nDie Aenderung wird beim naechsten Start des Players aktiv.",

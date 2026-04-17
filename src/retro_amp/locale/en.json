@@ -157,6 +157,9 @@
 
   "settings.title": "Settings",
   "settings.tab_cover": "Cover",
+  "settings.tab_database": "Database",
+  "settings.db_journal_label": "Journal mode:",
+  "settings.db_journal_hint": "SQLite journal mode for retro-amp.db:\n\n\u2022 DELETE: Default, safe for Dropbox/OneDrive (recommended).\n\u2022 WAL: Faster for parallel access, creates .wal/.shm sidecars.\n\u2022 TRUNCATE / PERSIST: Journal file is not deleted.\n\u2022 MEMORY: Journal in RAM, fast, but data loss on crash.\n\u2022 OFF: No rollback protection \u2014 not recommended.\n\nThe change takes effect on the next restart of retro-amp.",
   "settings.cover_graphics_label": "Rendering mode:",
   "settings.cover_graphics_checkbox": "Use terminal graphics protocol (pixel-perfect covers)",
   "settings.cover_graphics_hint": "Uses the best available graphics protocol for pixel-perfect covers:\n\n\u2022 TGP (Kitty protocol): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nOn unsupported terminals we automatically fall back to the\nprevious Unicode half-block rendering.\n\nThe change takes effect on the next restart of the player.",
