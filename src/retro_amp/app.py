@@ -508,7 +508,6 @@ class RetroAmpApp(App):
         self.theme = next_theme
         display = THEME_DISPLAY_NAMES.get(next_theme, next_theme)
         self.notify(t("notify.theme", name=display))
-        self._save_theme(next_theme)
 
     def action_show_about(self) -> None:
         """About-Dialog anzeigen."""
@@ -1306,9 +1305,13 @@ class RetroAmpApp(App):
         settings["volume"] = self._player_service.state.volume
         self._settings_store.save(settings)
 
-    def _save_theme(self, theme_name: str) -> None:
-        """Speichert das gewaehlte Theme in Settings."""
+    def watch_theme(self, theme_name: str) -> None:
+        """Persistiert jede Theme-Aenderung (auch via Ctrl+P Theme-Picker)."""
+        if not hasattr(self, "_settings_store"):
+            return
         settings = self._settings_store.load()
+        if settings.get("theme") == theme_name:
+            return
         settings["theme"] = theme_name
         self._settings_store.save(settings)
 
