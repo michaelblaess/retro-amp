@@ -4,6 +4,9 @@ Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](ht
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
+![retro-amp v0.17.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+*Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal. / Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
+
 ![BeOS Theme](docs/screenshots/01-main.png)
 *BeOS Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
 
