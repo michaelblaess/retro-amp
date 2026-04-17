@@ -32,6 +32,8 @@ from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
+from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
+from .services.history_service import DEFAULT_HISTORY_LIMIT, HistoryService
 from .services.liner_notes_service import LinerNotesService
 from .services.lyrics_service import LyricsService
 from .services.metadata_service import MetadataService
@@ -41,6 +43,7 @@ from .widgets.cover_art_panel import CoverArtPanel
 from .widgets.file_table import FileTable
 from .widgets.favorites_tree import FavoritesTree
 from .widgets.folder_browser import FolderBrowser
+from .widgets.history_tree import HistoryTree
 from .widgets.playlist_tree import PlaylistTree
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
@@ -106,6 +109,14 @@ class RetroAmpApp(App):
         self._player_service = PlayerService(self._audio_player)
         self._metadata_service = MetadataService(self._metadata_reader)
         self._playlist_service = PlaylistService(self._playlist_store)
+        self._history_repo = SqliteHistoryRepository(self._database.connection)
+        self._history_service = HistoryService(
+            self._history_repo,
+            is_enabled=lambda: self._database.get_bool_setting("history_enabled", False),
+            get_limit=lambda: self._database.get_int_setting(
+                "history_limit", DEFAULT_HISTORY_LIMIT,
+            ),
+        )
         self._liner_notes_service = LinerNotesService()
         self._lyrics_service = LyricsService()
 
@@ -203,6 +214,8 @@ class RetroAmpApp(App):
                         yield FavoritesTree(id="favorites-tree")
                     with TabPane(t("tab.playlists"), id="tab-playlists"):
                         yield PlaylistTree(id="playlist-tree")
+                    with TabPane(t("tab.history"), id="tab-history"):
+                        yield HistoryTree(id="history-tree")
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
                 yield Rule(id="tab-separator")
@@ -237,6 +250,7 @@ class RetroAmpApp(App):
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
             on_error=self._on_playback_error,
+            on_started=self._on_track_started,
         )
         # Theme-Name in Titelleiste
         display = THEME_DISPLAY_NAMES.get(self.theme, self.theme)
@@ -528,13 +542,29 @@ class RetroAmpApp(App):
         """Settings-Dialog anzeigen."""
         from .screens.settings_screen import SettingsScreen  # Lazy import
         current = self._settings_store.load()
-        db_settings = {
+        db_settings: dict[str, object] = {
             "db_journal_mode": self._database.get_setting("db_journal_mode", "DELETE"),
+            "history_enabled": self._database.get_bool_setting("history_enabled", False),
+            "history_limit": self._database.get_int_setting(
+                "history_limit", DEFAULT_HISTORY_LIMIT,
+            ),
         }
         self.push_screen(
-            SettingsScreen(current, db_settings),
+            SettingsScreen(current, db_settings, on_clear_history=self._clear_history),
             callback=self._on_settings_closed,
         )
+
+    def _clear_history(self) -> int:
+        """Callback fuer den "Verlauf loeschen"-Button im Settings-Dialog."""
+        count = sum(
+            len(g.entries) for g in self._history_service.list_grouped()
+        )
+        self._history_service.clear_all()
+        try:
+            self._refresh_history_tree()
+        except Exception:
+            pass
+        return count
 
     def _on_settings_closed(
         self, result: dict[str, dict[str, object]] | None,
@@ -557,6 +587,24 @@ class RetroAmpApp(App):
         if changed_journal:
             self._database.set_setting("db_journal_mode", new_journal)
 
+        # History-Settings: live wirksam, kein Neustart noetig
+        if "history_enabled" in new_db_settings:
+            self._database.set_bool_setting(
+                "history_enabled", bool(new_db_settings["history_enabled"]),
+            )
+        if "history_limit" in new_db_settings:
+            try:
+                self._database.set_int_setting(
+                    "history_limit", int(new_db_settings["history_limit"]),
+                )
+            except (TypeError, ValueError):
+                pass
+        # Tab neu rendern (Hinweis/Eintraege umschalten)
+        try:
+            self._refresh_history_tree()
+        except Exception:
+            pass
+
         needs_restart = changed_renderer or changed_journal
         if needs_restart:
             self.notify(
@@ -576,9 +624,9 @@ class RetroAmpApp(App):
         search_input.focus()
 
     def action_cycle_view(self) -> None:
-        """Wechselt zwischen Dateien, Favoriten und Playlists."""
+        """Wechselt zwischen Dateien, Favoriten, Playlists und Verlauf."""
         tabs = self.query_one("#left-tabs", TabbedContent)
-        tab_ids = ["tab-browser", "tab-favorites", "tab-playlists"]
+        tab_ids = ["tab-browser", "tab-favorites", "tab-playlists", "tab-history"]
         idx = tab_ids.index(tabs.active)
         next_idx = (idx + 1) % len(tab_ids)
         tabs.active = tab_ids[next_idx]
@@ -600,6 +648,10 @@ class RetroAmpApp(App):
             self._refresh_playlist_tree()
             self.query_one("#playlist-tree", PlaylistTree).focus()
             self._write_log(t("log.view_playlists"))
+        elif event.pane.id == "tab-history":
+            self._refresh_history_tree()
+            self.query_one("#history-tree", HistoryTree).focus()
+            self._write_log(t("log.view_history"))
 
     def action_toggle_log(self) -> None:
         """Debug-Log ein-/ausblenden."""
@@ -983,6 +1035,30 @@ class RetroAmpApp(App):
             self._refresh_favorites_tree()
             self._write_log(t("log.favorite_removed", name=event.path.name))
 
+    def on_history_tree_track_selected(
+        self, event: HistoryTree.TrackSelected,
+    ) -> None:
+        """Verlauf-Track ausgewaehlt — navigieren und abspielen."""
+        path = event.path
+        if path.is_file():
+            parent = path.parent
+            self._scan_directory(parent)
+            self._save_last_path(parent)
+            if self._metadata_service.is_audio_file(path):
+                track = self._metadata_service.read_track(path)
+                self._play_track(track)
+        else:
+            self.notify(t("notify.file_not_found"), severity="warning")
+
+    def on_history_tree_clear_requested(
+        self, event: HistoryTree.ClearRequested,
+    ) -> None:
+        """Verlauf auf Wunsch komplett loeschen."""
+        self._history_service.clear_all()
+        self._refresh_history_tree()
+        self.notify(t("notify.history_cleared"))
+        self._write_log(t("log.history_cleared"))
+
     def on_playlist_tree_track_selected(
         self, event: PlaylistTree.TrackSelected,
     ) -> None:
@@ -1215,6 +1291,13 @@ class RetroAmpApp(App):
         """Callback bei Playback-Fehlern."""
         self._write_log(f"[bold red]{error}[/bold red]")
         self.notify(error, severity="warning", timeout=8)
+
+    def _on_track_started(self, track: AudioTrack) -> None:
+        """Callback wenn ein Track startet — Verlauf schreiben (wenn aktiviert)."""
+        try:
+            self._history_service.record_play(track.path)
+        except Exception:
+            logger.debug("Verlauf konnte nicht aktualisiert werden", exc_info=True)
 
     def _on_track_finished(self) -> None:
         """Callback wenn ein Track fertig ist."""
@@ -1458,6 +1541,13 @@ class RetroAmpApp(App):
             tracks = self._playlist_service.load_playlist_tracks(name)
             playlists[name] = tracks
         pl_tree.load_playlists(playlists)
+
+    def _refresh_history_tree(self) -> None:
+        """Aktualisiert den Verlauf-Baum mit aktuellen Daten."""
+        history_tree = self.query_one("#history-tree", HistoryTree)
+        enabled = self._database.get_bool_setting("history_enabled", False)
+        groups = self._history_service.list_grouped() if enabled else []
+        history_tree.load_groups(groups, enabled)
 
     def _write_log(self, message: str) -> None:
         """Schreibt eine Nachricht ins Debug-Log."""

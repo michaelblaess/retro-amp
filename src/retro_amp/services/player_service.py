@@ -4,7 +4,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..domain.models import AudioTrack, PlaybackState, PlayerState
-from ..domain.protocols import AudioPlayer, OnErrorCallback, OnFinishedCallback
+from ..domain.protocols import (
+    AudioPlayer,
+    OnErrorCallback,
+    OnFinishedCallback,
+    OnTrackStartedCallback,
+)
 
 
 class PlayerService:
@@ -19,6 +24,7 @@ class PlayerService:
         self._state = PlayerState()
         self._on_finished: OnFinishedCallback | None = None
         self._on_error: OnErrorCallback | None = None
+        self._on_started: OnTrackStartedCallback | None = None
 
     @property
     def state(self) -> PlayerState:
@@ -28,10 +34,12 @@ class PlayerService:
         self,
         on_finished: OnFinishedCallback | None = None,
         on_error: OnErrorCallback | None = None,
+        on_started: OnTrackStartedCallback | None = None,
     ) -> None:
         """Setzt Callbacks fuer Events."""
         self._on_finished = on_finished
         self._on_error = on_error
+        self._on_started = on_started
 
     def load_tracks(self, tracks: list[AudioTrack]) -> None:
         """Laedt eine Liste von Tracks in den Player."""
@@ -51,6 +59,7 @@ class PlayerService:
             self._state.current_index = index
             self._state.state = PlaybackState.PLAYING
             self._state.position_seconds = 0.0
+            self._fire_started(track)
         except Exception as e:
             self._state.state = PlaybackState.STOPPED
             if self._on_error:
@@ -63,10 +72,20 @@ class PlayerService:
             self._state.current_track = track
             self._state.state = PlaybackState.PLAYING
             self._state.position_seconds = 0.0
+            self._fire_started(track)
         except Exception as e:
             self._state.state = PlaybackState.STOPPED
             if self._on_error:
                 self._on_error(str(e))
+
+    def _fire_started(self, track: AudioTrack) -> None:
+        """Benachrichtigt Listener ueber einen gestarteten Track (z.B. History)."""
+        if self._on_started is None:
+            return
+        try:
+            self._on_started(track)
+        except Exception:
+            pass
 
     def toggle_pause(self) -> None:
         """Wechselt zwischen Play und Pause."""

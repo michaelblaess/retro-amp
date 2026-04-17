@@ -201,6 +201,19 @@ class PlaylistEntry:
 
 
 @dataclass
+class HistoryEntry:
+    """Ein Eintrag im Wiedergabeverlauf."""
+
+    path: Path
+    played_at: datetime
+    name: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.name:
+            self.name = self.path.name
+
+
+@dataclass
 class Playlist:
     """Eine Playlist mit Eintraegen."""
 

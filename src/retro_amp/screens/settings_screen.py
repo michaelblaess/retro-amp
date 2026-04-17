@@ -1,12 +1,14 @@
 """Settings-Screen — Modal-Dialog fuer Einstellungen mit Tabs."""
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, Label, Select, Static, TabbedContent, TabPane
+from textual.widgets import Button, Checkbox, Input, Label, Select, Static, TabbedContent, TabPane
 
 from ..i18n import t
 
@@ -89,6 +91,7 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         self,
         settings: dict[str, object],
         db_settings: dict[str, object] | None = None,
+        on_clear_history: Callable[[], int] | None = None,
     ) -> None:
         super().__init__()
         self._settings = dict(settings)
@@ -97,6 +100,12 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         self._journal_mode = str(self._db_settings.get("db_journal_mode", "DELETE")).upper()
         if self._journal_mode not in _JOURNAL_MODES:
             self._journal_mode = "DELETE"
+        self._history_enabled = bool(self._db_settings.get("history_enabled", False))
+        try:
+            self._history_limit = int(self._db_settings.get("history_limit", 1000))
+        except (TypeError, ValueError):
+            self._history_limit = 1000
+        self._on_clear_history = on_clear_history
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -109,6 +118,9 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
                 with TabPane(t("settings.tab_database"), id="tab-database"):
                     with VerticalScroll():
                         yield from self._database_fields()
+                with TabPane(t("settings.tab_history"), id="tab-history"):
+                    with VerticalScroll():
+                        yield from self._history_fields()
 
             with Horizontal(classes="button-row"):
                 yield Button(
@@ -150,6 +162,31 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
             )
         yield Static(t("settings.db_journal_hint"), classes="hint")
 
+    def _history_fields(self) -> ComposeResult:
+        """Felder fuer den Verlauf-Tab."""
+        with Horizontal(classes="form-row"):
+            yield Label(t("settings.history_enable_label"))
+            yield Checkbox(
+                t("settings.history_enable_checkbox"),
+                value=self._history_enabled,
+                id="check-history-enabled",
+            )
+        with Horizontal(classes="form-row"):
+            yield Label(t("settings.history_limit_label"))
+            yield Input(
+                value=str(self._history_limit),
+                type="integer",
+                id="input-history-limit",
+            )
+        with Horizontal(classes="form-row"):
+            yield Label("")
+            yield Button(
+                t("settings.history_clear_button"),
+                variant="warning",
+                id="btn-clear-history",
+            )
+        yield Static(t("settings.history_hint"), classes="hint")
+
     @on(Button.Pressed, "#btn-save")
     def _on_save(self) -> None:
         self.action_save()
@@ -157,6 +194,20 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
     @on(Button.Pressed, "#btn-cancel")
     def _on_cancel(self) -> None:
         self.action_cancel()
+
+    @on(Button.Pressed, "#btn-clear-history")
+    def _on_clear_history_pressed(self) -> None:
+        """Verlauf sofort loeschen (ohne Dialog zu schliessen)."""
+        if self._on_clear_history is None:
+            return
+        try:
+            count = self._on_clear_history()
+        except Exception:
+            count = 0
+        self.app.notify(
+            t("settings.history_cleared", count=count),
+            severity="information",
+        )
 
     def action_save(self) -> None:
         """Sammelt alle Werte und schliesst den Dialog mit beiden Settings-Dicts."""
@@ -167,6 +218,11 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         if journal_mode not in _JOURNAL_MODES:
             journal_mode = "DELETE"
         self._db_settings["db_journal_mode"] = journal_mode
+
+        self._db_settings["history_enabled"] = self._get_checkbox("check-history-enabled")
+        self._db_settings["history_limit"] = self._get_int_input(
+            "input-history-limit", self._history_limit, minimum=10, maximum=1_000_000,
+        )
 
         self.dismiss({"settings": self._settings, "db_settings": self._db_settings})
 
@@ -185,3 +241,15 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
             return str(value) if value is not Select.BLANK else fallback
         except Exception:
             return fallback
+
+    def _get_int_input(
+        self, input_id: str, fallback: int, minimum: int, maximum: int,
+    ) -> int:
+        try:
+            raw = self.query_one(f"#{input_id}", Input).value.strip()
+            if not raw:
+                return fallback
+            value = int(raw)
+        except (ValueError, Exception):
+            return fallback
+        return max(minimum, min(maximum, value))

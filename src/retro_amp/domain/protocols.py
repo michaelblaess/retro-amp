@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Protocol
 
-from .models import AudioTrack, Playlist
+from .models import AudioTrack, HistoryEntry, Playlist
 
 
 class AudioPlayer(Protocol):
@@ -83,6 +83,26 @@ class PlaylistRepository(Protocol):
         ...
 
 
+class HistoryRepository(Protocol):
+    """Interface fuer Wiedergabeverlauf-Persistenz."""
+
+    def add(self, path: Path) -> None:
+        """Speichert einen Play-Eintrag mit aktuellem Zeitstempel."""
+        ...
+
+    def list_recent(self, limit: int = 1000) -> list[HistoryEntry]:
+        """Liefert die letzten Eintraege (neuster zuerst)."""
+        ...
+
+    def clear(self) -> None:
+        """Loescht den gesamten Verlauf."""
+        ...
+
+    def trim(self, max_entries: int) -> None:
+        """Behaelt nur die letzten ``max_entries`` Eintraege."""
+        ...
+
+
 class SettingsStore(Protocol):
     """Interface fuer Settings-Persistenz."""
 
@@ -99,3 +119,4 @@ class SettingsStore(Protocol):
 OnProgressCallback = Callable[[float], None]
 OnFinishedCallback = Callable[[], None]
 OnErrorCallback = Callable[[str], None]
+OnTrackStartedCallback = Callable[[AudioTrack], None]
