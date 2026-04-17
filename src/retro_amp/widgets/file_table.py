@@ -14,6 +14,19 @@ from ..domain.models import AudioTrack
 from ..i18n import t
 
 
+def _format_size(total_bytes: int) -> str:
+    """Formatiert Bytes dynamisch als B/KB/MB/GB."""
+    if total_bytes <= 0:
+        return ""
+    if total_bytes < 1024:
+        return f"{total_bytes} B"
+    if total_bytes < 1024 * 1024:
+        return f"{total_bytes / 1024:.0f} KB"
+    if total_bytes < 1024 * 1024 * 1024:
+        return f"{total_bytes / (1024 * 1024):.0f} MB"
+    return f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
+
+
 class FileTable(Widget):
     """Tabelle mit Audio-Dateien: Name, Format, Bitrate, Dauer, Datum, Groesse."""
 
@@ -111,6 +124,12 @@ class FileTable(Widget):
             count_str = t("file_table.count_one")
         else:
             count_str = t("file_table.count", count=total)
+        if total > 0:
+            total_bytes = sum(
+                max(0, track.file_size_bytes) for track in self._tracks
+            )
+            size_str = _format_size(total_bytes)
+            count_str = f"{count_str} \u00b7 {size_str}" if size_str else count_str
         if path_str:
             info.update(f"{path_str}  [{count_str}]")
         else:

@@ -79,9 +79,8 @@ class RetroAmpApp(App):
         self._bindings.bind("t", "cycle_theme", t("binding.theme"), priority=True)
         self._bindings.bind("s", "show_settings", t("binding.settings"), priority=True)
         self._bindings.bind("i", "show_about", t("binding.info"), priority=True)
+        self._bindings.bind("l", "toggle_log", t("binding.log"), priority=True)
         # Versteckte Bindings (nur Tastatur, nicht im Footer)
-        self._bindings.bind("l", "pick_library", t("binding.library"), show=False, priority=True)
-        self._bindings.bind("o", "toggle_log", t("binding.log"), show=False, priority=True)
         self._bindings.bind("c", "copy_log", t("binding.copy_log"), show=False, priority=True)
         self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), show=False, priority=True)
         self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), show=False, priority=True)
@@ -198,6 +197,13 @@ class RetroAmpApp(App):
 
         # Letztes Cover-Art-Ergebnis fuer Now-Playing-Screen
         self._last_cover: tuple[str, str, bytes | None] | None = None
+
+        # Dedup-Fenster: verhindert, dass derselbe Track innerhalb kurzer
+        # Zeit zweimal gestartet wird (eine Mausinteraktion kann ueber
+        # mehrere Pfade _play_track triggern, z.B. Tree-Select + spaeter
+        # eintreffender Scan-Apply).
+        self._last_play_path: str | None = None
+        self._last_play_time: float = 0.0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -614,10 +620,6 @@ class RetroAmpApp(App):
         else:
             self.notify(t("settings.saved"), severity="information")
 
-    def action_pick_library(self) -> None:
-        """Library-Picker-Dialog oeffnen."""
-        self._show_library_picker()
-
     def action_focus_search(self) -> None:
         """Fokus auf Suchleiste setzen."""
         search_input = self.query_one("#global-search", Input)
@@ -863,13 +865,13 @@ class RetroAmpApp(App):
                         count = sum(1 for _ in target.rglob("*") if _.is_file())
                     except PermissionError:
                         count = 0
-                    msg = (
-                        f"Ordner wirklich loeschen?\n\n"
-                        f"{target.name}\n"
-                        f"({count} Dateien)"
+                    msg = t(
+                        "confirm.delete_folder_message",
+                        name=target.name,
+                        count=count,
                     )
                 else:
-                    msg = f"Datei wirklich loeschen?\n\n{target.name}"
+                    msg = t("confirm.delete_file_message", name=target.name)
                 self._delete_with_unload(msg, target)
                 return
 
@@ -881,7 +883,7 @@ class RetroAmpApp(App):
             return
 
         self._delete_with_unload(
-            f"Datei wirklich loeschen?\n\n{track.name}",
+            t("confirm.delete_file_message", name=track.name),
             track.path,
         )
 
@@ -1190,6 +1192,17 @@ class RetroAmpApp(App):
 
     def _play_track(self, track: AudioTrack) -> None:
         """Spielt einen Track ab und aktualisiert UI."""
+        # Dedup: gleicher Track innerhalb 2 s → Zweitaufruf ignorieren.
+        path_key = str(track.path)
+        now = time.monotonic()
+        if (
+            self._last_play_path == path_key
+            and (now - self._last_play_time) < 2.0
+        ):
+            return
+        self._last_play_path = path_key
+        self._last_play_time = now
+
         # Tracklist laden falls noetig
         if track in self._current_tracks:
             idx = self._current_tracks.index(track)

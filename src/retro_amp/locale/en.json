@@ -10,7 +10,6 @@
   "binding.theme": "Theme",
   "binding.info": "Info",
   "binding.search": "Search",
-  "binding.library": "Library",
   "binding.settings": "Settings",
   "binding.log": "Log",
   "binding.copy_log": "Copy log",
@@ -138,6 +137,8 @@
   "confirm.btn_yes": "Yes, delete (j)",
   "confirm.btn_cancel": "Cancel (q)",
   "confirm.error": "Error: {error}",
+  "confirm.delete_folder_message": "Really delete folder?\n\n{name}\n({count} files)",
+  "confirm.delete_file_message": "Really delete file?\n\n{name}",
 
   "playlist_screen.title": "Playlists",
   "playlist_screen.track_title": "Track: {name}",
@@ -157,7 +158,7 @@
 
   "about.description": "Terminal music player with retro charm.\n",
   "about.subtitle": "C64, Amiga, Atari ST \u2014 all in the terminal.\n\n",
-  "about.quote": "\u201cMusic expresses that which cannot be said\nand on which it is impossible\nto be silent.\u201d",
+  "about.quote": "\u201cReal success is not on the stage,\nbut off the stage as a human being,\nand how you get along with your fellow man.\u201d",
   "about.footer": "ESC = Close",
 
   "info.loading": "Searching for information...",

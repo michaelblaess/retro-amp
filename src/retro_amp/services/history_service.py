@@ -7,6 +7,7 @@ fuer die Anzeige im History-Tab.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from datetime import date, timedelta
 from pathlib import Path
@@ -24,6 +25,12 @@ GROUP_THIS_WEEK = "this_week"
 GROUP_OLDER = "older"
 
 DEFAULT_HISTORY_LIMIT = 1000
+
+# Mindestabstand zwischen zwei Eintraegen fuer denselben Pfad. Die App
+# triggert _play_track bei einem Klick gelegentlich zweimal (Tree-Selection
+# + nachgelagerter Scan-Apply). Ohne diese Sperre wuerden beide Play-Events
+# als separate Verlauf-Eintraege landen.
+_DEDUP_WINDOW_SECONDS = 3.0
 
 
 class HistoryGroup(NamedTuple):
@@ -50,11 +57,27 @@ class HistoryService:
         self._repo = repository
         self._is_enabled = is_enabled
         self._get_limit = get_limit
+        self._last_path: str | None = None
+        self._last_timestamp: float = 0.0
 
     def record_play(self, path: Path) -> None:
-        """Fuegt einen Track zum Verlauf hinzu (nur wenn aktiviert)."""
+        """Fuegt einen Track zum Verlauf hinzu (nur wenn aktiviert).
+
+        Ignoriert Duplikate fuer denselben Pfad innerhalb eines kurzen
+        Zeitfensters — so fuehren bekannte Doppel-Trigger (z.B. Klick
+        plus nachgelagertes Scan-Apply) nicht zu doppelten Eintraegen.
+        """
         if not self._is_enabled():
             return
+        path_key = str(path)
+        now = time.monotonic()
+        if (
+            self._last_path == path_key
+            and (now - self._last_timestamp) < _DEDUP_WINDOW_SECONDS
+        ):
+            return
+        self._last_path = path_key
+        self._last_timestamp = now
         self._repo.add(path)
         limit = max(0, int(self._get_limit()))
         if limit > 0:

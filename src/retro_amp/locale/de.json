@@ -10,7 +10,6 @@
   "binding.theme": "Theme",
   "binding.info": "Info",
   "binding.search": "Suche",
-  "binding.library": "Library",
   "binding.settings": "Settings",
   "binding.log": "Log",
   "binding.copy_log": "Log kopieren",
@@ -138,6 +137,8 @@
   "confirm.btn_yes": "Ja, loeschen (j)",
   "confirm.btn_cancel": "Abbrechen (q)",
   "confirm.error": "Fehler: {error}",
+  "confirm.delete_folder_message": "Ordner wirklich löschen?\n\n{name}\n({count} Dateien)",
+  "confirm.delete_file_message": "Datei wirklich löschen?\n\n{name}",
 
   "playlist_screen.title": "Playlists",
   "playlist_screen.track_title": "Track: {name}",
@@ -157,7 +158,7 @@
 
   "about.description": "Terminal-Musikplayer mit Retro-Charme.\n",
   "about.subtitle": "C64, Amiga, Atari ST \u2014 alles im Terminal.\n\n",
-  "about.quote": "\u201eMusik drueckt das aus, was nicht gesagt\nwerden kann und worueber zu schweigen\nunmoeglich ist.\u201c",
+  "about.quote": "\u201eWirklicher Erfolg liegt nicht auf der Bühne,\nsondern abseits der Bühne als Mensch\nund wie man mit seinen Mitmenschen auskommt.\u201c",
   "about.footer": "ESC = Schliessen",
 
   "info.loading": "Suche Informationen...",

@@ -44,7 +44,7 @@ class AboutContent(Widget):
             t("about.quote") + "\n\n",
             style="italic",
         )
-        text.append(" \u2014 Victor Hugo", style="bold")
+        text.append(" \u2014 Sammy Davis jr.", style="bold")
 
         return text
 
