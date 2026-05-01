@@ -11,3 +11,7 @@ build/
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Lokale Debug-Logs und Preview-Bilder
+debug*.log
+retro-amp-preview.png
