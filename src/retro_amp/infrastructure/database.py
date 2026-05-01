@@ -122,6 +122,14 @@ class Database:
             );
             CREATE INDEX IF NOT EXISTS idx_history_played_at
                 ON history(played_at DESC);
+
+            CREATE TABLE IF NOT EXISTS search_history (
+                query TEXT PRIMARY KEY,
+                last_used_at TEXT NOT NULL,
+                use_count INTEGER NOT NULL DEFAULT 1
+            );
+            CREATE INDEX IF NOT EXISTS idx_search_history_used
+                ON search_history(last_used_at DESC);
             """
         )
         conn.commit()

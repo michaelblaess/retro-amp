@@ -103,6 +103,30 @@ class HistoryRepository(Protocol):
         ...
 
 
+class SearchHistoryRepository(Protocol):
+    """Interface fuer Such-Verlauf-Persistenz."""
+
+    def add(self, query: str) -> None:
+        """Speichert eine Suchanfrage (UPSERT, aktualisiert Zeitstempel + Count)."""
+        ...
+
+    def list_recent(self, limit: int = 20) -> list[str]:
+        """Liefert die letzten Suchanfragen (neueste zuerst)."""
+        ...
+
+    def delete(self, query: str) -> None:
+        """Loescht eine einzelne Suchanfrage aus dem Verlauf."""
+        ...
+
+    def clear(self) -> None:
+        """Loescht den gesamten Such-Verlauf."""
+        ...
+
+    def trim(self, max_entries: int) -> None:
+        """Behaelt nur die letzten ``max_entries`` Eintraege."""
+        ...
+
+
 class SettingsStore(Protocol):
     """Interface fuer Settings-Persistenz."""
 

@@ -33,6 +33,7 @@ from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
 from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
+from .infrastructure.sqlite_search_history_repository import SqliteSearchHistoryRepository
 from .services.history_service import DEFAULT_HISTORY_LIMIT, HistoryService
 from .services.liner_notes_service import LinerNotesService
 from .services.lyrics_service import LyricsService
@@ -55,6 +56,7 @@ from .widgets.visualizer import Visualizer
 from .i18n import t
 from .screens.library_picker_screen import LibraryPickerScreen
 from .widgets.youtube_panel import YoutubePanel
+from textual_widgets import SearchInputWithHistory
 
 
 class RetroAmpApp(App):
@@ -109,6 +111,9 @@ class RetroAmpApp(App):
         self._metadata_service = MetadataService(self._metadata_reader)
         self._playlist_service = PlaylistService(self._playlist_store)
         self._history_repo = SqliteHistoryRepository(self._database.connection)
+        self._search_history_repo = SqliteSearchHistoryRepository(self._database.connection)
+        # Auf 100 Eintraege begrenzen — verhindert unbegrenztes Wachstum.
+        self._search_history_repo.trim(100)
         self._history_service = HistoryService(
             self._history_repo,
             is_enabled=lambda: self._database.get_bool_setting("history_enabled", False),
@@ -207,9 +212,13 @@ class RetroAmpApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Input(
+        yield SearchInputWithHistory(
             placeholder=t("search.placeholder"),
-            id="global-search",
+            entries=self._search_history_repo.list_recent(20),
+            max_visible=10,
+            input_id="global-search",
+            dropdown_id="global-search-dropdown",
+            id="global-search-wrapper",
         )
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
@@ -676,6 +685,14 @@ class RetroAmpApp(App):
         query = event.value.strip()
         if not query:
             return
+        # Such-Verlauf aktualisieren (UPSERT) und Dropdown neu befuellen.
+        self._search_history_repo.add(query)
+        try:
+            wrapper = self.query_one("#global-search-wrapper", SearchInputWithHistory)
+            wrapper.set_entries(self._search_history_repo.list_recent(20))
+            wrapper.hide_dropdown()
+        except Exception:
+            pass
         # Loading-Indikator sofort anzeigen
         search_panel = self.query_one("#search-panel", SearchPanel)
         search_panel.show_loading(query)
@@ -683,6 +700,17 @@ class RetroAmpApp(App):
         tabs.active = "tab-search"
         # Suche im Background-Thread starten
         self._run_global_search(query)
+
+    def on_search_input_with_history_history_entry_delete_requested(
+        self, event: SearchInputWithHistory.HistoryEntryDeleteRequested,
+    ) -> None:
+        """Eintrag aus Such-Verlauf loeschen (Delete-Taste im Dropdown)."""
+        self._search_history_repo.delete(event.entry)
+        try:
+            wrapper = self.query_one("#global-search-wrapper", SearchInputWithHistory)
+            wrapper.set_entries(self._search_history_repo.list_recent(20))
+        except Exception:
+            pass
 
     @work(exclusive=True, group="search", thread=True)
     def _run_global_search(self, query: str) -> None:
