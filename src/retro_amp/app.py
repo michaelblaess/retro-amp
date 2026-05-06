@@ -279,9 +279,8 @@ class RetroAmpApp(App):
             on_error=self._on_playback_error,
             on_started=self._on_track_started,
         )
-        # Theme-Name in Titelleiste
-        display = THEME_DISPLAY_NAMES.get(self.theme, self.theme)
-        self.sub_title = f"♪ {display}"
+        # Theme-Name in Titelleiste (Idle-Anzeige bis ein Track laeuft)
+        self.sub_title = self._idle_subtitle()
 
         # Fokus auf Verzeichnisbaum statt Suchfeld (zeigt alle Bindings im Footer)
         self.query_one("#folder-browser", FolderBrowser).focus()
@@ -1383,7 +1382,7 @@ class RetroAmpApp(App):
                     self._write_log(t("log.shuffle_play", name=next_track.display_name))
             else:
                 self._write_log(t("log.shuffle_all_played"))
-                self.sub_title = ""
+                self.sub_title = self._idle_subtitle()
                 self._clear_all_tabs()
                 self._lyrics_generation += 1
             self._sync_visualizer()
@@ -1402,7 +1401,7 @@ class RetroAmpApp(App):
 
         self._sync_visualizer()
         if self._player_service.state.is_stopped:
-            self.sub_title = ""
+            self.sub_title = self._idle_subtitle()
             self._clear_all_tabs()
             self._lyrics_generation += 1
         else:
@@ -1472,14 +1471,29 @@ class RetroAmpApp(App):
         self._settings_store.save(settings)
 
     def watch_theme(self, theme_name: str) -> None:
-        """Persistiert jede Theme-Aenderung (auch via Ctrl+P Theme-Picker)."""
+        """Persistiert jede Theme-Aenderung und aktualisiert die Titelzeile.
+
+        Wenn gerade kein Track laeuft, zeigt sub_title den Theme-Namen
+        an (Idle-Anzeige). Bei laufendem Track bleibt der Track-Name
+        stehen — die Notification beim Theme-Wechsel reicht hier.
+        """
         if not hasattr(self, "_settings_store"):
             return
         settings = self._settings_store.load()
-        if settings.get("theme") == theme_name:
+        if settings.get("theme") != theme_name:
+            settings["theme"] = theme_name
+            self._settings_store.save(settings)
+        # Idle-Anzeige aktualisieren wenn kein Track aktiv
+        if not hasattr(self, "_player_service"):
             return
-        settings["theme"] = theme_name
-        self._settings_store.save(settings)
+        if self._player_service.state.current_track is None:
+            self.sub_title = self._idle_subtitle(theme_name)
+
+    def _idle_subtitle(self, theme_name: str | None = None) -> str:
+        """Liefert den Idle-sub_title (Theme-Anzeige, kein Track aktiv)."""
+        name = theme_name if theme_name is not None else self.theme
+        display = THEME_DISPLAY_NAMES.get(name, name)
+        return f"♪ {display}"
 
     def _load_tabs_for_track(self, track: AudioTrack) -> None:
         """Laedt Inhalte fuer alle Tabs asynchron."""
