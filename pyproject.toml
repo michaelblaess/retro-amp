@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "retro-amp"
 version = "0.16.0"
-description = "Terminal-Musikplayer mit Retro-Charme — C64, Amiga, Atari ST"
+description = "Terminal-Musikplayer mit Retro-Charme — 31 Vintage-Themes via textual-themes"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [

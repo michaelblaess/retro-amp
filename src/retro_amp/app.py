@@ -22,7 +22,13 @@ from textual import work
 
 from . import __version__
 from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode
-from .themes import RETRO_THEMES, RETRO_THEME_NAMES, THEME_DISPLAY_NAMES
+from .themes import (
+    DEFAULT_THEME,
+    RETRO_THEMES,
+    RETRO_THEME_NAMES,
+    THEME_DISPLAY_NAMES,
+    migrate_theme_name,
+)
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
@@ -131,12 +137,18 @@ class RetroAmpApp(App):
         settings = self._settings_store.load()
         self._player_service.set_volume(float(settings.get("volume", 0.8)))
 
-        # Gespeichertes Theme anwenden (Default: C64)
-        saved_theme = str(settings.get("theme", "c64"))
+        # Gespeichertes Theme anwenden — alte Slugs migrieren
+        # (textual-themes 0.5 hat die meisten Themes umbenannt).
+        saved_theme = str(settings.get("theme", DEFAULT_THEME))
+        migrated = migrate_theme_name(saved_theme)
+        if migrated != saved_theme:
+            settings["theme"] = migrated
+            self._settings_store.save(settings)
+            saved_theme = migrated
         if saved_theme in RETRO_THEME_NAMES:
             self.theme = saved_theme
         else:
-            self.theme = "c64"
+            self.theme = DEFAULT_THEME
 
         # Baumwurzel bestimmen (immer der Musik-Root, nicht der letzte Ordner)
         self._needs_library_picker = False

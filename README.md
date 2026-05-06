@@ -7,18 +7,18 @@ A terminal music player with retro charm — built with Python and [Textual](htt
 ![retro-amp v0.17.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal. / Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
-![BeOS Theme](docs/screenshots/01-main.png)
-*BeOS Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
+![BeBox Theme](docs/screenshots/01-main.png)
+*BeBox Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
 
 | | |
 |---|---|
-| ![IBM Terminal](docs/screenshots/02-ibm-theme.png) | ![Amiga Workbench](docs/screenshots/09-amiga-theme.png) |
-| *IBM Terminal — Phosphor-Gruen* | *Amiga Workbench — Blau/Orange* |
+| ![Classic Terminal](docs/screenshots/02-ibm-theme.png) | ![Boing](docs/screenshots/09-amiga-theme.png) |
+| *Classic Terminal — Phosphor-Gruen* | *Boing — Blau/Orange* |
 
 | | |
 |---|---|
-| ![C64 Theme](docs/screenshots/05-c64-theme.png) | ![Lyrics](docs/screenshots/04-lyrics.png) |
-| *C64 Theme — YouTube-Links* | *Lyrics — Original (Englisch)* |
+| ![Brotkasten Theme](docs/screenshots/05-c64-theme.png) | ![Lyrics](docs/screenshots/04-lyrics.png) |
+| *Brotkasten — YouTube-Links* | *Lyrics — Original (Englisch)* |
 
 ## Installation
 
@@ -104,7 +104,7 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Eintraege gefiltert und Treffer hervorgehoben (Persistenz in SQLite)
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
-- **6 Retro-Themes** — C64, Amiga Workbench, Atari ST GEM, IBM Terminal, NeXTSTEP, BeOS
+- **31 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
 - **Session-Recovery** — Nach einem Crash wird der letzte Track und Ordner wiederhergestellt (ohne Auto-Play)
 - **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
@@ -165,18 +165,19 @@ Double-click an audio file to start retro-amp. If already running, the new track
 
 ## Themes
 
-Mit `T` durch die Themes wechseln. / Press `T` to cycle through themes.
+Mit `T` durch die Themes wechseln, oder per Theme-Picker (`Ctrl+P` →
+"theme"). / Press `T` to cycle, or open the theme picker.
 
-| Theme | Inspiration | Typ |
-|-------|-------------|-----|
-| **C64** | Commodore 64 (1982) | Dark — Blau/Hellblau |
-| **Amiga** | Workbench 1.3 (1987) | Dark — Blau/Weiss/Orange |
-| **Atari ST** | GEM Desktop (1985) | Light — Weiss/Schwarz/Gruen |
-| **IBM Terminal** | IBM 3278 (1970er) | Dark — Phosphor-Gruen auf Schwarz |
-| **NeXTSTEP** | NeXTSTEP (1989) | Dark — Grau mit Lila-Akzenten |
-| **BeOS** | BeOS (1995) | Dark — Blau-Grau mit Gelb |
+retro-amp registriert alle Themes aus dem
+[textual-themes](https://github.com/michaelblaess/textual-themes) Paket
+(31 Themes — Dark + Light, von 8-bit ueber Terminal-Phosphor bis zu
+80s-Pastel und Comic-Pulp). Die komplette Galerie mit Live-Carousel:
+**[michaelblaess.github.io/textual-themes](https://michaelblaess.github.io/textual-themes/)**.
 
-Die Themes sind als eigenstaendiges Paket verfuegbar: [textual-themes](https://github.com/michaelblaess/textual-themes)
+> **Migration aus aelteren Versionen:** retro-amp 0.16+ migriert
+> gespeicherte Theme-Slugs automatisch beim Laden — wer vorher z.B.
+> `c64` als Lieblings-Theme hatte, landet auf dem umbenannten
+> `brotkasten` ohne dass etwas zu tun ist.
 
 ## Spektral-Visualizer
 
@@ -270,7 +271,7 @@ git push origin v0.4.0
 | Audio-Metadaten | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
-| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.1 |
+| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
 | UI-Widgets (Such-Verlauf) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.2 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
