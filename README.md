@@ -97,7 +97,7 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
 - **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
-- **Spektral-Visualizer** — Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben, Peak-Hold-Effekt
+- **Spektral-Visualizer** — Echte FFT-Analyse, 5 Darstellungs-Modi (Bars, Blocks, Scope, Matrix, LCD VU-Meter im Kassettendeck-Style), Theme-bewusste Farben. Modus per Right-Click auf den Visualizer wechseln oder im Settings-Tab "Visualizer" konfigurieren.
 - **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
@@ -272,7 +272,7 @@ git push origin v0.4.0
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI-Widgets (Such-Verlauf) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.2 |
+| UI-Widgets (Such-Verlauf, Kontextmenue) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.3.4 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |

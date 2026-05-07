@@ -1310,6 +1310,22 @@ class RetroAmpApp(App):
         except ValueError:
             return VisualizerMode.BARS
 
+    def on_visualizer_mode_change_requested(
+        self, event: Visualizer.ModeChangeRequested,
+    ) -> None:
+        """Visualizer-Modus per Kontextmenue gewechselt — anwenden + persistieren."""
+        settings = self._settings_store.load()
+        if settings.get("visualizer_mode") == event.mode.value:
+            return  # Kein Change → kein unnoetiger Disk-Write
+        settings["visualizer_mode"] = event.mode.value
+        self._settings_store.save(settings)
+        self.query_one("#visualizer", Visualizer).set_mode(event.mode)
+        self.notify(
+            t("notify.visualizer_mode", name=t(f"visualizer.mode_{event.mode.value}")),
+            severity="information",
+            timeout=2,
+        )
+
     def _sync_visualizer(self) -> None:
         """Synchronisiert Visualizer mit Player-State."""
         vis = self.query_one("#visualizer", Visualizer)

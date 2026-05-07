@@ -56,6 +56,7 @@
   "notify.favorite_added": "\u2605 {name} added to favorites",
   "notify.favorite_removed": "\u2606 {name} removed from favorites",
   "notify.theme": "Theme: {name}",
+  "notify.visualizer_mode": "Visualizer: {name}",
   "notify.log_empty": "Log is empty",
   "notify.log_copied": "Log copied ({count} lines)",
   "notify.folder": "Folder: {name}",

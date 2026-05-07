@@ -14,9 +14,13 @@ from collections.abc import Callable
 
 from rich.text import Text
 
+from textual.events import Click
+from textual.message import Message
 from textual.widget import Widget
+from textual_widgets import ContextMenuItem, ContextMenuScreen
 
 from ..domain.models import VisualizerMode
+from ..i18n import t
 
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
@@ -153,6 +157,17 @@ class Visualizer(Widget):
 
     NUM_BARS = 32
 
+    class ModeChangeRequested(Message):
+        """Wird gesendet, wenn der User per Kontextmenue einen anderen Modus waehlt.
+
+        Die App ist verantwortlich, den Modus tatsaechlich anzuwenden und in den
+        Settings zu persistieren — der Visualizer kennt weder Storage noch Theme.
+        """
+
+        def __init__(self, mode: VisualizerMode) -> None:
+            super().__init__()
+            self.mode = mode
+
     def __init__(
         self,
         mode: VisualizerMode = VisualizerMode.BARS,
@@ -188,6 +203,33 @@ class Visualizer(Widget):
             return
         self._mode = mode
         self.refresh()
+
+    def on_click(self, event: Click) -> None:
+        """Right-Click oeffnet ein Kontextmenue mit den verfuegbaren Modi."""
+        if event.button != 3:  # nur Rechtsklick
+            return
+        items = [
+            ContextMenuItem(
+                id=mode.value,
+                label=t(f"visualizer.mode_{mode.value}"),
+                icon="✓" if mode == self._mode else " ",  # Space haelt Spalten ausgerichtet
+            )
+            for mode in VisualizerMode
+        ]
+        self.app.push_screen(
+            ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
+            callback=self._on_mode_picked,
+        )
+
+    def _on_mode_picked(self, action_id: str | None) -> None:
+        """Callback fuer das Kontextmenue — schickt die Auswahl an die App."""
+        if action_id is None:
+            return
+        try:
+            new_mode = VisualizerMode(action_id)
+        except ValueError:
+            return
+        self.post_message(self.ModeChangeRequested(new_mode))
 
     def set_spectrum_source(
         self, source: Callable[[], list[float]] | None,
