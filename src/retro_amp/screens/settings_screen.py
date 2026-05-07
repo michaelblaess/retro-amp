@@ -10,6 +10,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Input, Label, Select, Static, TabbedContent, TabPane
 
+from ..domain.models import VisualizerMode
 from ..i18n import t
 
 
@@ -17,6 +18,13 @@ from ..i18n import t
 SettingsResult = dict[str, dict[str, object]]
 
 _JOURNAL_MODES: tuple[str, ...] = ("DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF")
+_VISUALIZER_MODES: tuple[VisualizerMode, ...] = (
+    VisualizerMode.BARS,
+    VisualizerMode.BLOCKS,
+    VisualizerMode.SCOPE,
+    VisualizerMode.MATRIX,
+    VisualizerMode.LCD,
+)
 
 
 class SettingsScreen(ModalScreen[SettingsResult | None]):
@@ -97,6 +105,11 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         self._settings = dict(settings)
         self._db_settings = dict(db_settings or {})
         self._cover_renderer = str(settings.get("cover_renderer", "halfblock"))
+        raw_visualizer_mode = str(settings.get("visualizer_mode", VisualizerMode.BARS.value))
+        try:
+            self._visualizer_mode = VisualizerMode(raw_visualizer_mode)
+        except ValueError:
+            self._visualizer_mode = VisualizerMode.BARS
         self._journal_mode = str(self._db_settings.get("db_journal_mode", "DELETE")).upper()
         if self._journal_mode not in _JOURNAL_MODES:
             self._journal_mode = "DELETE"
@@ -115,6 +128,9 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
                 with TabPane(t("settings.tab_cover"), id="tab-cover"):
                     with VerticalScroll():
                         yield from self._cover_fields()
+                with TabPane(t("settings.tab_visualizer"), id="tab-visualizer"):
+                    with VerticalScroll():
+                        yield from self._visualizer_fields()
                 with TabPane(t("settings.tab_database"), id="tab-database"):
                     with VerticalScroll():
                         yield from self._database_fields()
@@ -149,6 +165,22 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
             classes="credit",
             markup=True,
         )
+
+    def _visualizer_fields(self) -> ComposeResult:
+        """Felder fuer den Visualizer-Tab."""
+        options: list[tuple[str, str]] = [
+            (t(f"visualizer.mode_{mode.value}"), mode.value)
+            for mode in _VISUALIZER_MODES
+        ]
+        with Horizontal(classes="form-row"):
+            yield Label(t("settings.visualizer_mode_label"))
+            yield Select[str](
+                options=options,
+                value=self._visualizer_mode.value,
+                allow_blank=False,
+                id="select-visualizer-mode",
+            )
+        yield Static(t("settings.visualizer_mode_hint"), classes="hint")
 
     def _database_fields(self) -> ComposeResult:
         """Felder fuer den Datenbank-Tab."""
@@ -213,6 +245,15 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         """Sammelt alle Werte und schliesst den Dialog mit beiden Settings-Dicts."""
         graphics_enabled = self._get_checkbox("check-cover-graphics")
         self._settings["cover_renderer"] = "graphics" if graphics_enabled else "halfblock"
+
+        visualizer_mode = self._get_select_value(
+            "select-visualizer-mode", self._visualizer_mode.value,
+        )
+        try:
+            VisualizerMode(visualizer_mode)
+        except ValueError:
+            visualizer_mode = VisualizerMode.BARS.value
+        self._settings["visualizer_mode"] = visualizer_mode
 
         journal_mode = self._get_select_value("select-journal-mode", self._journal_mode)
         if journal_mode not in _JOURNAL_MODES:

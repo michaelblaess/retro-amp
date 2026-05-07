@@ -21,7 +21,7 @@ from textual.widgets import (
 from textual import work
 
 from . import __version__
-from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode
+from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode, VisualizerMode
 from .themes import (
     DEFAULT_THEME,
     RETRO_THEMES,
@@ -263,7 +263,7 @@ class RetroAmpApp(App):
                     with TabPane(t("tab.search"), id="tab-search"):
                         yield SearchPanel(id="search-panel")
         with Horizontal(id="transport-row"):
-            yield Visualizer(id="visualizer")
+            yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
             yield ControlPanel(id="control-panel")
             yield TransportBar(id="transport")
         yield RichLog(id="app-log", highlight=True, markup=True)
@@ -603,8 +603,17 @@ class RetroAmpApp(App):
 
         current = self._settings_store.load()
         changed_renderer = current.get("cover_renderer") != new_settings.get("cover_renderer")
+        changed_visualizer = current.get("visualizer_mode") != new_settings.get("visualizer_mode")
         current.update(new_settings)
         self._settings_store.save(current)
+
+        # Visualizer-Modus live anwenden (kein Neustart noetig)
+        if changed_visualizer:
+            try:
+                new_mode = VisualizerMode(str(new_settings.get("visualizer_mode")))
+                self.query_one("#visualizer", Visualizer).set_mode(new_mode)
+            except (ValueError, Exception):
+                pass
 
         # DB-Settings persistieren — journal_mode greift erst nach Neustart
         old_journal = self._database.get_setting("db_journal_mode", "DELETE")
@@ -1292,6 +1301,14 @@ class RetroAmpApp(App):
                     position_seconds=state.position_seconds,
                     volume=state.volume,
                 )
+
+    def _load_visualizer_mode(self) -> VisualizerMode:
+        """Liest den gespeicherten Visualizer-Modus aus den Settings."""
+        raw = str(self._settings_store.load().get("visualizer_mode", VisualizerMode.BARS.value))
+        try:
+            return VisualizerMode(raw)
+        except ValueError:
+            return VisualizerMode.BARS
 
     def _sync_visualizer(self) -> None:
         """Synchronisiert Visualizer mit Player-State."""

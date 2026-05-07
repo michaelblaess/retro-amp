@@ -196,6 +196,16 @@
   "settings.cover_graphics_checkbox": "Terminal-Grafik-Protokoll verwenden (pixelgenaue Cover)",
   "settings.cover_graphics_hint": "Nutzt das beste verfuegbare Grafik-Protokoll fuer pixelgenaue Cover:\n\n\u2022 TGP (Kitty-Protokoll): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nAuf nicht unterstuetzten Terminals fallen wir automatisch auf das\nbisherige Unicode-Halfblock-Rendering zurueck.\n\nDie Aenderung wird beim naechsten Start des Players aktiv.",
   "settings.cover_graphics_credit": "\u2665 Dank an [link=\"https://github.com/lnqs/textual-image\"]lnqs/textual-image[/link] fuer die TGP- und Sixel-Widgets.",
+  "settings.tab_visualizer": "Visualizer",
+  "settings.visualizer_mode_label": "Modus:",
+  "settings.visualizer_mode_hint": "Darstellung des Spektral-Visualizers in der Transport-Leiste:\n\n• Bars: 32-Band-Spektrum mit Regenbogenfarben und Peak-Hold (Standard).\n• Blocks: 16 Balken im Winamp-Stil — gruen-gelb-rot je Zeile + Peak-Marker.\n• Scope: Spektralkurve aus Punkten je Band (geglaettet).\n• Matrix: Binaer-Digits 0/1, Farbe nach Band-Intensitaet (cliamp-inspiriert).\n• LCD: 2 horizontale Segment-VU-Meter (Bass + Treble) im Kassettendeck-Look.\n\nDie Aenderung wird sofort wirksam.",
+
+  "visualizer.mode_bars": "Bars (Regenbogen, 32 Baender)",
+  "visualizer.mode_blocks": "Blocks (Winamp-Style, gruen/gelb/rot)",
+  "visualizer.mode_scope": "Scope (Spektralkurve)",
+  "visualizer.mode_matrix": "Matrix (Binaer-Digits)",
+  "visualizer.mode_lcd": "LCD VU (Kassettendeck-Style)",
+
   "settings.btn_save": "Speichern (Ctrl+S)",
   "settings.btn_cancel": "Abbrechen (Esc)",
   "settings.saved": "Einstellungen gespeichert",

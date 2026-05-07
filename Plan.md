@@ -316,6 +316,97 @@ retro-amp/
 - [x] GitHub Actions Release-Workflow (PyInstaller, Multi-Platform)
 - [ ] Optional: Umstieg auf SQLite fuer Playlists
 
+## Geplante Erweiterungen (Inspiration: cliamp)
+
+[bjarneo/cliamp](https://github.com/bjarneo/cliamp) (Go-basierter Winamp-Clone) hat ein
+paar Features die in retro-amp passen koennten. Streaming/Provider-Anbindungen
+(Spotify, Plex, Jellyfin, YouTube etc.) interessieren nicht — relevant sind reine
+UX-/Player-Features.
+
+### Geplant fuer naechstes Release
+
+#### Visualizer-Modi
+
+- Mehrere FFT-/Audio-Modi statt nur dem aktuellen Spectrum-Bars-View
+- Modus-Ideen: Spectrum-Bars (aktuell), Oscilloscope (Wellenform), Peak-/VU-Meter
+  (klassisch), ASCII-Block-Bars (Winamp-Style), Tornado-Spectrum (Mirror oben/unten)
+- **Konfiguration ueber Settings-Dialog** (neuer Tab "Visualizer" — Modus + Farb-Schema + Peak-Hold)
+- Optional: kleiner Cycle-Button direkt neben dem Visualizer (per Maus klickbar) —
+  zuerst pruefen ob es optisch passt, evtl. doch nur ueber Settings
+- Modus wird in Settings persistiert (`watch_*`-Pattern)
+- i18n-Keys `visualizer.mode_*` fuer Modus-Namen
+
+### Backlog — gute Kandidaten, gut machbar
+
+#### Fullscreen-Visualizer (`V`-Taste)
+
+- Toggle: Browser/Listen ausblenden, nur Track-Info + grosser Visualizer
+- Sehr Winamp-ig, gut fuer "abends Musik laufen lassen"
+- ESC oder erneut `V` schliesst Modus
+
+#### Play-Next-Queue (`a` / `A`)
+
+- Separate Queue vor der Playlist — "spiele als naechstes" ohne aktuelle Playlist
+  zu zerstoeren
+- `a`: aktuell markierten Track in Queue einreihen (Toast "Eingereiht")
+- `A`: Queue-Manager-Screen oeffnen (anzeigen, umsortieren, entfernen)
+- Wenn aktueller Track endet: erst Queue abarbeiten, dann normale Playlist-Logik
+- Nicht persistiert (Queue ist immer Session-bezogen)
+
+#### Time-Jump (Ctrl+J)
+
+- Modal: Timestamp eingeben (`mm:ss` oder `hh:mm:ss`), Enter = Seek
+- Trivial wenn Seek schon laeuft
+- Validierung: nicht ueber `track.duration_seconds` hinaus
+
+### Backlog — mittlerer Wert
+
+#### Album-Gruppierung im Playlist-Manager
+
+- Tracks nach Album gruppieren (Tree statt flacher Liste)
+- ID3-Album-Tag als Gruppen-Key
+- Nuetzlich bei langen Playlists (>30 Tracks)
+
+#### Track-Bookmarks
+
+- Anders als Favoriten: speichert *Position innerhalb des Tracks*, nicht den Track
+  selbst
+- Use Case: lange Mixes, Podcasts, Live-Sets — "ab Minute 23 ist der Drop"
+- Bookmark-Verzeichnis: `~/.retro-amp/bookmarks/{trackname}.json`
+- Eigene Taste, `B` ist schon vergeben → Alternative `Ctrl+B`
+
+#### Synced-Lyrics mit Auto-Scroll
+
+- Aktuell statische Lyrics — `.lrc`-Format unterstuetzt Zeitstempel pro Zeile
+- Aktive Zeile bei aktueller Position highlighten und scrollen
+- Format: `[mm:ss.xx] Lyrics-Zeile`
+- Cache wie bisher in `~/.retro-amp/lyrics/{artist}-{title}.lrc`
+
+### Hoher Aufwand / Stack-Limitierung — vorerst nicht im Scope
+
+#### Hardware Media Keys / MPRIS
+
+- pygame.mixer kann das nicht direkt
+- Windows: pywin32 + RegisterHotKey, Linux: dbus + MPRIS-Bridge
+- Wuerde retro-amp deutlich enger ans System koppeln
+
+#### EQ mit Presets (Rock/Jazz/Bass-Boost)
+
+- pygame.mixer hat keine native Filter-Pipeline
+- Audio-Vorverarbeitung pro Buffer mit numpy/scipy noetig (grosser Brocken)
+- Eventuell mit Wechsel auf miniaudio realisierbar
+
+#### Speed-Control (0.25–2.0x)
+
+- pygame.mixer kann nur Pitch-Shift, kein Time-Stretch
+- Brauchte librosa/sox-Pipeline — schwerer Stack
+
+### Verworfen
+
+- **Lua-Plugin-System** (cliamp hat das) — Overkill fuer Personal-Tool
+- **Headless-/IPC-Modus** — retro-amp ist explizit interaktiv
+- **Save-Track-to-Disk** — streaming-spezifisch, fuer Local-Player irrelevant
+
 ## Referenz-Projekte
 
 - `michaelblaess/sitemap-generator` — TUI-Crawler, gleiches Architektur-Pattern

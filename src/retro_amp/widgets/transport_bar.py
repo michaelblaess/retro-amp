@@ -54,7 +54,15 @@ class TransportBar(Widget):
 
     def render(self) -> Text:
         """Rendert die Transport-Leiste."""
-        text = Text()
+        # Innere Breite (ohne Padding) bestimmt, wie viel Platz fuer den Titel
+        # bleibt. Sonst wrappt der Text auf Zeile 2 und der Klick-Handler trifft
+        # Volume/Seek-Bar nicht mehr.
+        outer = self.size.width if self.size.width else 60
+        inner_width = max(20, outer - _PADDING_LEFT * 2)
+
+        # no_wrap + overflow=ellipsis als Sicherheitsnetz, falls die Truncierung
+        # die Breite leicht ueberschiesst (z.B. wegen Wide-Chars im Titel).
+        text = Text(no_wrap=True, overflow="ellipsis")
         state = self._state
 
         # Zeile 1: Status-Icon + Track-Info
@@ -77,17 +85,22 @@ class TransportBar(Widget):
                 display = f"{track.artist} \u2013 {track.title}"
             else:
                 display = track.display_name
-            if len(display) > 50:
-                display = display[:47] + "..."
-            text.append(display, style="bold")
 
             info_parts: list[str] = []
             if track.format_display:
                 info_parts.append(track.format_display)
             if track.bitrate_display:
                 info_parts.append(track.bitrate_display)
-            if info_parts:
-                text.append(f"  [{' | '.join(info_parts)}]", style="dim")
+            format_suffix = f"  [{' | '.join(info_parts)}]" if info_parts else ""
+
+            # Verfuegbare Breite fuer den Titel: inner - icon (3) - format - 1 Puffer
+            title_max = max(10, inner_width - 3 - len(format_suffix) - 1)
+            if len(display) > title_max:
+                display = display[: max(title_max - 3, 5)] + "..."
+
+            text.append(display, style="bold")
+            if format_suffix:
+                text.append(format_suffix, style="dim")
 
             text.append("\n")
 

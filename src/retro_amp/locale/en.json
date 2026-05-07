@@ -196,6 +196,16 @@
   "settings.cover_graphics_checkbox": "Use terminal graphics protocol (pixel-perfect covers)",
   "settings.cover_graphics_hint": "Uses the best available graphics protocol for pixel-perfect covers:\n\n\u2022 TGP (Kitty protocol): Kitty, WezTerm, Ghostty, Konsole\n\u2022 Sixel: Windows Terminal 1.22+, mintty, foot, xterm, iTerm2\n\nOn unsupported terminals we automatically fall back to the\nprevious Unicode half-block rendering.\n\nThe change takes effect on the next restart of the player.",
   "settings.cover_graphics_credit": "\u2665 Thanks to [link=\"https://github.com/lnqs/textual-image\"]lnqs/textual-image[/link] for the TGP and Sixel widgets.",
+  "settings.tab_visualizer": "Visualizer",
+  "settings.visualizer_mode_label": "Mode:",
+  "settings.visualizer_mode_hint": "Display style of the spectrum visualizer in the transport bar:\n\n• Bars: 32-band spectrum with rainbow colors and peak-hold (default).\n• Blocks: 16 bars in Winamp style — green/yellow/red per row + peak markers.\n• Scope: spectral curve made of dots per band (smoothed).\n• Matrix: binary digits 0/1, color based on band intensity (cliamp-inspired).\n• LCD: 2 horizontal segment VU meters (bass + treble) — cassette deck look.\n\nChanges apply immediately.",
+
+  "visualizer.mode_bars": "Bars (rainbow, 32 bands)",
+  "visualizer.mode_blocks": "Blocks (Winamp style, green/yellow/red)",
+  "visualizer.mode_scope": "Scope (spectral curve)",
+  "visualizer.mode_matrix": "Matrix (binary digits)",
+  "visualizer.mode_lcd": "LCD VU (cassette deck style)",
+
   "settings.btn_save": "Save (Ctrl+S)",
   "settings.btn_cancel": "Cancel (Esc)",
   "settings.saved": "Settings saved",
