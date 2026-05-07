@@ -25,6 +25,17 @@
   "binding.cancel": "Cancel",
   "binding.yes": "Yes",
 
+  "tooltip.prev": "Previous track",
+  "tooltip.seek_back": "Seek back 10 seconds",
+  "tooltip.play_pause": "Play / Pause",
+  "tooltip.seek_fwd": "Seek forward 10 seconds",
+  "tooltip.next": "Next track",
+  "tooltip.stop": "Stop",
+  "tooltip.shuffle": "Shuffle playback",
+  "tooltip.repeat": "Repeat mode (off / all / one)",
+  "tooltip.favorite": "Toggle favorite",
+
+
   "search.placeholder": "\ud83d\udd0d Search ...",
   "search.loading": "\ud83d\udd0d Searching for \"{query}\" ...",
   "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} results",

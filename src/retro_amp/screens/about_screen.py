@@ -2,51 +2,14 @@
 from __future__ import annotations
 
 from rich.text import Text
-from textual.app import ComposeResult, RenderResult
+from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
-from textual.widget import Widget
 from textual.widgets import Static
 
 from .. import __author__, __version__, __year__
 from ..i18n import t
-
-
-class AboutContent(Widget):
-    """Rendert den About-Inhalt als Rich Text."""
-
-    DEFAULT_CSS = """
-    AboutContent {
-        height: auto;
-        padding: 1 2;
-    }
-    """
-
-    def render(self) -> RenderResult:
-        """Erstellt den About-Text."""
-        text = Text()
-        text.append(f"v{__version__}", style="bold")
-        text.append(" \u00b7 ", style="dim")
-        text.append(__author__, style="bold")
-        text.append(" \u00b7 ", style="dim")
-        text.append(__year__, style="bold")
-        text.append("\n\n")
-
-        text.append(t("about.description"))
-        text.append(t("about.subtitle"))
-
-        text.append("MP3 \u00b7 OGG \u00b7 FLAC \u00b7 WAV \u00b7 MOD \u00b7 XM \u00b7 S3M \u00b7 SID\n\n")
-
-        text.append("\u2500" * 44 + "\n\n", style="dim")
-
-        text.append(
-            t("about.quote") + "\n\n",
-            style="italic",
-        )
-        text.append(" \u2014 Sammy Davis jr.", style="bold")
-
-        return text
 
 
 class AboutScreen(ModalScreen[None]):
@@ -58,8 +21,11 @@ class AboutScreen(ModalScreen[None]):
     }
 
     AboutScreen > VerticalScroll {
-        width: 60;
-        height: 24;
+        width: auto;
+        height: auto;
+        min-width: 50;
+        max-width: 90;
+        max-height: 90%;
         background: $surface;
         border: thick $accent;
         padding: 1 2;
@@ -72,6 +38,11 @@ class AboutScreen(ModalScreen[None]):
         background: $accent;
         color: $text;
         margin-bottom: 1;
+    }
+
+    AboutScreen #about-content {
+        height: auto;
+        padding: 1 2;
     }
 
     AboutScreen #about-footer {
@@ -91,8 +62,33 @@ class AboutScreen(ModalScreen[None]):
         """Erstellt das Modal-Layout."""
         with VerticalScroll():
             yield Static("retro-amp", id="about-title")
-            yield AboutContent()
+            yield Static(self._build_content(), id="about-content")
             yield Static(t("about.footer"), id="about-footer")
+
+    def _build_content(self) -> Text:
+        """Baut den About-Text als Rich Text."""
+        text = Text()
+        text.append(f"v{__version__}", style="bold")
+        text.append(" · ", style="dim")
+        text.append(__author__, style="bold")
+        text.append(" · ", style="dim")
+        text.append(__year__, style="bold")
+        text.append("\n\n")
+
+        text.append(t("about.description"))
+        text.append(t("about.subtitle"))
+
+        text.append("MP3 · OGG · FLAC · WAV · MOD · XM · S3M · SID\n\n")
+
+        text.append("─" * 44 + "\n\n", style="dim")
+
+        text.append(
+            t("about.quote") + "\n\n",
+            style="italic",
+        )
+        text.append(" — Sammy Davis jr.", style="bold")
+
+        return text
 
     def action_close(self) -> None:
         """Schliesst den Dialog."""

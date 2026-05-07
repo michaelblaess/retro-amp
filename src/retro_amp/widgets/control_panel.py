@@ -7,6 +7,7 @@ from textual.widget import Widget
 from textual.widgets import Button
 
 from ..domain.models import RepeatMode
+from ..i18n import t
 
 
 # Mapping: Button-ID -> Action-Name
@@ -27,7 +28,7 @@ class ControlPanel(Widget):
     """Klickbare Transport-Buttons im WinAmp-Stil.
 
     Layout mit Textual Button-Widgets:
-        [|◄][◄◄][▶ ][►►][►|][■ ] [🔀][↻][♥]
+        [|◄][◄◄][▶ ][►►][►|][■ ] [⇄][↻][♥]
 
     Alle Buttons sind per Mausklick bedienbar und senden
     ButtonClicked-Messages an die App.
@@ -43,24 +44,30 @@ class ControlPanel(Widget):
     }
 
     ControlPanel Button {
-        min-width: 4;
+        min-width: 6;
         width: auto;
         height: 3;
         margin: 0;
+        border: none;
+        border-top: none;
+        border-bottom: none;
+        padding: 0 2;
     }
 
-    /* Mode-Buttons breiter und mit Luecke zur Transport-Gruppe */
+    /* Default-Button hat eigene -active-Regel mit border-top/border-bottom —
+       muss explizit ueberschrieben werden, sonst wirkt der Pressed-State
+       groesser als der Button. */
+    ControlPanel Button.-active {
+        border: none;
+        border-top: none;
+        border-bottom: none;
+        background: $surface-darken-1;
+        tint: $accent 20%;
+    }
+
+    /* Mode-Buttons mit Luecke zur Transport-Gruppe (gleiche Breite wie Transport) */
     ControlPanel #btn-shuffle {
         margin-left: 1;
-        min-width: 6;
-    }
-
-    ControlPanel #btn-repeat {
-        min-width: 6;
-    }
-
-    ControlPanel #btn-favorite {
-        min-width: 6;
     }
 
     /* Active States */
@@ -108,16 +115,23 @@ class ControlPanel(Widget):
     def compose(self) -> ComposeResult:
         """Transport- und Mode-Buttons rendern."""
         # Transport-Gruppe
-        yield Button("|◄", id="btn-prev")
-        yield Button("◄◄", id="btn-seek-back")
-        yield Button("▶ ", id="btn-play-pause")
-        yield Button("►►", id="btn-seek-fwd")
-        yield Button("►|", id="btn-next")
-        yield Button("■ ", id="btn-stop")
+        yield self._make_btn("|◄", "btn-prev", t("tooltip.prev"))
+        yield self._make_btn("◄◄", "btn-seek-back", t("tooltip.seek_back"))
+        yield self._make_btn("▶ ", "btn-play-pause", t("tooltip.play_pause"))
+        yield self._make_btn("►►", "btn-seek-fwd", t("tooltip.seek_fwd"))
+        yield self._make_btn("►|", "btn-next", t("tooltip.next"))
+        yield self._make_btn("■ ", "btn-stop", t("tooltip.stop"))
         # Mode-Gruppe (Luecke durch margin-left in CSS)
-        yield Button("🔀", id="btn-shuffle", classes="dim")
-        yield Button("↻", id="btn-repeat", classes="dim")
-        yield Button("♥", id="btn-favorite", classes="dim")
+        yield self._make_btn("⇄", "btn-shuffle", t("tooltip.shuffle"), classes="dim")
+        yield self._make_btn("↻", "btn-repeat", t("tooltip.repeat"), classes="dim")
+        yield self._make_btn("♥", "btn-favorite", t("tooltip.favorite"), classes="dim")
+
+    @staticmethod
+    def _make_btn(label: str, btn_id: str, tooltip: str, classes: str = "") -> Button:
+        """Erzeugt einen Button mit Tooltip."""
+        btn = Button(label, id=btn_id, classes=classes) if classes else Button(label, id=btn_id)
+        btn.tooltip = tooltip
+        return btn
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Button.Pressed abfangen und als ButtonClicked weiterleiten."""
