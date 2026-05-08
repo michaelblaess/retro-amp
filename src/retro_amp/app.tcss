@@ -25,16 +25,9 @@ Screen {
     margin: 0;
 }
 
-#global-search {
-    height: 3;
-    padding: 0 1;
-    background: $surface;
-    color: $text;
-}
-
-#global-search:focus {
-    background: $surface-darken-1;
-}
+/* Layout/Background/Focus der globalen Suche kommen aus textual-widgets
+   (SearchInputWithHistory .search-row + :focus-within) — eigene Overrides
+   wuerden mit dem Wrapper-Border kollidieren. */
 
 #content-tabs {
     height: 1fr;
