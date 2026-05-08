@@ -1,5 +1,5 @@
 """retro-amp - Terminal-Musikplayer mit Retro-Charme."""
 
-__version__ = "0.21.2"
+__version__ = "0.21.3"
 __author__ = "Michael Blaess"
 __year__ = "2026"
