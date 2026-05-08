@@ -225,6 +225,7 @@ class RetroAmpApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield SearchInputWithHistory(
+            icon="🔍",
             placeholder=t("search.placeholder"),
             entries=self._search_history_repo.list_recent(20),
             max_visible=10,

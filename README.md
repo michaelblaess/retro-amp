@@ -272,7 +272,7 @@ git push origin v0.4.0
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI-Widgets (Such-Verlauf, Kontextmenue) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.3.4 |
+| UI-Widgets (Such-Verlauf, Kontextmenue) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.4.0 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |

@@ -36,10 +36,10 @@
   "tooltip.favorite": "Toggle favorite",
 
 
-  "search.placeholder": "\ud83d\udd0d Search ...",
-  "search.loading": "\ud83d\udd0d Searching for \"{query}\" ...",
-  "search.results": "\ud83d\udd0d \"{query}\" \u2014 {count} results",
-  "search.no_results": "\ud83d\udd0d \"{query}\" \u2014 no results",
+  "search.placeholder": "Search ...",
+  "search.loading": "Searching for \"{query}\" ...",
+  "search.results": "\"{query}\" \u2014 {count} results",
+  "search.no_results": "\"{query}\" \u2014 no results",
 
   "tab.browser": "Files",
   "tab.favorites": "Favorites",
