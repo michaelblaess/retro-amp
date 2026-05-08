@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "retro-amp"
-version = "0.21.3"
+version = "0.21.4"
 description = "Terminal-Musikplayer mit Retro-Charme — 31 Vintage-Themes via textual-themes"
 license = "Apache-2.0"
 requires-python = ">=3.12"
@@ -17,7 +17,7 @@ dependencies = [
     "pyogg>=0.6.14a1",
     "miniaudio>=1.61",
     "textual-themes @ git+https://github.com/michaelblaess/textual-themes.git",
-    "textual-widgets @ git+https://github.com/michaelblaess/textual-widgets.git@v0.4.2",
+    "textual-widgets @ git+https://github.com/michaelblaess/textual-widgets.git@v0.4.3",
     "textual-image[textual]>=0.12.0",
     "Pillow>=10.0",
 ]
