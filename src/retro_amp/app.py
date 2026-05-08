@@ -15,7 +15,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
-    DirectoryTree, Footer, Header, Input, RichLog, Rule, TabbedContent, TabPane,
+    DirectoryTree, Footer, Header, Input, RichLog, TabbedContent, TabPane,
 )
 
 from textual import work
@@ -62,7 +62,7 @@ from .widgets.visualizer import Visualizer
 from .i18n import t
 from .screens.library_picker_screen import LibraryPickerScreen
 from .widgets.youtube_panel import YoutubePanel
-from textual_widgets import SearchInputWithHistory
+from textual_widgets import HorizontalSplitter, SearchInputWithHistory, VerticalSplitter
 
 
 class RetroAmpApp(App):
@@ -244,9 +244,10 @@ class RetroAmpApp(App):
                         yield PlaylistTree(id="playlist-tree")
                     with TabPane(t("tab.history"), id="tab-history"):
                         yield HistoryTree(id="history-tree")
+            yield VerticalSplitter(target_id="left-panel", min_size=20, max_size=80)
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
-                yield Rule(id="tab-separator")
+                yield HorizontalSplitter(target_id="file-table", min_size=5)
                 with TabbedContent(id="content-tabs"):
                     with TabPane(t("tab.lyrics"), id="tab-lyrics"):
                         yield LyricsPanel(id="lyrics-panel")
@@ -282,6 +283,9 @@ class RetroAmpApp(App):
         )
         # Theme-Name in Titelleiste (Idle-Anzeige bis ein Track laeuft)
         self.sub_title = self._idle_subtitle()
+
+        # Gespeicherte Splitter-Groessen anwenden (linkes Panel + File-Table)
+        self._restore_pane_sizes()
 
         # Fokus auf Verzeichnisbaum statt Suchfeld (zeigt alle Bindings im Footer)
         self.query_one("#folder-browser", FolderBrowser).focus()
@@ -1310,6 +1314,51 @@ class RetroAmpApp(App):
             return VisualizerMode(raw)
         except ValueError:
             return VisualizerMode.BARS
+
+    def _restore_pane_sizes(self) -> None:
+        """Setzt die Splitter-gesteuerten Panel-Groessen aus den Settings.
+
+        Werte sind in `pane_sizes` als dict {target_id: size} abgelegt.
+        Faellt graceful auf die CSS-Defaults zurueck wenn nichts gespeichert.
+        """
+        sizes = self._settings_store.load().get("pane_sizes", {})
+        if not isinstance(sizes, dict):
+            return
+        for target_id, size in sizes.items():
+            try:
+                widget = self.query_one(f"#{target_id}")
+            except Exception:
+                continue
+            try:
+                value = int(size)
+            except (TypeError, ValueError):
+                continue
+            if target_id == "left-panel":
+                widget.styles.width = value
+            elif target_id == "file-table":
+                widget.styles.height = value
+
+    def _save_pane_size(self, target_id: str, size: int) -> None:
+        """Schreibt eine einzelne Panel-Groesse in die Settings."""
+        settings = self._settings_store.load()
+        sizes = settings.get("pane_sizes", {})
+        if not isinstance(sizes, dict):
+            sizes = {}
+        sizes[target_id] = int(size)
+        settings["pane_sizes"] = sizes
+        self._settings_store.save(settings)
+
+    def on_vertical_splitter_resized(
+        self, event: VerticalSplitter.Resized,
+    ) -> None:
+        """Vertikaler Splitter wurde geloest — neue Breite persistieren."""
+        self._save_pane_size(event.target_id, event.size)
+
+    def on_horizontal_splitter_resized(
+        self, event: HorizontalSplitter.Resized,
+    ) -> None:
+        """Horizontaler Splitter wurde geloest — neue Hoehe persistieren."""
+        self._save_pane_size(event.target_id, event.size)
 
     def on_visualizer_mode_change_requested(
         self, event: Visualizer.ModeChangeRequested,
