@@ -110,6 +110,7 @@ retro-amp --version           # Zeigt die Version / Show version
 - **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
 - **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
+- **Anpassbare Panels** — Mit der Maus kann die Groesse zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
 - **Datei-Verknuepfung** — Doppelklick auf Audio-Datei oeffnet retro-amp direkt
 - **Single-Instance** — Zweiter Doppelklick sendet den Track an die laufende Instanz
 
@@ -272,7 +273,7 @@ git push origin v0.4.0
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI-Widgets (Such-Verlauf, Kontextmenue) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.4.0 |
+| UI-Widgets (Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.5.2 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
