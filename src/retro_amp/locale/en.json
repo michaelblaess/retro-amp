@@ -40,6 +40,8 @@
   "search.loading": "Searching for \"{query}\" ...",
   "search.results": "\"{query}\" \u2014 {count} results",
   "search.no_results": "\"{query}\" \u2014 no results",
+  "search.title": "Search",
+  "search.root_label": "(Root)",
 
   "tab.browser": "Files",
   "tab.favorites": "Favorites",
@@ -50,7 +52,7 @@
   "tab.translation": "Lyrics (translated)",
   "tab.info": "Info",
   "tab.youtube": "YouTube",
-  "tab.search": "Search results",
+  "tab.search": "Search",
 
   "notify.no_track": "No track selected",
   "notify.favorite_added": "\u2605 {name} added to favorites",

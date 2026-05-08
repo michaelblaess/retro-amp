@@ -54,7 +54,7 @@ from .widgets.history_tree import HistoryTree
 from .widgets.playlist_tree import PlaylistTree
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
-from .widgets.search_panel import SearchPanel, _SearchResult
+from .widgets.search_tree import SearchTree
 from .widgets.translation_panel import TranslationPanel
 from .widgets.control_panel import ControlPanel
 from .widgets.transport_bar import TransportBar
@@ -244,6 +244,8 @@ class RetroAmpApp(App):
                         yield PlaylistTree(id="playlist-tree")
                     with TabPane(t("tab.history"), id="tab-history"):
                         yield HistoryTree(id="history-tree")
+                    with TabPane(t("tab.search"), id="tab-search"):
+                        yield SearchTree(id="search-tree")
             yield VerticalSplitter(target_id="left-panel", min_size=20, max_size=80)
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
@@ -262,8 +264,6 @@ class RetroAmpApp(App):
                         )
                     with TabPane(t("tab.youtube"), id="tab-youtube"):
                         yield YoutubePanel(id="youtube-panel")
-                    with TabPane(t("tab.search"), id="tab-search"):
-                        yield SearchPanel(id="search-panel")
         with Horizontal(id="transport-row"):
             yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
             yield ControlPanel(id="control-panel")
@@ -660,10 +660,15 @@ class RetroAmpApp(App):
         search_input.focus()
 
     def action_cycle_view(self) -> None:
-        """Wechselt zwischen Dateien, Favoriten, Playlists und Verlauf."""
+        """Wechselt zwischen Dateien, Favoriten, Playlists, Verlauf und Suche."""
         tabs = self.query_one("#left-tabs", TabbedContent)
-        tab_ids = ["tab-browser", "tab-favorites", "tab-playlists", "tab-history"]
-        idx = tab_ids.index(tabs.active)
+        tab_ids = [
+            "tab-browser", "tab-favorites", "tab-playlists", "tab-history", "tab-search",
+        ]
+        try:
+            idx = tab_ids.index(tabs.active)
+        except ValueError:
+            idx = 0
         next_idx = (idx + 1) % len(tab_ids)
         tabs.active = tab_ids[next_idx]
 
@@ -718,11 +723,11 @@ class RetroAmpApp(App):
             wrapper.hide_dropdown()
         except Exception:
             pass
-        # Loading-Indikator sofort anzeigen
-        search_panel = self.query_one("#search-panel", SearchPanel)
-        search_panel.show_loading(query)
-        tabs = self.query_one("#content-tabs", TabbedContent)
-        tabs.active = "tab-search"
+        # Loading-Hinweis im Suchbaum, Tab links aktivieren
+        search_tree = self.query_one("#search-tree", SearchTree)
+        search_tree.show_loading(query)
+        left_tabs = self.query_one("#left-tabs", TabbedContent)
+        left_tabs.active = "tab-search"
         # Suche im Background-Thread starten
         self._run_global_search(query)
 
@@ -747,50 +752,59 @@ class RetroAmpApp(App):
 
     def _do_file_search(
         self, query: str, root: Path,
-    ) -> list[tuple[Path, str]]:
-        """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff)."""
+    ) -> list[tuple[Path, bool]]:
+        """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff).
+
+        Returns:
+            Liste von ``(absoluter Pfad, is_dir)``-Tuples — der SearchTree
+            generiert daraus selbst die Anzeige (gruppiert nach Parent).
+        """
         query_norm = self._SEPARATOR_RE.sub(" ", query.lower())
-        results: list[tuple[Path, str]] = []
+        results: list[tuple[Path, bool]] = []
         audio_exts = AudioFormat.supported_extensions()
         try:
             for p in sorted(root.rglob("*")):
                 if query_norm in self._SEPARATOR_RE.sub(" ", p.name.lower()):
-                    try:
-                        rel = p.relative_to(root)
-                    except ValueError:
-                        rel = p
                     if p.is_dir():
-                        results.append((p, f"\U0001f4c1 {rel}"))
+                        results.append((p, True))
                     elif p.suffix.lower() in audio_exts:
-                        results.append((p, f"\u266a {rel}"))
+                        results.append((p, False))
         except PermissionError:
             pass
         return results[:200]
 
     def _apply_search_results(
-        self, query: str, results: list[tuple[Path, str]],
+        self, query: str, results: list[tuple[Path, bool]],
     ) -> None:
-        """Zeigt Suchergebnisse an (Main-Thread)."""
-        search_panel = self.query_one("#search-panel", SearchPanel)
-        search_panel.display_results(query, results)
+        """Zeigt Suchergebnisse im Suchbaum an (Main-Thread)."""
+        search_tree = self.query_one("#search-tree", SearchTree)
+        search_tree.load_results(query, results, self._tree_root)
         self._write_log(t("log.search_results", query=query, count=len(results)))
 
-    def on__search_result_selected(
-        self, event: _SearchResult.Selected,
+    def on_search_tree_track_selected(
+        self, event: SearchTree.TrackSelected,
     ) -> None:
-        """Suchergebnis angeklickt → navigieren."""
+        """Track im Suchbaum ausgewaehlt → abspielen."""
         path = event.path
-        if path.is_dir():
-            self._scan_directory(path)
-            self._save_last_path(path)
-            self.notify(t("notify.folder", name=path.name))
-        elif path.is_file():
-            parent = path.parent
-            self._scan_directory(parent)
-            self._save_last_path(parent)
-            if self._metadata_service.is_audio_file(path):
-                track = self._metadata_service.read_track(path)
-                self._play_track(track)
+        if not path.is_file():
+            return
+        parent = path.parent
+        self._scan_directory(parent)
+        self._save_last_path(parent)
+        if self._metadata_service.is_audio_file(path):
+            track = self._metadata_service.read_track(path)
+            self._play_track(track)
+
+    def on_search_tree_folder_selected(
+        self, event: SearchTree.FolderSelected,
+    ) -> None:
+        """Ordner im Suchbaum ausgewaehlt → in der Datei-Tabelle oeffnen."""
+        path = event.path
+        if not path.is_dir():
+            return
+        self._scan_directory(path)
+        self._save_last_path(path)
+        self.notify(t("notify.folder", name=path.name))
 
     @work(exclusive=True, group="liner-notes", thread=True)
     def _fetch_and_show_info(self, artist: str) -> None:
