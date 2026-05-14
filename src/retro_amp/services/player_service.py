@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from ..domain.models import AudioTrack, PlaybackState, PlayerState
 from ..domain.protocols import (
     AudioPlayer,
@@ -81,10 +83,8 @@ class PlayerService:
         """Benachrichtigt Listener ueber einen gestarteten Track (z.B. History)."""
         if self._on_started is None:
             return
-        try:
+        with contextlib.suppress(Exception):
             self._on_started(track)
-        except Exception:
-            pass
 
     def toggle_pause(self) -> None:
         """Wechselt zwischen Play und Pause."""

@@ -80,7 +80,7 @@ class TestLyricsService:
 
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "sub" / "lyrics"
-            svc = LyricsService(lyrics_dir=path)
+            LyricsService(lyrics_dir=path)
             assert path.is_dir()
 
     def test_cache_json_format(self, tmp_path: Path) -> None:

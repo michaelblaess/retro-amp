@@ -304,10 +304,7 @@ class SpectrumAnalyzer:
                 avg = 0.0
 
             # In dB umrechnen und normalisieren
-            if avg > 0:
-                db = 20.0 * math.log10(avg + 1e-10)
-            else:
-                db = DB_FLOOR
+            db = 20.0 * math.log10(avg + 1e-10) if avg > 0 else DB_FLOOR
 
             # Normalisieren: DB_FLOOR..0 -> 0.0..1.0
             normalized = max(0.0, min(1.0, (db - DB_FLOOR) / (-DB_FLOOR)))

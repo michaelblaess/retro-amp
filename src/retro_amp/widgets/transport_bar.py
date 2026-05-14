@@ -82,10 +82,7 @@ class TransportBar(Widget):
 
         if state.current_track:
             track = state.current_track
-            if track.artist and track.title:
-                display = f"{track.artist} \u2013 {track.title}"
-            else:
-                display = track.display_name
+            display = f"{track.artist} – {track.title}" if track.artist and track.title else track.display_name
 
             info_parts: list[str] = []
             if track.format_display:

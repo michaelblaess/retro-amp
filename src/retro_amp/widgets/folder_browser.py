@@ -102,9 +102,8 @@ class FolderBrowser(DirectoryTree):
             current_node = found
 
         # Letzten gefundenen Knoten expandieren (Zielverzeichnis)
-        if current_node != self.root and current_node._allow_expand:
-            if not current_node.is_expanded:
-                current_node.expand()
+        if current_node != self.root and current_node._allow_expand and not current_node.is_expanded:
+            current_node.expand()
 
         self.move_cursor(current_node)
         self.scroll_to_node(current_node)

@@ -7,6 +7,7 @@ die laufende Instanz prueft diese periodisch per Timer.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import sys
@@ -91,10 +92,8 @@ def acquire_lock() -> None:
 def release_lock() -> None:
     """Entfernt Lock-Datei und ggf. offene Play-Requests."""
     for f in (_LOCK_FILE, _PLAY_REQUEST):
-        try:
+        with contextlib.suppress(OSError):
             f.unlink()
-        except OSError:
-            pass
 
 
 def read_play_request() -> str | None:

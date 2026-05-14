@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import os
@@ -184,10 +185,8 @@ class CoverArtPanel(Widget):
         self.query_one("#cover-title", Static).update(f"\u266a {artist} \u2014 {title}")
 
     def _set_status(self, text: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#cover-status", Static).update(text)
-        except Exception:
-            pass
 
     def _clear_graphics_image(self) -> None:
         if self._graphics_widget_cls is None:

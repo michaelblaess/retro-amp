@@ -12,6 +12,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+import contextlib
+
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -594,10 +596,8 @@ class RetroAmpApp(App):
         """Callback fuer den "Verlauf loeschen"-Button im Settings-Dialog."""
         count = sum(len(g.entries) for g in self._history_service.list_grouped())
         self._history_service.clear_all()
-        try:
+        with contextlib.suppress(Exception):
             self._refresh_history_tree()
-        except Exception:
-            pass
         return count
 
     def _on_settings_closed(
@@ -638,18 +638,14 @@ class RetroAmpApp(App):
                 bool(new_db_settings["history_enabled"]),
             )
         if "history_limit" in new_db_settings:
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 self._database.set_int_setting(
                     "history_limit",
                     int(new_db_settings["history_limit"]),
                 )
-            except (TypeError, ValueError):
-                pass
         # Tab neu rendern (Hinweis/Eintraege umschalten)
-        try:
+        with contextlib.suppress(Exception):
             self._refresh_history_tree()
-        except Exception:
-            pass
 
         needs_restart = changed_renderer or changed_journal
         if needs_restart:
@@ -921,7 +917,7 @@ class RetroAmpApp(App):
                 new_track_path = new_path
             else:
                 # Ordner umbenannt — relativen Pfad auf neuen Ordner umrechnen
-                rel = old_track.path.relative_to(old_track.path)
+                old_track.path.relative_to(old_track.path)
                 new_track_path = new_path / old_track.path.name
             new_track = self._metadata_service.read_track(new_track_path)
             self._player_service.play_file(new_track)
@@ -1069,9 +1065,8 @@ class RetroAmpApp(App):
             return None
 
         # Input-Widget fokussiert → Delete deaktivieren
-        if isinstance(self.focused, Input):
-            if action == "delete_file":
-                return None
+        if isinstance(self.focused, Input) and action == "delete_file":
+            return None
 
         state = self._player_service.state
         has_track = state.current_track is not None
@@ -1305,10 +1300,7 @@ class RetroAmpApp(App):
         self._update_transport()
         self._highlight_current_track()
         self.sub_title = track.display_name
-        if track.artist and track.title:
-            log_name = f"{track.artist} \u2013 {track.title}"
-        else:
-            log_name = track.display_name
+        log_name = f"{track.artist} – {track.title}" if track.artist and track.title else track.display_name
         self._write_log(t("log.play", name=f"{log_name} ({track.path.parent})"))
 
         # Alle Tabs asynchron laden
@@ -1535,10 +1527,7 @@ class RetroAmpApp(App):
                     self._save_last_path(track.path.parent)
                 self._highlight_current_track()
                 self.sub_title = track.display_name
-                if track.artist and track.title:
-                    next_name = f"{track.artist} \u2013 {track.title}"
-                else:
-                    next_name = track.display_name
+                next_name = f"{track.artist} – {track.title}" if track.artist and track.title else track.display_name
                 self._write_log(t("log.play", name=f"{next_name} ({track.path.parent})"))
                 self._load_tabs_for_track(track)
         self._update_transport()
@@ -1779,9 +1768,7 @@ class RetroAmpApp(App):
         self._lyrics_generation += 1  # Offene Lyrics-Threads ignorieren
         self._spectrum_analyzer.unload()
         self._audio_player.cleanup()
-        try:
+        with contextlib.suppress(Exception):
             self._database.close()
-        except Exception:
-            pass
         clear_session()  # Sauberer Exit → Session loeschen
         release_lock()

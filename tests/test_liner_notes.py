@@ -83,5 +83,5 @@ class TestLinerNotesService:
         """Notes-Verzeichnis wird bei Initialisierung erstellt."""
         with tempfile.TemporaryDirectory() as td:
             notes_path = Path(td) / "subdir" / "notes"
-            svc = LinerNotesService(notes_dir=notes_path)
+            LinerNotesService(notes_dir=notes_path)
             assert notes_path.is_dir()
