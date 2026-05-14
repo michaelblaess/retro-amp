@@ -1,5 +1,15 @@
 # retro-amp
 
+[![Stars](https://img.shields.io/github/stars/michaelblaess/retro-amp?style=for-the-badge&logo=github&logoColor=white&labelColor=1e2228&color=fbbf24)](https://github.com/michaelblaess/retro-amp/stargazers)
+[![Forks](https://img.shields.io/github/forks/michaelblaess/retro-amp?style=for-the-badge&logo=github&logoColor=white&labelColor=1e2228&color=34d399)](https://github.com/michaelblaess/retro-amp/network/members)
+[![Issues](https://img.shields.io/github/issues/michaelblaess/retro-amp?style=for-the-badge&logo=github&logoColor=white&labelColor=1e2228&color=f87171)](https://github.com/michaelblaess/retro-amp/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/michaelblaess/retro-amp?style=for-the-badge&logo=github&logoColor=white&labelColor=1e2228&color=a78bfa)](https://github.com/michaelblaess/retro-amp/pulls)
+
+[![Last Commit](https://img.shields.io/github/last-commit/michaelblaess/retro-amp?style=for-the-badge&logo=git&logoColor=white&labelColor=1e2228&color=3b82f6)](https://github.com/michaelblaess/retro-amp/commits/main)
+[![License](https://img.shields.io/badge/license-Apache_2.0-3b82f6?style=for-the-badge&labelColor=1e2228)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12+-3b82f6?style=for-the-badge&logo=python&logoColor=white&labelColor=1e2228)](https://www.python.org/)
+[![Themes](https://img.shields.io/badge/themes-31-fbbf24?style=for-the-badge&labelColor=1e2228)](https://github.com/michaelblaess/textual-themes)
+
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
