@@ -1,4 +1,5 @@
 """Favorites-Tree Widget — Baum mit Favoriten-Tracks."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,12 +30,14 @@ class FavoritesTree(Tree[Path | None]):
 
     class TrackSelected(Message):
         """Track im Favoriten-Baum ausgewaehlt."""
+
         def __init__(self, path: Path) -> None:
             super().__init__()
             self.path = path
 
     class TrackRemoveRequested(Message):
         """Track soll aus Favoriten entfernt werden."""
+
         def __init__(self, path: Path) -> None:
             super().__init__()
             self.path = path
@@ -44,16 +47,16 @@ class FavoritesTree(Tree[Path | None]):
         self._music_root: Path | None = None
 
     def load_favorites(
-        self, paths: list[Path], music_root: Path | None = None,
+        self,
+        paths: list[Path],
+        music_root: Path | None = None,
     ) -> None:
         """Laedt Favoriten-Eintraege in den Baum."""
         self._music_root = music_root
         self.clear()
 
         count = len(paths)
-        self.root.set_label(
-            t("favorites.title_count", count=count) if count else t("favorites.title")
-        )
+        self.root.set_label(t("favorites.title_count", count=count) if count else t("favorites.title"))
 
         if not paths:
             self.root.add_leaf(t("favorites.empty"), data=None)
@@ -84,7 +87,8 @@ class FavoritesTree(Tree[Path | None]):
             )
             for track in sorted(tracks, key=lambda p: p.name.lower()):
                 folder_node.add_leaf(
-                    f"{self.ICON_MUSIC}{track.name}", data=track,
+                    f"{self.ICON_MUSIC}{track.name}",
+                    data=track,
                 )
             folder_node.expand()
 

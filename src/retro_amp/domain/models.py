@@ -1,4 +1,5 @@
 """Domain-Models fuer retro-amp."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,11 +27,11 @@ class RepeatMode(Enum):
 class VisualizerMode(Enum):
     """Darstellungs-Modus des Visualizers."""
 
-    BARS = "bars"        # 32-Band-Spektrum, Regenbogen, Peak-Hold (Default)
-    BLOCKS = "blocks"    # Winamp-Style: 16 breite Balken, Ampelfarben pro Zeile + Peaks
-    SCOPE = "scope"      # Punkt pro Band an Pegel-Position (Spektralkurve)
-    MATRIX = "matrix"    # Binaer-Digits, Farbe nach Band-Intensitaet (cliamp-Style)
-    LCD = "lcd"          # 2 horizontale Segment-VU-Meter (Kassettendeck-Style)
+    BARS = "bars"  # 32-Band-Spektrum, Regenbogen, Peak-Hold (Default)
+    BLOCKS = "blocks"  # Winamp-Style: 16 breite Balken, Ampelfarben pro Zeile + Peaks
+    SCOPE = "scope"  # Punkt pro Band an Pegel-Position (Spektralkurve)
+    MATRIX = "matrix"  # Binaer-Digits, Farbe nach Band-Intensitaet (cliamp-Style)
+    LCD = "lcd"  # 2 horizontale Segment-VU-Meter (Kassettendeck-Style)
 
 
 class AudioFormat(Enum):
@@ -73,8 +74,19 @@ class AudioFormat(Enum):
     def supported_extensions(cls) -> set[str]:
         """Alle unterstuetzten Dateiendungen."""
         return {
-            ".mp3", ".ogg", ".oga", ".opus", ".flac", ".wav",
-            ".mod", ".xm", ".s3m", ".sid", ".m4a", ".mpc", ".mp+",
+            ".mp3",
+            ".ogg",
+            ".oga",
+            ".opus",
+            ".flac",
+            ".wav",
+            ".mod",
+            ".xm",
+            ".s3m",
+            ".sid",
+            ".m4a",
+            ".mpc",
+            ".mp+",
         }
 
 

@@ -1,4 +1,5 @@
 """Metadata-Service — Audio-Metadaten lesen und Dateien filtern."""
+
 from __future__ import annotations
 
 from pathlib import Path

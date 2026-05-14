@@ -7,13 +7,13 @@ Mehrere Darstellungs-Modi (siehe VisualizerMode):
 - MATRIX: Binaer-Digits, Farbe nach Band-Intensitaet (cliamp-inspiriert)
 - LCD:    2 horizontale Segment-VU-Meter im Kassettendeck-Look (Bass + Treble)
 """
+
 from __future__ import annotations
 
 import random
 from collections.abc import Callable
 
 from rich.text import Text
-
 from textual.events import Click
 from textual.message import Message
 from textual.widget import Widget
@@ -21,7 +21,6 @@ from textual_widgets import ContextMenuItem, ContextMenuScreen
 
 from ..domain.models import VisualizerMode
 from ..i18n import t
-
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
 _BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
@@ -49,8 +48,8 @@ _BLOCKS_PEAK_COLOR = "#ff5555"
 _SCOPE_DOT = "●"
 
 # MATRIX-Modus: Farbschwellen pro Zeile (oben = hoehere Schwelle als unten)
-_MATRIX_ROW_OFFSET = 0.18      # vorher 0.34 → top-row braucht jetzt weniger Pegel
-_MATRIX_GAIN = 1.5             # Verstaerkung (analog LCD), damit Mitte/Top mehr zeigt
+_MATRIX_ROW_OFFSET = 0.18  # vorher 0.34 → top-row braucht jetzt weniger Pegel
+_MATRIX_GAIN = 1.5  # Verstaerkung (analog LCD), damit Mitte/Top mehr zeigt
 _MATRIX_DIM_FALLBACK = "#1a1a1a"
 
 # LCD-Modus (Kassettendeck-VU): 2 horizontale Segment-Balken
@@ -100,10 +99,10 @@ def _traffic_light_color(level: int, max_level: int) -> str:
     """Ampel-Farbe abhaengig von der Pegelhoehe (klassisches VU-Schema)."""
     t = level / max(max_level, 1)
     if t < 0.6:
-        return "#00cc44"   # Gruen
+        return "#00cc44"  # Gruen
     if t < 0.85:
-        return "#ffcc00"   # Gelb
-    return "#ff3333"        # Rot
+        return "#ffcc00"  # Gelb
+    return "#ff3333"  # Rot
 
 
 def _darken_hex(color: str, factor: float = 0.15) -> str:
@@ -189,9 +188,7 @@ class Visualizer(Widget):
         self._lcd_hold_r: int = 0
 
         # Farben vorberechnen
-        self._colors = [
-            _spectral_color(i, self.NUM_BARS) for i in range(self.NUM_BARS)
-        ]
+        self._colors = [_spectral_color(i, self.NUM_BARS) for i in range(self.NUM_BARS)]
 
     @property
     def mode(self) -> VisualizerMode:
@@ -232,7 +229,8 @@ class Visualizer(Widget):
         self.post_message(self.ModeChangeRequested(new_mode))
 
     def set_spectrum_source(
-        self, source: Callable[[], list[float]] | None,
+        self,
+        source: Callable[[], list[float]] | None,
     ) -> None:
         """Setzt die Datenquelle fuer echte Spektraldaten.
 
@@ -287,7 +285,7 @@ class Visualizer(Widget):
         # LCD-Modus: getrennte Peaks fuer Bass-/Treble-Haelfte
         half = self.NUM_BARS // 2
         bass = sum(self._bars[:half]) // half if half else 0
-        treble = sum(self._bars[half:]) // (self.NUM_BARS - half) if self.NUM_BARS > half else 0
+        treble = sum(self._bars[half:]) // (self.NUM_BARS - half) if half < self.NUM_BARS else 0
         if bass >= self._lcd_peak_l:
             self._lcd_peak_l = bass
             self._lcd_hold_l = _LCD_PEAK_HOLD_FRAMES
@@ -311,7 +309,7 @@ class Visualizer(Widget):
             try:
                 bands = self._spectrum_source()
                 if bands and len(bands) >= self.NUM_BARS:
-                    return bands[:self.NUM_BARS]
+                    return bands[: self.NUM_BARS]
             except Exception:
                 pass
 
@@ -492,13 +490,13 @@ class Visualizer(Widget):
                 digit = "1" if random.random() > 0.5 else "0"
 
                 if intensity >= row_threshold + 0.40:
-                    color = "#ff3333"      # Rot — sehr aktiv (Clipping-Warnung)
+                    color = "#ff3333"  # Rot — sehr aktiv (Clipping-Warnung)
                 elif intensity >= row_threshold + 0.20:
-                    color = "#ffcc00"      # Gelb — aktiv (Headroom-Warnung)
+                    color = "#ffcc00"  # Gelb — aktiv (Headroom-Warnung)
                 elif intensity >= row_threshold + 0.05:
-                    color = safe_color     # Theme-Accent — leicht aktiv
+                    color = safe_color  # Theme-Accent — leicht aktiv
                 else:
-                    color = dim_color      # Sehr dunkler Theme-Tint
+                    color = dim_color  # Sehr dunkler Theme-Tint
 
                 line.append(digit, style=color)
             lines.append(line)
@@ -515,7 +513,7 @@ class Visualizer(Widget):
         """
         half = self.NUM_BARS // 2
         bass = sum(self._bars[:half]) / half if half else 0.0
-        treble = sum(self._bars[half:]) / (self.NUM_BARS - half) if self.NUM_BARS > half else 0.0
+        treble = sum(self._bars[half:]) / (self.NUM_BARS - half) if half < self.NUM_BARS else 0.0
 
         def gained(value: float) -> float:
             return min(value / _MAX_LEVEL * _LCD_GAIN, 1.0) if _MAX_LEVEL else 0.0

@@ -1,7 +1,6 @@
 """Player-Service — Play/Pause/Next/Prev Logik."""
-from __future__ import annotations
 
-from pathlib import Path
+from __future__ import annotations
 
 from ..domain.models import AudioTrack, PlaybackState, PlayerState
 from ..domain.protocols import (

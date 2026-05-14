@@ -1,11 +1,12 @@
 """Tests fuer Retro-Themes Re-Export + Legacy-Slug-Migration."""
+
 from __future__ import annotations
 
 from retro_amp.themes import (
     DEFAULT_THEME,
     LEGACY_THEME_MAP,
-    RETRO_THEMES,
     RETRO_THEME_NAMES,
+    RETRO_THEMES,
     THEME_DISPLAY_NAMES,
     migrate_theme_name,
 )
@@ -53,9 +54,7 @@ class TestLegacyMigration:
 
     def test_all_legacy_targets_are_valid(self) -> None:
         for old, new in LEGACY_THEME_MAP.items():
-            assert new in RETRO_THEME_NAMES, (
-                f"Legacy mapping {old!r} -> {new!r}: target not registered"
-            )
+            assert new in RETRO_THEME_NAMES, f"Legacy mapping {old!r} -> {new!r}: target not registered"
 
     def test_legacy_keys_disjoint_from_current_slugs(self) -> None:
         # Alte Slugs sollten nicht (mehr) in der aktuellen Liste sein —

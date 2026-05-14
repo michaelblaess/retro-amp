@@ -1,4 +1,5 @@
 """Translation Panel — zeigt uebersetzte Songtexte (deutsch)."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -38,19 +39,13 @@ class TranslationPanel(Widget):
 
     def show_loading(self, artist: str, title: str) -> None:
         """Zeigt Ladezustand an."""
-        self.query_one("#translation-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
+        self.query_one("#translation-title", Static).update(f"\u266a {artist} \u2014 {title}")
         self.query_one("#translation-text", Static).update(t("translation.loading"))
 
     def show_translation(self, artist: str, title: str, text: str) -> None:
         """Zeigt uebersetzte Lyrics an."""
-        self.query_one("#translation-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
-        self.query_one("#translation-text", Static).update(
-            text if text else t("translation.not_found")
-        )
+        self.query_one("#translation-title", Static).update(f"\u266a {artist} \u2014 {title}")
+        self.query_one("#translation-text", Static).update(text if text else t("translation.not_found"))
         self.query_one("#translation-scroll", VerticalScroll).scroll_home(
             animate=False,
         )

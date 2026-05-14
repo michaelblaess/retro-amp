@@ -1,9 +1,10 @@
 """Tests fuer PlaylistService."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from retro_amp.services.playlist_service import PlaylistService, FAVORITES_NAME
+from retro_amp.services.playlist_service import PlaylistService
 
 
 class TestPlaylistServiceFavorites:

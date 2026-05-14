@@ -1,11 +1,12 @@
 """Shared Fixtures und Mock-Implementierungen."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from retro_amp.domain.models import AudioTrack, Playlist, PlaylistEntry
+from retro_amp.domain.models import AudioTrack, Playlist
 
 
 class MockAudioPlayer:

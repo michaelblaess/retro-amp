@@ -1,11 +1,10 @@
 """Tests fuer LyricsService."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from retro_amp.services.lyrics_service import LyricsService, _safe_filename
 
@@ -78,6 +77,7 @@ class TestLyricsService:
     def test_lyrics_dir_created(self) -> None:
         """Lyrics-Verzeichnis wird erstellt."""
         import tempfile
+
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "sub" / "lyrics"
             svc = LyricsService(lyrics_dir=path)

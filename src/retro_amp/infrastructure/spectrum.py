@@ -1,4 +1,5 @@
 """Spectrum-Analyzer — FFT-basierte Frequenzanalyse fuer Visualizer."""
+
 from __future__ import annotations
 
 import array
@@ -69,10 +70,7 @@ class SpectrumAnalyzer:
         self._ready = False
 
         # Hann-Fenster vorberechnen
-        self._hann = [
-            0.5 * (1.0 - math.cos(2.0 * math.pi * i / (FFT_SIZE - 1)))
-            for i in range(FFT_SIZE)
-        ]
+        self._hann = [0.5 * (1.0 - math.cos(2.0 * math.pi * i / (FFT_SIZE - 1))) for i in range(FFT_SIZE)]
 
         # Log-skalierte Band-Grenzen (Bin-Indices)
         self._band_bins: list[tuple[int, int]] = []
@@ -161,6 +159,7 @@ class SpectrumAnalyzer:
     def _decode_wav(self, path: Path) -> tuple[bytes | None, int, int]:
         """Dekodiert WAV direkt per wave-Modul."""
         import wave
+
         try:
             with wave.open(str(path), "rb") as wf:
                 sr = wf.getframerate()
@@ -173,10 +172,12 @@ class SpectrumAnalyzer:
     def _decode_ogg(self, path: Path) -> tuple[bytes | None, int, int]:
         """Dekodiert OGG/Opus per pyogg."""
         import ctypes
+
         try:
             # Erst Opus versuchen
             try:
                 import pyogg
+
                 opus = pyogg.OpusFile(str(path))
                 raw = ctypes.cast(
                     opus.buffer,
@@ -189,6 +190,7 @@ class SpectrumAnalyzer:
             # Fallback: Vorbis via pyogg
             try:
                 import pyogg
+
                 vorbis = pyogg.VorbisFile(str(path))
                 raw = ctypes.cast(
                     vorbis.buffer,
@@ -227,6 +229,7 @@ class SpectrumAnalyzer:
         Wartet kurz damit der Music-Stream nicht gestoert wird.
         """
         import time
+
         time.sleep(0.5)  # Music-Stream stabilisieren lassen
 
         try:
@@ -282,10 +285,7 @@ class SpectrumAnalyzer:
             window.extend([0] * (FFT_SIZE - len(window)))
 
         # Hann-Fenster anwenden + in Complex umwandeln
-        windowed = [
-            complex(window[i] * self._hann[i] / 32768.0, 0.0)
-            for i in range(FFT_SIZE)
-        ]
+        windowed = [complex(window[i] * self._hann[i] / 32768.0, 0.0) for i in range(FFT_SIZE)]
 
         # FFT
         spectrum = _fft(windowed)

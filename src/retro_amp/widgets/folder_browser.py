@@ -1,4 +1,5 @@
 """Folder-Browser Widget — Verzeichnisbaum links."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -38,27 +39,28 @@ class FolderBrowser(DirectoryTree):
         return result
 
     def render_label(
-        self, node: TreeNode[DirEntry], base_style: Style, style: Style,
+        self,
+        node: TreeNode[DirEntry],
+        base_style: Style,
+        style: Style,
     ) -> Text:
         """Musiknoten-Icon fuer Audio-Dateien statt Standard-Dokument-Icon."""
         node_data = node.data
-        if (
-            node_data
-            and not node._allow_expand
-            and node_data.path.suffix.lower() in self._AUDIO_EXTENSIONS
-        ):
+        if node_data and not node._allow_expand and node_data.path.suffix.lower() in self._AUDIO_EXTENSIONS:
             node_label = node._label.copy()
             node_label.stylize(style)
             if self.is_mounted:
                 node_label.stylize_before(
                     self.get_component_rich_style(
-                        "directory-tree--file", partial=True,
+                        "directory-tree--file",
+                        partial=True,
                     )
                 )
                 node_label.highlight_regex(
                     r"\..+$",
                     self.get_component_rich_style(
-                        "directory-tree--extension", partial=True,
+                        "directory-tree--extension",
+                        partial=True,
                     ),
                 )
             prefix = (self.ICON_MUSIC, base_style)

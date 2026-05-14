@@ -1,4 +1,5 @@
 """Confirm-Screen — Modal fuer Bestaetigungsdialoge."""
+
 from __future__ import annotations
 
 import logging
@@ -73,9 +74,7 @@ class ConfirmScreen(ModalScreen[Path | None]):
             yield Label(title, id="dialog-title")
             yield Label(self._message, id="message")
             with Horizontal(id="button-row"):
-                yield Button(
-                    t("confirm.btn_yes"), id="btn-confirm", variant="error"
-                )
+                yield Button(t("confirm.btn_yes"), id="btn-confirm", variant="error")
                 yield Button(t("confirm.btn_cancel"), id="btn-close", variant="default")
 
     @on(Button.Pressed, "#btn-confirm")

@@ -1,4 +1,5 @@
 """Tests fuer Domain-Models."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,7 +10,6 @@ from retro_amp.domain.models import (
     PlaybackState,
     PlayerState,
     Playlist,
-    PlaylistEntry,
 )
 
 

@@ -12,10 +12,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-
-_ALLOWED_JOURNAL_MODES: frozenset[str] = frozenset(
-    {"DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF"}
-)
+_ALLOWED_JOURNAL_MODES: frozenset[str] = frozenset({"DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF"})
 _DEFAULT_JOURNAL_MODE = "DELETE"
 
 
@@ -154,9 +151,7 @@ class Database:
     def get_setting(self, key: str, default: str = "") -> str:
         """Liest einen Einstellungswert aus der Datenbank."""
         conn = self.connection
-        row = conn.execute(
-            "SELECT value FROM settings WHERE key = ?", (key,)
-        ).fetchone()
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
         return row["value"] if row else default
 
     def set_setting(self, key: str, value: str) -> None:

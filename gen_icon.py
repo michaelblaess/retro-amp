@@ -1,4 +1,5 @@
 """Generiert das retro-amp Icon (Jiji-Style Katze + Regenbogen-Spectrum)."""
+
 from PIL import Image, ImageDraw
 
 BG_DARK = (56, 56, 56)
@@ -33,17 +34,20 @@ for size in sizes:
     radius = int(32 * p)
     draw.rounded_rectangle(
         [margin, margin, size - margin - 1, size - margin - 1],
-        radius=radius, fill=BG_EDGE,
+        radius=radius,
+        fill=BG_EDGE,
     )
     inner = int(8 * p)
     draw.rounded_rectangle(
         [inner, inner, size - inner - 1, size - inner - 1],
-        radius=max(int(26 * p), 1), fill=BG_DARK,
+        radius=max(int(26 * p), 1),
+        fill=BG_DARK,
     )
     hl = int(12 * p)
     draw.rounded_rectangle(
         [hl, hl, size - hl - 1, int(size * 0.48)],
-        radius=max(int(22 * p), 1), fill=BG_LIGHT,
+        radius=max(int(22 * p), 1),
+        fill=BG_LIGHT,
     )
 
     # --- Spectrum Bars (oberes Drittel) ---
@@ -121,8 +125,8 @@ for size in sizes:
     )
 
     # Kopf (etwas breiter als hoch — Katze hat flacheren Kopf als Eule)
-    head_rx = int(40 * p)   # breiter
-    head_ry = int(35 * p)   # flacher
+    head_rx = int(40 * p)  # breiter
+    head_ry = int(35 * p)  # flacher
     hcy = base - body_h - head_ry + int(24 * p)
     draw.ellipse(
         [cx - head_rx, hcy - head_ry, cx + head_rx, hcy + head_ry],
@@ -134,33 +138,45 @@ for size in sizes:
     eby = hcy - head_ry + int(10 * p)
 
     # Linkes Ohr (spitz nach links-oben)
-    draw.polygon([
-        (cx - int(30 * p), eby),
-        (cx - int(42 * p), eby - ear_h),
-        (cx - int(10 * p), eby),
-    ], fill=BLACK)
+    draw.polygon(
+        [
+            (cx - int(30 * p), eby),
+            (cx - int(42 * p), eby - ear_h),
+            (cx - int(10 * p), eby),
+        ],
+        fill=BLACK,
+    )
     ie = max(int(5 * p), 2)
-    draw.polygon([
-        (cx - int(30 * p) + ie, eby - ie),
-        (cx - int(42 * p) + int(3 * p), eby - ear_h + ie * 2),
-        (cx - int(10 * p) - ie, eby - ie),
-    ], fill=(55, 35, 45))
+    draw.polygon(
+        [
+            (cx - int(30 * p) + ie, eby - ie),
+            (cx - int(42 * p) + int(3 * p), eby - ear_h + ie * 2),
+            (cx - int(10 * p) - ie, eby - ie),
+        ],
+        fill=(55, 35, 45),
+    )
 
     # Rechtes Ohr
-    draw.polygon([
-        (cx + int(10 * p), eby),
-        (cx + int(42 * p), eby - ear_h),
-        (cx + int(30 * p), eby),
-    ], fill=BLACK)
-    draw.polygon([
-        (cx + int(10 * p) + ie, eby - ie),
-        (cx + int(42 * p) - int(3 * p), eby - ear_h + ie * 2),
-        (cx + int(30 * p) - ie, eby - ie),
-    ], fill=(55, 35, 45))
+    draw.polygon(
+        [
+            (cx + int(10 * p), eby),
+            (cx + int(42 * p), eby - ear_h),
+            (cx + int(30 * p), eby),
+        ],
+        fill=BLACK,
+    )
+    draw.polygon(
+        [
+            (cx + int(10 * p) + ie, eby - ie),
+            (cx + int(42 * p) - int(3 * p), eby - ear_h + ie * 2),
+            (cx + int(30 * p) - ie, eby - ie),
+        ],
+        fill=(55, 35, 45),
+    )
 
     # Augen (oval, BREITER als hoch — DAS macht den Unterschied zur Eule!)
-    eye_rx = max(int(12 * p), 3)   # breit
-    eye_ry = max(int(9 * p), 2)    # flacher
+    eye_rx = max(int(12 * p), 3)  # breit
+    eye_ry = max(int(9 * p), 2)  # flacher
     ey = hcy + int(2 * p)
     es = int(17 * p)
 
@@ -184,11 +200,14 @@ for size in sizes:
     # Nase (kleines Dreieck)
     ny = hcy + int(13 * p)
     ns = max(int(3.5 * p), 1)
-    draw.polygon([
-        (cx, ny + ns),
-        (cx - ns - 1, ny - ns + 1),
-        (cx + ns + 1, ny - ns + 1),
-    ], fill=(130, 80, 85))
+    draw.polygon(
+        [
+            (cx, ny + ns),
+            (cx - ns - 1, ny - ns + 1),
+            (cx + ns + 1, ny - ns + 1),
+        ],
+        fill=(130, 80, 85),
+    )
 
     # Mund (W-foermig unter der Nase)
     my = ny + ns + max(int(2 * p), 1)
@@ -205,34 +224,44 @@ for size in sizes:
     wh_base_y = ny + int(5 * p)
     wh_base_x = int(10 * p)
     # Links (3 Haare, leicht gefaechert)
-    draw.line([(cx - wh_base_x, wh_base_y - int(3 * p)),
-               (cx - wh_base_x - wh_len, wh_base_y - int(12 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
-    draw.line([(cx - wh_base_x, wh_base_y),
-               (cx - wh_base_x - wh_len, wh_base_y - int(2 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
-    draw.line([(cx - wh_base_x, wh_base_y + int(3 * p)),
-               (cx - wh_base_x - wh_len, wh_base_y + int(8 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
+    draw.line(
+        [(cx - wh_base_x, wh_base_y - int(3 * p)), (cx - wh_base_x - wh_len, wh_base_y - int(12 * p))],
+        fill=BLACK_LIGHT,
+        width=wh_w,
+    )
+    draw.line(
+        [(cx - wh_base_x, wh_base_y), (cx - wh_base_x - wh_len, wh_base_y - int(2 * p))], fill=BLACK_LIGHT, width=wh_w
+    )
+    draw.line(
+        [(cx - wh_base_x, wh_base_y + int(3 * p)), (cx - wh_base_x - wh_len, wh_base_y + int(8 * p))],
+        fill=BLACK_LIGHT,
+        width=wh_w,
+    )
     # Rechts (3 Haare)
-    draw.line([(cx + wh_base_x, wh_base_y - int(3 * p)),
-               (cx + wh_base_x + wh_len, wh_base_y - int(12 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
-    draw.line([(cx + wh_base_x, wh_base_y),
-               (cx + wh_base_x + wh_len, wh_base_y - int(2 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
-    draw.line([(cx + wh_base_x, wh_base_y + int(3 * p)),
-               (cx + wh_base_x + wh_len, wh_base_y + int(8 * p))],
-              fill=BLACK_LIGHT, width=wh_w)
+    draw.line(
+        [(cx + wh_base_x, wh_base_y - int(3 * p)), (cx + wh_base_x + wh_len, wh_base_y - int(12 * p))],
+        fill=BLACK_LIGHT,
+        width=wh_w,
+    )
+    draw.line(
+        [(cx + wh_base_x, wh_base_y), (cx + wh_base_x + wh_len, wh_base_y - int(2 * p))], fill=BLACK_LIGHT, width=wh_w
+    )
+    draw.line(
+        [(cx + wh_base_x, wh_base_y + int(3 * p)), (cx + wh_base_x + wh_len, wh_base_y + int(8 * p))],
+        fill=BLACK_LIGHT,
+        width=wh_w,
+    )
 
     # Vorderpfoten (zwei kleine Ovale unten am Koerper)
     paw_y = base - int(5 * p)
     paw_rx = max(int(10 * p), 2)
     paw_ry = max(int(6 * p), 1)
-    draw.ellipse([cx - int(20 * p) - paw_rx, paw_y - paw_ry,
-                  cx - int(20 * p) + paw_rx, paw_y + paw_ry], fill=(30, 30, 35))
-    draw.ellipse([cx + int(20 * p) - paw_rx, paw_y - paw_ry,
-                  cx + int(20 * p) + paw_rx, paw_y + paw_ry], fill=(30, 30, 35))
+    draw.ellipse(
+        [cx - int(20 * p) - paw_rx, paw_y - paw_ry, cx - int(20 * p) + paw_rx, paw_y + paw_ry], fill=(30, 30, 35)
+    )
+    draw.ellipse(
+        [cx + int(20 * p) - paw_rx, paw_y - paw_ry, cx + int(20 * p) + paw_rx, paw_y + paw_ry], fill=(30, 30, 35)
+    )
 
     images.append(img)
 

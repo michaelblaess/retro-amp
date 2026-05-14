@@ -1,15 +1,14 @@
 """Transport-Leiste Widget — Play/Pause, Fortschritt, Lautstaerke."""
+
 from __future__ import annotations
 
 from rich.text import Text
-
 from textual.events import Click
 from textual.message import Message
 from textual.widget import Widget
 
 from ..domain.models import PlayerState
 from ..i18n import t
-
 
 _VOL_BAR_WIDTH = 10
 _PADDING_LEFT = 2
@@ -28,12 +27,14 @@ class TransportBar(Widget):
 
     class VolumeClicked(Message):
         """Wird gesendet wenn die Lautstaerke per Mausklick geaendert wird."""
+
         def __init__(self, volume: float) -> None:
             super().__init__()
             self.volume = volume
 
     class SeekClicked(Message):
         """Wird gesendet wenn per Mausklick im Fortschrittsbalken geseekt wird."""
+
         def __init__(self, position: float) -> None:
             super().__init__()
             self.position = position
@@ -150,11 +151,7 @@ class TransportBar(Widget):
         cy = event.offset.y
 
         # Volume-Bar
-        if (
-            self._vol_line >= 0
-            and cy == self._vol_line
-            and self._vol_col <= cx < self._vol_col + _VOL_BAR_WIDTH
-        ):
+        if self._vol_line >= 0 and cy == self._vol_line and self._vol_col <= cx < self._vol_col + _VOL_BAR_WIDTH:
             vol = (cx - self._vol_col + 0.5) / _VOL_BAR_WIDTH
             vol = max(0.0, min(1.0, vol))
             self.post_message(self.VolumeClicked(vol))

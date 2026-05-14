@@ -1,4 +1,5 @@
 """YouTube Panel — zeigt YouTube-Links zum aktuellen Track."""
+
 from __future__ import annotations
 
 import urllib.parse
@@ -90,9 +91,7 @@ class YoutubePanel(Widget):
 
     def show_links(self, artist: str, title: str) -> None:
         """Zeigt YouTube-Links fuer den aktuellen Track."""
-        self.query_one("#yt-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
+        self.query_one("#yt-title", Static).update(f"\u266a {artist} \u2014 {title}")
 
         query_full = f"{artist} {title}"
         query_video = f"{artist} {title} official video"
@@ -116,9 +115,7 @@ class YoutubePanel(Widget):
             self._search_url(query_artist),
         )
 
-        self.query_one("#yt-hint", Static).update(
-            t("youtube.hint")
-        )
+        self.query_one("#yt-hint", Static).update(t("youtube.hint"))
         self.query_one("#yt-scroll", VerticalScroll).scroll_home(animate=False)
 
     def clear(self) -> None:

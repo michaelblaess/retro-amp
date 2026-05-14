@@ -1,4 +1,5 @@
 """Settings-Screen — Modal-Dialog fuer Einstellungen mit Tabs."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -12,7 +13,6 @@ from textual.widgets import Button, Checkbox, Input, Label, Select, Static, Tabb
 
 from ..domain.models import VisualizerMode
 from ..i18n import t
-
 
 # Resultat-Typ des Dialogs: enthaelt beide Dicts (settings.json + DB-Settings)
 SettingsResult = dict[str, dict[str, object]]
@@ -125,18 +125,14 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
             yield Static(t("settings.title"), id="title")
 
             with TabbedContent():
-                with TabPane(t("settings.tab_cover"), id="tab-cover"):
-                    with VerticalScroll():
-                        yield from self._cover_fields()
-                with TabPane(t("settings.tab_visualizer"), id="tab-visualizer"):
-                    with VerticalScroll():
-                        yield from self._visualizer_fields()
-                with TabPane(t("settings.tab_database"), id="tab-database"):
-                    with VerticalScroll():
-                        yield from self._database_fields()
-                with TabPane(t("settings.tab_history"), id="tab-history"):
-                    with VerticalScroll():
-                        yield from self._history_fields()
+                with TabPane(t("settings.tab_cover"), id="tab-cover"), VerticalScroll():
+                    yield from self._cover_fields()
+                with TabPane(t("settings.tab_visualizer"), id="tab-visualizer"), VerticalScroll():
+                    yield from self._visualizer_fields()
+                with TabPane(t("settings.tab_database"), id="tab-database"), VerticalScroll():
+                    yield from self._database_fields()
+                with TabPane(t("settings.tab_history"), id="tab-history"), VerticalScroll():
+                    yield from self._history_fields()
 
             with Horizontal(classes="button-row"):
                 yield Button(
@@ -169,8 +165,7 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
     def _visualizer_fields(self) -> ComposeResult:
         """Felder fuer den Visualizer-Tab."""
         options: list[tuple[str, str]] = [
-            (t(f"visualizer.mode_{mode.value}"), mode.value)
-            for mode in _VISUALIZER_MODES
+            (t(f"visualizer.mode_{mode.value}"), mode.value) for mode in _VISUALIZER_MODES
         ]
         with Horizontal(classes="form-row"):
             yield Label(t("settings.visualizer_mode_label"))
@@ -247,7 +242,8 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
         self._settings["cover_renderer"] = "graphics" if graphics_enabled else "halfblock"
 
         visualizer_mode = self._get_select_value(
-            "select-visualizer-mode", self._visualizer_mode.value,
+            "select-visualizer-mode",
+            self._visualizer_mode.value,
         )
         try:
             VisualizerMode(visualizer_mode)
@@ -262,7 +258,10 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
 
         self._db_settings["history_enabled"] = self._get_checkbox("check-history-enabled")
         self._db_settings["history_limit"] = self._get_int_input(
-            "input-history-limit", self._history_limit, minimum=10, maximum=1_000_000,
+            "input-history-limit",
+            self._history_limit,
+            minimum=10,
+            maximum=1_000_000,
         )
 
         self.dismiss({"settings": self._settings, "db_settings": self._db_settings})
@@ -284,7 +283,11 @@ class SettingsScreen(ModalScreen[SettingsResult | None]):
             return fallback
 
     def _get_int_input(
-        self, input_id: str, fallback: int, minimum: int, maximum: int,
+        self,
+        input_id: str,
+        fallback: int,
+        minimum: int,
+        maximum: int,
     ) -> int:
         try:
             raw = self.query_one(f"#{input_id}", Input).value.strip()

@@ -1,4 +1,5 @@
 """History-Tree Widget — Baum mit Wiedergabeverlauf, gruppiert nach Tagen."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,7 +16,6 @@ from ..services.history_service import (
     GROUP_YESTERDAY,
     HistoryGroup,
 )
-
 
 _GROUP_I18N_KEYS: dict[str, str] = {
     GROUP_TODAY: "history.group_today",
@@ -79,9 +79,7 @@ class HistoryTree(Tree[Path | None]):
             return
 
         total = sum(len(g.entries) for g in groups)
-        self.root.set_label(
-            t("history.title_count", count=total) if total else t("history.title")
-        )
+        self.root.set_label(t("history.title_count", count=total) if total else t("history.title"))
 
         if total == 0:
             self.root.add_leaf(t("history.empty"), data=None)

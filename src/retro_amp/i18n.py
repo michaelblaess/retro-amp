@@ -1,10 +1,10 @@
 """i18n — Einfache Internationalisierung ueber JSON-Sprachdateien."""
+
 from __future__ import annotations
 
 import json
 import logging
 from importlib import resources
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

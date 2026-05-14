@@ -9,6 +9,7 @@ falls sidplayfp installiert ist.
 M4A/AAC-Dateien werden per ffmpeg Subprocess zu WAV dekodiert,
 da pygame's SDL_mixer keinen AAC-Decoder hat.
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -65,11 +66,18 @@ def _decode_opus_to_wav(path: Path) -> io.BytesIO:
     wav.write(struct.pack("<I", 36 + data_size))
     wav.write(b"WAVE")
     wav.write(b"fmt ")
-    wav.write(struct.pack(
-        "<IHHIIHH", 16, 1, channels, sample_rate,
-        sample_rate * channels * bits // 8,
-        channels * bits // 8, bits,
-    ))
+    wav.write(
+        struct.pack(
+            "<IHHIIHH",
+            16,
+            1,
+            channels,
+            sample_rate,
+            sample_rate * channels * bits // 8,
+            channels * bits // 8,
+            bits,
+        )
+    )
     wav.write(b"data")
     wav.write(struct.pack("<I", data_size))
     wav.write(pcm)
@@ -101,9 +109,9 @@ def _decode_sid_to_wav(path: Path, duration: int = 180) -> io.BytesIO | None:
         result = subprocess.run(
             [
                 sid_bin,
-                "--wav=-",       # WAV nach stdout
+                "--wav=-",  # WAV nach stdout
                 f"-t{duration}",  # Maximale Dauer
-                "-f44100",        # Sample Rate
+                "-f44100",  # Sample Rate
                 str(path),
             ],
             capture_output=True,
@@ -152,11 +160,16 @@ def _decode_with_ffmpeg(path: Path) -> io.BytesIO | None:
         result = subprocess.run(
             [
                 ffmpeg_bin,
-                "-i", str(path),
-                "-f", "wav",
-                "-acodec", "pcm_s16le",
-                "-ar", "44100",
-                "-ac", "2",
+                "-i",
+                str(path),
+                "-f",
+                "wav",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "44100",
+                "-ac",
+                "2",
                 "-",  # WAV nach stdout
             ],
             capture_output=True,

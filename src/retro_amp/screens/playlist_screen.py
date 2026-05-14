@@ -1,4 +1,5 @@
 """Playlist-Screen — Modal fuer Playlist-Verwaltung."""
+
 from __future__ import annotations
 
 from textual import on
@@ -6,7 +7,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, DataTable, Input, Label, Static
+from textual.widgets import Button, DataTable, Input, Label
 
 from ..i18n import t
 

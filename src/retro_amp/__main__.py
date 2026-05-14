@@ -1,4 +1,5 @@
 """Haupteinstiegspunkt fuer retro-amp."""
+
 from __future__ import annotations
 
 import argparse
@@ -6,7 +7,7 @@ import os
 import sys
 
 from retro_amp import __version__
-from retro_amp.i18n import load_locale, t, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
+from retro_amp.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, load_locale
 from retro_amp.infrastructure.settings import JsonSettingsStore
 
 
@@ -59,6 +60,7 @@ def main() -> None:
     # Single-Instance: Datei an laufende Instanz senden
     if play_file:
         from retro_amp.infrastructure.single_instance import send_play_request
+
         if send_play_request(os.path.abspath(play_file)):
             sys.exit(0)
 
@@ -68,6 +70,7 @@ def main() -> None:
         _preinit_graphics_backend()
 
     from retro_amp.app import RetroAmpApp
+
     app = RetroAmpApp(start_path=start_path, play_file=play_file)
     app.run()
 
@@ -84,6 +87,7 @@ def _preinit_graphics_backend() -> None:
         import textual_image.renderable  # noqa: F401
         import textual_image.widget  # noqa: F401
         from textual_image._terminal import get_cell_size
+
         get_cell_size()
     except Exception:
         pass

@@ -1,16 +1,15 @@
 """Search-Tree Widget — Suchergebnisse als Baum, gruppiert nach Verzeichnis."""
+
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
 from rich.text import Text
-
 from textual.message import Message
 from textual.widgets import Tree
 
 from ..i18n import t
-
 
 _SEPARATOR_RE = re.compile(r"[.\-_]")
 
@@ -37,7 +36,7 @@ class SearchTree(Tree[Path | None]):
     """
 
     ICON_FOLDER = "\U0001f4c1 "  # 📁
-    ICON_MUSIC = "♪ "         # ♪
+    ICON_MUSIC = "♪ "  # ♪
 
     class TrackSelected(Message):
         """Track-Treffer im Suchbaum ausgewaehlt."""
@@ -97,10 +96,7 @@ class SearchTree(Tree[Path | None]):
         accent = self.app.get_css_variables().get("accent", "yellow")
 
         for parent, items in sorted(by_parent.items(), key=lambda x: str(x[0])):
-            parent_label = (
-                str(parent) if str(parent) not in (".", "")
-                else t("search.root_label")
-            )
+            parent_label = str(parent) if str(parent) not in (".", "") else t("search.root_label")
             group_label = f"{self.ICON_FOLDER}{parent_label}  ({len(items)})"
             group_node = self.root.add(group_label, data=None)
 
@@ -119,7 +115,11 @@ class SearchTree(Tree[Path | None]):
 
     @staticmethod
     def _highlight(
-        label: Text, name: str, query: str, accent: str, offset: int,
+        label: Text,
+        name: str,
+        query: str,
+        accent: str,
+        offset: int,
     ) -> None:
         """Markiert Treffer-Stellen im Datei-/Ordnername fett in Akzentfarbe."""
         norm_name = _normalize(name.lower())

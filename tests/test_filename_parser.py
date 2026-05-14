@@ -1,9 +1,8 @@
 """Tests fuer Dateiname-Parsing und Title-Tag-Parsing."""
+
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
 
 from retro_amp.infrastructure.metadata_reader import _parse_filename, _parse_title_tag
 

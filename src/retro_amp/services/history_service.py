@@ -16,7 +16,6 @@ from typing import NamedTuple
 from ..domain.models import HistoryEntry
 from ..domain.protocols import HistoryRepository
 
-
 # Gruppen-Labels (i18n-Keys werden vom Widget aufgeloest, hier bleibt es
 # sprachneutral). Die Reihenfolge entspricht der Anzeige-Reihenfolge.
 GROUP_TODAY = "today"
@@ -71,10 +70,7 @@ class HistoryService:
             return
         path_key = str(path)
         now = time.monotonic()
-        if (
-            self._last_path == path_key
-            and (now - self._last_timestamp) < _DEDUP_WINDOW_SECONDS
-        ):
+        if self._last_path == path_key and (now - self._last_timestamp) < _DEDUP_WINDOW_SECONDS:
             return
         self._last_path = path_key
         self._last_timestamp = now
@@ -113,11 +109,7 @@ class HistoryService:
             else:
                 buckets[GROUP_OLDER].append(entry)
 
-        return [
-            HistoryGroup(group_key=key, entries=items)
-            for key, items in buckets.items()
-            if items
-        ]
+        return [HistoryGroup(group_key=key, entries=items) for key, items in buckets.items() if items]
 
     def clear_all(self) -> None:
         """Loescht den gesamten Verlauf."""

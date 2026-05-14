@@ -1,4 +1,5 @@
 """Cover Art Panel — zeigt Album-Cover als Unicode Half-Blocks oder via Terminal-Grafik."""
+
 from __future__ import annotations
 
 import io
@@ -7,7 +8,6 @@ import os
 from typing import Any
 
 from rich.text import Text
-
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
@@ -49,7 +49,9 @@ def _select_graphics_backend() -> str | None:
 
 
 def _render_half_blocks(
-    image_data: bytes, max_width: int, max_height: int,
+    image_data: bytes,
+    max_width: int,
+    max_height: int,
 ) -> list[Text]:
     """Rendert Bilddaten als Unicode Half-Block-Zeilen.
 
@@ -102,9 +104,11 @@ def _load_graphics_widget_class(backend: str) -> type[Widget] | None:
     try:
         if backend == "tgp":
             from textual_image.widget import TGPImage
+
             return TGPImage
         if backend == "sixel":
             from textual_image.widget import SixelImage
+
             return SixelImage
     except ImportError:
         logger.debug("textual-image nicht installiert, Grafik-Rendering nicht verfuegbar")
@@ -170,15 +174,14 @@ class CoverArtPanel(Widget):
             if self._graphics_widget_cls is not None:
                 yield Static("", id="cover-status")
                 yield self._graphics_widget_cls(
-                    id="cover-content", classes="graphics-image",
+                    id="cover-content",
+                    classes="graphics-image",
                 )
             else:
                 yield Static("", id="cover-content")
 
     def _set_title(self, artist: str, title: str) -> None:
-        self.query_one("#cover-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
+        self.query_one("#cover-title", Static).update(f"\u266a {artist} \u2014 {title}")
 
     def _set_status(self, text: str) -> None:
         try:
@@ -205,7 +208,10 @@ class CoverArtPanel(Widget):
             self.query_one("#cover-content", Static).update(t("cover.loading"))
 
     def show_cover(
-        self, artist: str, title: str, image_data: bytes | None,
+        self,
+        artist: str,
+        title: str,
+        image_data: bytes | None,
     ) -> None:
         """Rendert Cover-Art oder zeigt Fallback-Text."""
         self._set_title(artist, title)

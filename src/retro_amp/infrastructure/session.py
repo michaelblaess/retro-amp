@@ -3,6 +3,7 @@
 Bei sauberem Shutdown wird die Session-Datei geloescht.
 Existiert sie beim Start noch, war der letzte Exit ein Crash.
 """
+
 from __future__ import annotations
 
 import json

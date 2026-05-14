@@ -1,4 +1,5 @@
 """retro-amp — Textual App (Composition Root)."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -11,58 +12,62 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+from textual import work
 from textual.app import App, ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
-    DirectoryTree, Footer, Header, Input, RichLog, TabbedContent, TabPane,
+    DirectoryTree,
+    Footer,
+    Header,
+    Input,
+    RichLog,
+    TabbedContent,
+    TabPane,
 )
-
-from textual import work
+from textual_widgets import HorizontalSplitter, SearchInputWithHistory, VerticalSplitter
 
 from . import __version__
 from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode, VisualizerMode
-from .themes import (
-    DEFAULT_THEME,
-    RETRO_THEMES,
-    RETRO_THEME_NAMES,
-    THEME_DISPLAY_NAMES,
-    migrate_theme_name,
-)
+from .i18n import t
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.playlist_migration import migrate_markdown_playlists
-from .infrastructure.settings import JsonSettingsStore
-from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.session import clear_session, load_session, save_session
+from .infrastructure.settings import JsonSettingsStore
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
 from .infrastructure.spectrum import SpectrumAnalyzer
 from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
+from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.sqlite_search_history_repository import SqliteSearchHistoryRepository
+from .screens.library_picker_screen import LibraryPickerScreen
 from .services.history_service import DEFAULT_HISTORY_LIMIT, HistoryService
 from .services.liner_notes_service import LinerNotesService
 from .services.lyrics_service import LyricsService
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
+from .themes import (
+    DEFAULT_THEME,
+    RETRO_THEME_NAMES,
+    RETRO_THEMES,
+    THEME_DISPLAY_NAMES,
+    migrate_theme_name,
+)
+from .widgets.control_panel import ControlPanel
 from .widgets.cover_art_panel import CoverArtPanel
-from .widgets.file_table import FileTable
 from .widgets.favorites_tree import FavoritesTree
+from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
 from .widgets.history_tree import HistoryTree
-from .widgets.playlist_tree import PlaylistTree
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
+from .widgets.playlist_tree import PlaylistTree
 from .widgets.search_tree import SearchTree
 from .widgets.translation_panel import TranslationPanel
-from .widgets.control_panel import ControlPanel
 from .widgets.transport_bar import TransportBar
 from .widgets.visualizer import Visualizer
-from .i18n import t
-from .screens.library_picker_screen import LibraryPickerScreen
 from .widgets.youtube_panel import YoutubePanel
-from textual_widgets import HorizontalSplitter, SearchInputWithHistory, VerticalSplitter
 
 
 class RetroAmpApp(App):
@@ -124,7 +129,8 @@ class RetroAmpApp(App):
             self._history_repo,
             is_enabled=lambda: self._database.get_bool_setting("history_enabled", False),
             get_limit=lambda: self._database.get_int_setting(
-                "history_limit", DEFAULT_HISTORY_LIMIT,
+                "history_limit",
+                DEFAULT_HISTORY_LIMIT,
             ),
         )
         self._liner_notes_service = LinerNotesService()
@@ -234,18 +240,17 @@ class RetroAmpApp(App):
             id="global-search-wrapper",
         )
         with Horizontal(id="main-container"):
-            with Vertical(id="left-panel"):
-                with TabbedContent(id="left-tabs"):
-                    with TabPane(t("tab.browser"), id="tab-browser"):
-                        yield FolderBrowser(str(self._tree_root), id="folder-browser")
-                    with TabPane(t("tab.favorites"), id="tab-favorites"):
-                        yield FavoritesTree(id="favorites-tree")
-                    with TabPane(t("tab.playlists"), id="tab-playlists"):
-                        yield PlaylistTree(id="playlist-tree")
-                    with TabPane(t("tab.history"), id="tab-history"):
-                        yield HistoryTree(id="history-tree")
-                    with TabPane(t("tab.search"), id="tab-search"):
-                        yield SearchTree(id="search-tree")
+            with Vertical(id="left-panel"), TabbedContent(id="left-tabs"):
+                with TabPane(t("tab.browser"), id="tab-browser"):
+                    yield FolderBrowser(str(self._tree_root), id="folder-browser")
+                with TabPane(t("tab.favorites"), id="tab-favorites"):
+                    yield FavoritesTree(id="favorites-tree")
+                with TabPane(t("tab.playlists"), id="tab-playlists"):
+                    yield PlaylistTree(id="playlist-tree")
+                with TabPane(t("tab.history"), id="tab-history"):
+                    yield HistoryTree(id="history-tree")
+                with TabPane(t("tab.search"), id="tab-search"):
+                    yield SearchTree(id="search-tree")
             yield VerticalSplitter(target_id="left-panel", min_size=20, max_size=80)
             with Vertical(id="right-panel"):
                 yield FileTable(id="file-table")
@@ -346,17 +351,13 @@ class RetroAmpApp(App):
 
     # --- Event-Handler fuer Widget-Messages ---
 
-    def on_directory_tree_directory_selected(
-        self, event: DirectoryTree.DirectorySelected
-    ) -> None:
+    def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         """Ordner im Baum ausgewaehlt — rechtes Panel aktualisieren."""
         self._scan_directory(event.path)
         self._save_last_path(event.path)
         self._write_log(t("log.folder", path=event.path))
 
-    def on_directory_tree_file_selected(
-        self, event: DirectoryTree.FileSelected
-    ) -> None:
+    def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Datei im Baum ausgewaehlt — Ordner aktualisieren und abspielen."""
         path = event.path
         if self._metadata_service.is_audio_file(path):
@@ -367,9 +368,7 @@ class RetroAmpApp(App):
             track = self._metadata_service.read_track(path)
             self._play_track(track)
 
-    def on_file_table_track_selected(
-        self, event: FileTable.TrackSelected
-    ) -> None:
+    def on_file_table_track_selected(self, event: FileTable.TrackSelected) -> None:
         """Track per Enter ausgewaehlt — abspielen."""
         self._play_track(event.track)
 
@@ -397,7 +396,8 @@ class RetroAmpApp(App):
             self._write_log(t("log.stop"))
 
     def on_control_panel_button_clicked(
-        self, event: ControlPanel.ButtonClicked,
+        self,
+        event: ControlPanel.ButtonClicked,
     ) -> None:
         """Control-Panel Button geklickt — Action dispatchen."""
         actions = {
@@ -445,7 +445,8 @@ class RetroAmpApp(App):
         for i, binding in enumerate(bindings_list):
             if binding.action == "toggle_shuffle":
                 self._bindings.key_to_bindings["x"][i] = dataclasses.replace(
-                    binding, description=label,
+                    binding,
+                    description=label,
                 )
                 break
         self.refresh_bindings()
@@ -478,7 +479,8 @@ class RetroAmpApp(App):
         for i, binding in enumerate(bindings_list):
             if binding.action == "cycle_repeat":
                 self._bindings.key_to_bindings["r"][i] = dataclasses.replace(
-                    binding, description=label,
+                    binding,
+                    description=label,
                 )
                 break
         self.refresh_bindings()
@@ -567,17 +569,20 @@ class RetroAmpApp(App):
     def action_show_about(self) -> None:
         """About-Dialog anzeigen."""
         from .screens.about_screen import AboutScreen  # Lazy import
+
         self.push_screen(AboutScreen())
 
     def action_show_settings(self) -> None:
         """Settings-Dialog anzeigen."""
         from .screens.settings_screen import SettingsScreen  # Lazy import
+
         current = self._settings_store.load()
         db_settings: dict[str, object] = {
             "db_journal_mode": self._database.get_setting("db_journal_mode", "DELETE"),
             "history_enabled": self._database.get_bool_setting("history_enabled", False),
             "history_limit": self._database.get_int_setting(
-                "history_limit", DEFAULT_HISTORY_LIMIT,
+                "history_limit",
+                DEFAULT_HISTORY_LIMIT,
             ),
         }
         self.push_screen(
@@ -587,9 +592,7 @@ class RetroAmpApp(App):
 
     def _clear_history(self) -> int:
         """Callback fuer den "Verlauf loeschen"-Button im Settings-Dialog."""
-        count = sum(
-            len(g.entries) for g in self._history_service.list_grouped()
-        )
+        count = sum(len(g.entries) for g in self._history_service.list_grouped())
         self._history_service.clear_all()
         try:
             self._refresh_history_tree()
@@ -598,7 +601,8 @@ class RetroAmpApp(App):
         return count
 
     def _on_settings_closed(
-        self, result: dict[str, dict[str, object]] | None,
+        self,
+        result: dict[str, dict[str, object]] | None,
     ) -> None:
         """Callback nach Schliessen des Settings-Dialogs."""
         if result is None:
@@ -630,12 +634,14 @@ class RetroAmpApp(App):
         # History-Settings: live wirksam, kein Neustart noetig
         if "history_enabled" in new_db_settings:
             self._database.set_bool_setting(
-                "history_enabled", bool(new_db_settings["history_enabled"]),
+                "history_enabled",
+                bool(new_db_settings["history_enabled"]),
             )
         if "history_limit" in new_db_settings:
             try:
                 self._database.set_int_setting(
-                    "history_limit", int(new_db_settings["history_limit"]),
+                    "history_limit",
+                    int(new_db_settings["history_limit"]),
                 )
             except (TypeError, ValueError):
                 pass
@@ -663,7 +669,11 @@ class RetroAmpApp(App):
         """Wechselt zwischen Dateien, Favoriten, Playlists, Verlauf und Suche."""
         tabs = self.query_one("#left-tabs", TabbedContent)
         tab_ids = [
-            "tab-browser", "tab-favorites", "tab-playlists", "tab-history", "tab-search",
+            "tab-browser",
+            "tab-favorites",
+            "tab-playlists",
+            "tab-history",
+            "tab-search",
         ]
         try:
             idx = tab_ids.index(tabs.active)
@@ -673,7 +683,8 @@ class RetroAmpApp(App):
         tabs.active = tab_ids[next_idx]
 
     def on_tabbed_content_tab_activated(
-        self, event: TabbedContent.TabActivated,
+        self,
+        event: TabbedContent.TabActivated,
     ) -> None:
         """Reagiert auf Tab-Wechsel im linken Panel."""
         if event.tabbed_content.id != "left-tabs":
@@ -732,7 +743,8 @@ class RetroAmpApp(App):
         self._run_global_search(query)
 
     def on_search_input_with_history_history_entry_delete_requested(
-        self, event: SearchInputWithHistory.HistoryEntryDeleteRequested,
+        self,
+        event: SearchInputWithHistory.HistoryEntryDeleteRequested,
     ) -> None:
         """Eintrag aus Such-Verlauf loeschen (Delete-Taste im Dropdown)."""
         self._search_history_repo.delete(event.entry)
@@ -751,7 +763,9 @@ class RetroAmpApp(App):
     _SEPARATOR_RE = re.compile(r"[.\-_]")
 
     def _do_file_search(
-        self, query: str, root: Path,
+        self,
+        query: str,
+        root: Path,
     ) -> list[tuple[Path, bool]]:
         """Fuehrt die Dateisuche durch (Thread-safe, kein Widget-Zugriff).
 
@@ -774,7 +788,9 @@ class RetroAmpApp(App):
         return results[:200]
 
     def _apply_search_results(
-        self, query: str, results: list[tuple[Path, bool]],
+        self,
+        query: str,
+        results: list[tuple[Path, bool]],
     ) -> None:
         """Zeigt Suchergebnisse im Suchbaum an (Main-Thread)."""
         search_tree = self.query_one("#search-tree", SearchTree)
@@ -782,7 +798,8 @@ class RetroAmpApp(App):
         self._write_log(t("log.search_results", query=query, count=len(results)))
 
     def on_search_tree_track_selected(
-        self, event: SearchTree.TrackSelected,
+        self,
+        event: SearchTree.TrackSelected,
     ) -> None:
         """Track im Suchbaum ausgewaehlt → abspielen."""
         path = event.path
@@ -796,7 +813,8 @@ class RetroAmpApp(App):
             self._play_track(track)
 
     def on_search_tree_folder_selected(
-        self, event: SearchTree.FolderSelected,
+        self,
+        event: SearchTree.FolderSelected,
     ) -> None:
         """Ordner im Suchbaum ausgewaehlt → in der Datei-Tabelle oeffnen."""
         path = event.path
@@ -819,7 +837,6 @@ class RetroAmpApp(App):
 
     def action_rename_file(self) -> None:
         """Datei oder Ordner umbenennen — Dialog oeffnen."""
-        from .screens.rename_screen import RenameScreen  # Lazy import
 
         # Kontextabhaengig: Fokus auf Baum → Element im Baum umbenennen
         folder_browser = self.query_one("#folder-browser", FolderBrowser)
@@ -865,7 +882,10 @@ class RetroAmpApp(App):
         self.push_screen(
             RenameScreen(target),
             callback=lambda new_path: self._on_rename_result(
-                new_path, is_playing_target, resume_position, playing,
+                new_path,
+                is_playing_target,
+                resume_position,
+                playing,
             ),
         )
 
@@ -914,7 +934,6 @@ class RetroAmpApp(App):
 
     def action_delete_file(self) -> None:
         """Datei oder Ordner loeschen — Bestaetigungsdialog oeffnen."""
-        from .screens.confirm_screen import ConfirmScreen  # Lazy import
 
         # Kontextabhaengig: Fokus auf Baum → Ordner/Datei im Baum loeschen
         folder_browser = self.query_one("#folder-browser", FolderBrowser)
@@ -923,8 +942,7 @@ class RetroAmpApp(App):
             if node and node.data:
                 target = node.data.path
                 if target == self._tree_root:
-                    self.notify(t("notify.cannot_delete_root"),
-                                severity="warning")
+                    self.notify(t("notify.cannot_delete_root"), severity="warning")
                     return
                 if target.is_dir():
                     # Dateien im Ordner zaehlen
@@ -971,7 +989,9 @@ class RetroAmpApp(App):
         self.push_screen(
             ConfirmScreen(msg, file_path=target),
             callback=lambda deleted_path: self._on_delete_result(
-                deleted_path, is_playing_target, playing,
+                deleted_path,
+                is_playing_target,
+                playing,
             ),
         )
 
@@ -1027,11 +1047,7 @@ class RetroAmpApp(App):
             # Keine Wiedergabe — Playlist laden und abspielen
             track_paths = self._playlist_service.load_playlist_tracks(playlist_name)
             if track_paths:
-                tracks = [
-                    self._metadata_service.read_track(p)
-                    for p in track_paths
-                    if p.is_file()
-                ]
+                tracks = [self._metadata_service.read_track(p) for p in track_paths if p.is_file()]
                 if tracks:
                     self._current_tracks = tracks
                     file_table = self.query_one("#file-table", FileTable)
@@ -1080,7 +1096,8 @@ class RetroAmpApp(App):
         return True
 
     def on_favorites_tree_track_selected(
-        self, event: FavoritesTree.TrackSelected,
+        self,
+        event: FavoritesTree.TrackSelected,
     ) -> None:
         """Favoriten-Track ausgewaehlt — navigieren und abspielen."""
         path = event.path
@@ -1095,7 +1112,8 @@ class RetroAmpApp(App):
             self.notify(t("notify.file_not_found"), severity="warning")
 
     def on_favorites_tree_track_remove_requested(
-        self, event: FavoritesTree.TrackRemoveRequested,
+        self,
+        event: FavoritesTree.TrackRemoveRequested,
     ) -> None:
         """Track aus Favoriten entfernen."""
         removed = self._playlist_service.remove_from_favorites(event.path)
@@ -1105,7 +1123,8 @@ class RetroAmpApp(App):
             self._write_log(t("log.favorite_removed", name=event.path.name))
 
     def on_history_tree_track_selected(
-        self, event: HistoryTree.TrackSelected,
+        self,
+        event: HistoryTree.TrackSelected,
     ) -> None:
         """Verlauf-Track ausgewaehlt — navigieren und abspielen."""
         path = event.path
@@ -1120,7 +1139,8 @@ class RetroAmpApp(App):
             self.notify(t("notify.file_not_found"), severity="warning")
 
     def on_history_tree_clear_requested(
-        self, event: HistoryTree.ClearRequested,
+        self,
+        event: HistoryTree.ClearRequested,
     ) -> None:
         """Verlauf auf Wunsch komplett loeschen."""
         self._history_service.clear_all()
@@ -1129,7 +1149,8 @@ class RetroAmpApp(App):
         self._write_log(t("log.history_cleared"))
 
     def on_playlist_tree_track_selected(
-        self, event: PlaylistTree.TrackSelected,
+        self,
+        event: PlaylistTree.TrackSelected,
     ) -> None:
         """Playlist-Track ausgewaehlt — navigieren und abspielen."""
         path = event.path
@@ -1144,11 +1165,13 @@ class RetroAmpApp(App):
             self.notify(t("notify.file_not_found"), severity="warning")
 
     def on_playlist_tree_track_remove_requested(
-        self, event: PlaylistTree.TrackRemoveRequested,
+        self,
+        event: PlaylistTree.TrackRemoveRequested,
     ) -> None:
         """Track aus Playlist entfernen."""
         removed = self._playlist_service.remove_from_playlist(
-            event.playlist_name, event.path,
+            event.playlist_name,
+            event.path,
         )
         if removed:
             self.notify(t("notify.playlist_track_removed", playlist=event.playlist_name, name=event.path.name))
@@ -1156,7 +1179,8 @@ class RetroAmpApp(App):
             self._write_log(t("log.playlist_track_removed", playlist=event.playlist_name, name=event.path.name))
 
     def on_transport_bar_volume_clicked(
-        self, event: TransportBar.VolumeClicked,
+        self,
+        event: TransportBar.VolumeClicked,
     ) -> None:
         """Lautstaerke per Mausklick aendern."""
         self._player_service.set_volume(event.volume)
@@ -1165,14 +1189,16 @@ class RetroAmpApp(App):
         self._write_log(t("log.volume", pct=int(event.volume * 100)))
 
     def on_transport_bar_seek_clicked(
-        self, event: TransportBar.SeekClicked,
+        self,
+        event: TransportBar.SeekClicked,
     ) -> None:
         """Position per Mausklick im Fortschrittsbalken aendern."""
         self._player_service.seek_to(event.position)
         self._update_transport()
 
     def on_lyric_line_clicked(
-        self, event: LyricLine.Clicked,
+        self,
+        event: LyricLine.Clicked,
     ) -> None:
         """Position per Klick auf Lyrics-Zeile aendern."""
         self._player_service.seek_to(event.timestamp)
@@ -1262,10 +1288,7 @@ class RetroAmpApp(App):
         # Dedup: gleicher Track innerhalb 2 s → Zweitaufruf ignorieren.
         path_key = str(track.path)
         now = time.monotonic()
-        if (
-            self._last_play_path == path_key
-            and (now - self._last_play_time) < 2.0
-        ):
+        if self._last_play_path == path_key and (now - self._last_play_time) < 2.0:
             return
         self._last_play_path = path_key
         self._last_play_time = now
@@ -1363,19 +1386,22 @@ class RetroAmpApp(App):
         self._settings_store.save(settings)
 
     def on_vertical_splitter_resized(
-        self, event: VerticalSplitter.Resized,
+        self,
+        event: VerticalSplitter.Resized,
     ) -> None:
         """Vertikaler Splitter wurde geloest — neue Breite persistieren."""
         self._save_pane_size(event.target_id, event.size)
 
     def on_horizontal_splitter_resized(
-        self, event: HorizontalSplitter.Resized,
+        self,
+        event: HorizontalSplitter.Resized,
     ) -> None:
         """Horizontaler Splitter wurde geloest — neue Hoehe persistieren."""
         self._save_pane_size(event.target_id, event.size)
 
     def on_visualizer_mode_change_requested(
-        self, event: Visualizer.ModeChangeRequested,
+        self,
+        event: Visualizer.ModeChangeRequested,
     ) -> None:
         """Visualizer-Modus per Kontextmenue gewechselt — anwenden + persistieren."""
         settings = self._settings_store.load()
@@ -1398,9 +1424,7 @@ class RetroAmpApp(App):
             if track:
                 self._load_spectrum(track.path)
                 vis.set_spectrum_source(
-                    lambda: self._spectrum_analyzer.get_bands(
-                        self._player_service.state.position_seconds
-                    )
+                    lambda: self._spectrum_analyzer.get_bands(self._player_service.state.position_seconds)
                 )
             vis.start()
         else:
@@ -1434,7 +1458,7 @@ class RetroAmpApp(App):
             repeat_mode=self._repeat_mode,
             is_favorite=is_fav,
             has_track=track is not None,
-            )
+        )
 
     def _on_playback_error(self, error: str) -> None:
         """Callback bei Playback-Fehlern."""
@@ -1605,7 +1629,8 @@ class RetroAmpApp(App):
             # Lyrics + Uebersetzung laden
             self.query_one("#lyrics-panel", LyricsPanel).show_loading(artist, title)
             self.query_one("#translation-panel", TranslationPanel).show_loading(
-                artist, title,
+                artist,
+                title,
             )
             self._fetch_lyrics_async(artist, title, generation)
 
@@ -1618,7 +1643,8 @@ class RetroAmpApp(App):
 
         # Cover-Art (unabhaengig von Artist — direkt aus Datei)
         self.query_one("#cover-panel", CoverArtPanel).show_loading(
-            artist or track.path.parent.name, title,
+            artist or track.path.parent.name,
+            title,
         )
         self._fetch_cover_art_async(track, artist or track.path.parent.name, title)
 
@@ -1635,19 +1661,28 @@ class RetroAmpApp(App):
 
     @work(exclusive=True, group="lyrics", thread=True)
     def _fetch_lyrics_async(
-        self, artist: str, title: str, generation: int,
+        self,
+        artist: str,
+        title: str,
+        generation: int,
     ) -> None:
         """Holt Lyrics im Background-Thread."""
         original, translated, synced_lines = self._lyrics_service.get_lyrics(
-            artist, title,
+            artist,
+            title,
         )
 
         if generation != self._lyrics_generation:
             return
 
         self.call_from_thread(
-            self._apply_lyrics, artist, title, original, translated,
-            synced_lines, generation,
+            self._apply_lyrics,
+            artist,
+            title,
+            original,
+            translated,
+            synced_lines,
+            generation,
         )
 
     def _apply_lyrics(
@@ -1664,29 +1699,45 @@ class RetroAmpApp(App):
             return
 
         self.query_one("#lyrics-panel", LyricsPanel).show_lyrics(
-            artist, title, original, synced_lines,
+            artist,
+            title,
+            original,
+            synced_lines,
         )
         self.query_one("#translation-panel", TranslationPanel).show_translation(
-            artist, title, translated,
+            artist,
+            title,
+            translated,
         )
 
     @work(exclusive=True, group="cover", thread=True)
     def _fetch_cover_art_async(
-        self, track: AudioTrack, artist: str, title: str,
+        self,
+        track: AudioTrack,
+        artist: str,
+        title: str,
     ) -> None:
         """Extrahiert Cover-Art im Background-Thread."""
         image_data = self._metadata_reader.extract_cover_art(track.path)
         self.call_from_thread(
-            self._apply_cover_art, artist, title, image_data,
+            self._apply_cover_art,
+            artist,
+            title,
+            image_data,
         )
 
     def _apply_cover_art(
-        self, artist: str, title: str, image_data: bytes | None,
+        self,
+        artist: str,
+        title: str,
+        image_data: bytes | None,
     ) -> None:
         """Zeigt Cover-Art in der UI an (Main-Thread)."""
         self._last_cover = (artist, title, image_data)
         self.query_one("#cover-panel", CoverArtPanel).show_cover(
-            artist, title, image_data,
+            artist,
+            title,
+            image_data,
         )
 
     def _refresh_favorites_tree(self) -> None:

@@ -3,6 +3,7 @@
 Holt Kurzinfos aus der Wikipedia (deutsch + englisch Fallback)
 und cached sie als Markdown-Dateien in ~/.retro-amp/notes/.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,13 +33,15 @@ def _wiki_search(query: str, lang: str = "de") -> tuple[str, str]:
         Tuple (Titel, Extract-Text) oder ("", "") wenn nichts gefunden.
     """
     try:
-        params = urllib.parse.urlencode({
-            "action": "query",
-            "list": "search",
-            "srsearch": query,
-            "format": "json",
-            "srlimit": "1",
-        })
+        params = urllib.parse.urlencode(
+            {
+                "action": "query",
+                "list": "search",
+                "srsearch": query,
+                "format": "json",
+                "srlimit": "1",
+            }
+        )
         url = f"https://{lang}.wikipedia.org/w/api.php?{params}"
         req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
@@ -49,10 +52,7 @@ def _wiki_search(query: str, lang: str = "de") -> tuple[str, str]:
             title = results[0]["title"]
 
         # Summary holen
-        summary_url = (
-            f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/"
-            f"{urllib.parse.quote(title)}"
-        )
+        summary_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(title)}"
         req2 = urllib.request.Request(summary_url, headers={"User-Agent": _USER_AGENT})
         with urllib.request.urlopen(req2, timeout=_TIMEOUT) as resp2:
             data2 = json.loads(resp2.read())
@@ -151,25 +151,57 @@ class LinerNotesService:
 
         # 2) Ergebnis muss musikbezogen sein
         music_keywords = [
-            "band", "musik", "music", "singer", "saenger", "sängerin",
-            "album", "song", "record label", "plattenlabel", "genre",
-            "pop", "rock", "electronic", "elektronisch", "hip-hop",
-            "hip hop", "jazz", "synthie", "synth", "punk", "metal",
-            "wave", "disco", "rapper", "rap", "r&b",
-            "gitarrist", "guitarist", "drummer", "pianist", "komponist",
-            "composer", "producer", "produzent", "chart",
-            "single", "tour", "konzert", "concert", "sänger",
+            "band",
+            "musik",
+            "music",
+            "singer",
+            "saenger",
+            "sängerin",
+            "album",
+            "song",
+            "record label",
+            "plattenlabel",
+            "genre",
+            "pop",
+            "rock",
+            "electronic",
+            "elektronisch",
+            "hip-hop",
+            "hip hop",
+            "jazz",
+            "synthie",
+            "synth",
+            "punk",
+            "metal",
+            "wave",
+            "disco",
+            "rapper",
+            "rap",
+            "r&b",
+            "gitarrist",
+            "guitarist",
+            "drummer",
+            "pianist",
+            "komponist",
+            "composer",
+            "producer",
+            "produzent",
+            "chart",
+            "single",
+            "tour",
+            "konzert",
+            "concert",
+            "sänger",
         ]
-        return any(
-            re.search(rf"\b{re.escape(kw)}\b", text)
-            for kw in music_keywords
-        )
+        return any(re.search(rf"\b{re.escape(kw)}\b", text) for kw in music_keywords)
 
     def _format_note(
-        self, artist: str, title: str, extract: str, lang: str,
+        self,
+        artist: str,
+        title: str,
+        extract: str,
+        lang: str,
     ) -> str:
         """Formatiert die Note als Markdown."""
-        wiki_url = (
-            f"https://{lang}.wikipedia.org/wiki/{urllib.parse.quote(title)}"
-        )
+        wiki_url = f"https://{lang}.wikipedia.org/wiki/{urllib.parse.quote(title)}"
         return f"# {artist}\n\n{extract}\n\n— [Wikipedia]({wiki_url})\n"

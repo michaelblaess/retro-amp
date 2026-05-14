@@ -1,10 +1,10 @@
 """Datei-Tabelle Widget — zeigt Audio-Dateien im aktuellen Ordner."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 from rich.text import Text
-
 from textual import on
 from textual.message import Message
 from textual.widget import Widget
@@ -78,8 +78,12 @@ class FileTable(Widget):
         """Initialisiert die Tabellen-Spalten."""
         table = self.query_one("#file-data", DataTable)
         col_keys = table.add_columns(
-            t("file_table.name"), t("file_table.format"), t("file_table.bitrate"),
-            t("file_table.duration"), t("file_table.date"), t("file_table.size"),
+            t("file_table.name"),
+            t("file_table.format"),
+            t("file_table.bitrate"),
+            t("file_table.duration"),
+            t("file_table.date"),
+            t("file_table.size"),
         )
         self._name_col_key = col_keys[0]
 
@@ -125,9 +129,7 @@ class FileTable(Widget):
         else:
             count_str = t("file_table.count", count=total)
         if total > 0:
-            total_bytes = sum(
-                max(0, track.file_size_bytes) for track in self._tracks
-            )
+            total_bytes = sum(max(0, track.file_size_bytes) for track in self._tracks)
             size_str = _format_size(total_bytes)
             count_str = f"{count_str} \u00b7 {size_str}" if size_str else count_str
         if path_str:
@@ -147,7 +149,9 @@ class FileTable(Widget):
                 if track.path == old_path:
                     try:
                         table.update_cell(
-                            str(old_path), self._name_col_key, track.display_name,
+                            str(old_path),
+                            self._name_col_key,
+                            track.display_name,
                         )
                     except Exception:
                         pass
@@ -160,7 +164,9 @@ class FileTable(Widget):
                     styled = Text(f"\u25b6 {track.display_name}", style="bold green")
                     try:
                         table.update_cell(
-                            str(path), self._name_col_key, styled,
+                            str(path),
+                            self._name_col_key,
+                            styled,
                         )
                     except Exception:
                         pass

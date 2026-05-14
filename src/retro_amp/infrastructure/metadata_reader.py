@@ -3,14 +3,15 @@
 Tracker-Formate (MOD, S3M, XM) und SID-Dateien werden nicht von mutagen
 unterstuetzt. Deren Metadaten werden direkt aus dem Datei-Header gelesen.
 """
+
 from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from ..domain.models import AudioFormat, AudioTrack
+from ..domain.models import AudioTrack
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,8 @@ class MutagenMetadataReader:
             stat = path.stat()
             track.file_size_bytes = stat.st_size
             track.modified_date = datetime.fromtimestamp(
-                stat.st_mtime, tz=timezone.utc,
+                stat.st_mtime,
+                tz=UTC,
             ).isoformat()
         except OSError:
             pass
@@ -250,7 +252,9 @@ class MutagenMetadataReader:
             # Vorbis/Opus: metadata_block_picture
             if hasattr(audio, "get"):
                 import base64
+
                 from mutagen.flac import Picture
+
                 pics = audio.get("metadata_block_picture")  # type: ignore[union-attr]
                 if pics and isinstance(pics, list):
                     pic = Picture(base64.b64decode(pics[0]))
@@ -268,8 +272,15 @@ class MutagenMetadataReader:
         und faellt auf die erste Bilddatei im Ordner zurueck.
         """
         _COVER_NAMES = {
-            "cover", "folder", "front", "album", "albumart",
-            "album_art", "albumartsmall", "thumb", "artwork",
+            "cover",
+            "folder",
+            "front",
+            "album",
+            "albumart",
+            "album_art",
+            "albumartsmall",
+            "thumb",
+            "artwork",
         }
         _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
 

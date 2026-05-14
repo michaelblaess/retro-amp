@@ -28,9 +28,7 @@ class SqlitePlaylistRepository:
     def load(self, name: str) -> Playlist:
         """Laedt eine Playlist nach Name. Leere Playlist wenn nicht vorhanden."""
         playlist = Playlist(name=name)
-        row = self._conn.execute(
-            "SELECT id FROM playlists WHERE name = ?", (name,)
-        ).fetchone()
+        row = self._conn.execute("SELECT id FROM playlists WHERE name = ?", (name,)).fetchone()
         if row is None:
             return playlist
         entries = self._conn.execute(
@@ -51,9 +49,7 @@ class SqlitePlaylistRepository:
         now = audit_now()
         try:
             conn.execute("BEGIN")
-            row = conn.execute(
-                "SELECT id FROM playlists WHERE name = ?", (playlist.name,)
-            ).fetchone()
+            row = conn.execute("SELECT id FROM playlists WHERE name = ?", (playlist.name,)).fetchone()
             if row is None:
                 cursor = conn.execute(
                     "INSERT INTO playlists (name, created_at) VALUES (?, ?)",
@@ -85,9 +81,7 @@ class SqlitePlaylistRepository:
 
     def list_all(self) -> list[str]:
         """Gibt alle Playlist-Namen alphabetisch sortiert zurueck."""
-        rows = self._conn.execute(
-            "SELECT name FROM playlists ORDER BY name COLLATE NOCASE"
-        ).fetchall()
+        rows = self._conn.execute("SELECT name FROM playlists ORDER BY name COLLATE NOCASE").fetchall()
         return [row["name"] for row in rows]
 
     def delete(self, name: str) -> None:

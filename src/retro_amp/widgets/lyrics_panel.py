@@ -1,4 +1,5 @@
 """Lyrics Panel — zeigt Original-Songtexte mit optionalem Sync."""
+
 from __future__ import annotations
 
 import time
@@ -105,9 +106,7 @@ class LyricsPanel(Widget):
         self._is_synced = False
         self._synced_lines = []
         self._current_line_index = -1
-        self.query_one("#lyrics-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
+        self.query_one("#lyrics-title", Static).update(f"\u266a {artist} \u2014 {title}")
         # Alte Lyric-Zeilen entfernen
         for line in self.query(LyricLine):
             line.remove()
@@ -121,9 +120,7 @@ class LyricsPanel(Widget):
         synced_lines: list[tuple[float, str]] | None = None,
     ) -> None:
         """Zeigt Lyrics an — synced wenn verfuegbar, sonst plain."""
-        self.query_one("#lyrics-title", Static).update(
-            f"\u266a {artist} \u2014 {title}"
-        )
+        self.query_one("#lyrics-title", Static).update(f"\u266a {artist} \u2014 {title}")
 
         # Alte Lyric-Zeilen entfernen
         for line in self.query(LyricLine):
@@ -145,9 +142,7 @@ class LyricsPanel(Widget):
             self._is_synced = False
             self._synced_lines = []
             self._current_line_index = -1
-            self.query_one("#lyrics-text", Static).update(
-                text if text else t("lyrics.not_found")
-            )
+            self.query_one("#lyrics-text", Static).update(text if text else t("lyrics.not_found"))
 
         self.query_one("#lyrics-scroll", LyricsScroll).scroll_home(animate=False)
 

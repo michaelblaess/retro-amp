@@ -1,4 +1,5 @@
 """Info Panel — zeigt Liner Notes (Wikipedia-Info) zum aktuellen Artist."""
+
 from __future__ import annotations
 
 import re
@@ -8,7 +9,6 @@ from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Static
-
 
 from ..i18n import t
 

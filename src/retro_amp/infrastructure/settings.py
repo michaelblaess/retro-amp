@@ -1,4 +1,5 @@
 """Settings-Persistenz in ~/.retro-amp/settings.json."""
+
 from __future__ import annotations
 
 import json

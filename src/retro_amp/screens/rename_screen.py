@@ -1,4 +1,5 @@
 """Rename-Screen — Modal zum Umbenennen einer Datei."""
+
 from __future__ import annotations
 
 import logging
@@ -71,9 +72,7 @@ class RenameScreen(ModalScreen[Path | None]):
                 id="new-name",
             )
             with Horizontal(id="button-row"):
-                yield Button(
-                    t("rename.btn_save"), id="btn-save", variant="primary"
-                )
+                yield Button(t("rename.btn_save"), id="btn-save", variant="primary")
                 yield Button(t("rename.btn_cancel"), id="btn-close", variant="default")
 
     def on_mount(self) -> None:
@@ -112,9 +111,7 @@ class RenameScreen(ModalScreen[Path | None]):
         new_path = self._file_path.parent / new_name
 
         if new_path.exists():
-            self.notify(
-                t("rename.exists", name=new_name), severity="error"
-            )
+            self.notify(t("rename.exists", name=new_name), severity="error")
             return
 
         try:

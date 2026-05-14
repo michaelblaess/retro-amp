@@ -1,4 +1,5 @@
 """Playlist-Persistenz als Markdown-Dateien."""
+
 from __future__ import annotations
 
 import logging
@@ -40,9 +41,7 @@ class MarkdownPlaylistStore:
                 if line.startswith("- "):
                     path_str = line[2:].strip()
                     if path_str:
-                        playlist.entries.append(
-                            PlaylistEntry(path=Path(path_str))
-                        )
+                        playlist.entries.append(PlaylistEntry(path=Path(path_str)))
         except Exception:
             logger.debug("Playlist konnte nicht geladen werden: %s", name)
 
@@ -68,11 +67,7 @@ class MarkdownPlaylistStore:
         if not self._dir.is_dir():
             return []
         try:
-            return [
-                f.stem
-                for f in sorted(self._dir.glob("*.md"))
-                if f.is_file()
-            ]
+            return [f.stem for f in sorted(self._dir.glob("*.md")) if f.is_file()]
         except Exception:
             return []
 

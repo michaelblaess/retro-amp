@@ -1,16 +1,14 @@
 """Tests fuer LinerNotesService."""
+
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from retro_amp.services.liner_notes_service import (
     LinerNotesService,
     _safe_filename,
-    _wiki_search,
 )
 
 

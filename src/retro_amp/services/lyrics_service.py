@@ -3,6 +3,7 @@
 Holt Lyrics per lrclib.net API und uebersetzt optional per MyMemory API.
 Ergebnisse werden als Textdateien in ~/.retro-amp/lyrics/ gecached.
 """
+
 from __future__ import annotations
 
 import json
@@ -83,7 +84,9 @@ class LyricsService:
         return self._lyrics_dir / f"{filename}.json"
 
     def _read_cache(
-        self, artist: str, title: str,
+        self,
+        artist: str,
+        title: str,
     ) -> tuple[str, str, list[tuple[float, str]]] | None:
         """Liest Lyrics aus dem Cache."""
         path = self._cache_path(artist, title)
@@ -117,16 +120,21 @@ class LyricsService:
                     seconds = ts - minutes * 60
                     parts.append(f"[{minutes:02d}:{seconds:05.2f}] {text}")
                 synced_raw = "\n".join(parts)
-            data = {"artist": artist, "title": title,
-                    "original": original, "translated": translated,
-                    "synced_raw": synced_raw}
-            path.write_text(json.dumps(data, ensure_ascii=False, indent=2),
-                            encoding="utf-8")
+            data = {
+                "artist": artist,
+                "title": title,
+                "original": original,
+                "translated": translated,
+                "synced_raw": synced_raw,
+            }
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception:
             logger.debug("Lyrics-Cache schreiben fehlgeschlagen: %s - %s", artist, title)
 
     def _fetch_lyrics(
-        self, artist: str, title: str,
+        self,
+        artist: str,
+        title: str,
     ) -> tuple[str, list[tuple[float, str]]]:
         """Holt Lyrics von lrclib.net.
 
@@ -134,10 +142,12 @@ class LyricsService:
         bevorzugt — der Plain-Text wird daraus extrahiert.
         """
         try:
-            params = urllib.parse.urlencode({
-                "artist_name": artist,
-                "track_name": title,
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "artist_name": artist,
+                    "track_name": title,
+                }
+            )
             url = f"https://lrclib.net/api/search?{params}"
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
@@ -162,7 +172,8 @@ class LyricsService:
         return "", []
 
     def _parse_synced_lyrics(
-        self, synced_text: str,
+        self,
+        synced_text: str,
     ) -> list[tuple[float, str]]:
         """Parst [MM:SS.xx] Format in (seconds, text) Tupel."""
         if not synced_text:
@@ -212,11 +223,13 @@ class LyricsService:
         if self._rate_limited:
             return ""
         try:
-            params = urllib.parse.urlencode({
-                "q": text,
-                "langpair": "autodetect|de",
-                "de": _MYMEMORY_EMAIL,
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "q": text,
+                    "langpair": "autodetect|de",
+                    "de": _MYMEMORY_EMAIL,
+                }
+            )
             url = f"https://api.mymemory.translated.net/get?{params}"
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:

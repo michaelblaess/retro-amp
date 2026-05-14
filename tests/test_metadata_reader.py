@@ -1,11 +1,8 @@
 """Tests fuer MetadataReader — Tracker-Header-Parsing."""
+
 from __future__ import annotations
 
-import struct
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from retro_amp.infrastructure.metadata_reader import (
     MutagenMetadataReader,

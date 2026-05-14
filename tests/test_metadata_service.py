@@ -1,11 +1,10 @@
 """Tests fuer MetadataService."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from retro_amp.domain.models import AudioFormat, AudioTrack
+from retro_amp.domain.models import AudioTrack
 from retro_amp.services.metadata_service import MetadataService
 
 

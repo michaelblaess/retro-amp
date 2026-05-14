@@ -10,6 +10,7 @@ trademark-safety Rename in textual-themes 0.5) auf die aktuellen
 Slugs. So koennen gespeicherte Settings aelterer retro-amp-Versionen
 beim Laden migriert werden.
 """
+
 from __future__ import annotations
 
 from textual_themes import (

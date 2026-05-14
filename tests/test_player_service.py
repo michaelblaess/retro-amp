@@ -1,11 +1,7 @@
 """Tests fuer PlayerService."""
+
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
-from retro_amp.domain.models import AudioTrack, PlaybackState
 from retro_amp.services.player_service import PlayerService
 
 

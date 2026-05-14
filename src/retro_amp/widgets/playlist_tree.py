@@ -1,4 +1,5 @@
 """Playlist-Tree Widget — Baum mit allen Playlists und deren Tracks."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,6 +30,7 @@ class PlaylistTree(Tree[Path | str | None]):
 
     class TrackSelected(Message):
         """Track in einer Playlist ausgewaehlt."""
+
         def __init__(self, path: Path, playlist_name: str) -> None:
             super().__init__()
             self.path = path
@@ -36,6 +38,7 @@ class PlaylistTree(Tree[Path | str | None]):
 
     class TrackRemoveRequested(Message):
         """Track soll aus Playlist entfernt werden."""
+
         def __init__(self, path: Path, playlist_name: str) -> None:
             super().__init__()
             self.path = path
@@ -52,9 +55,7 @@ class PlaylistTree(Tree[Path | str | None]):
         self.clear()
 
         count = len(playlists)
-        self.root.set_label(
-            t("playlists.title_count", count=count) if count else t("playlists.title")
-        )
+        self.root.set_label(t("playlists.title_count", count=count) if count else t("playlists.title"))
 
         if not playlists:
             self.root.add_leaf(t("playlists.empty"), data=None)
@@ -68,7 +69,8 @@ class PlaylistTree(Tree[Path | str | None]):
             playlist_node = self.root.add(label, data=name)
             for track in tracks:
                 playlist_node.add_leaf(
-                    f"{self.ICON_MUSIC}{track.name}", data=track,
+                    f"{self.ICON_MUSIC}{track.name}",
+                    data=track,
                 )
             playlist_node.expand()
 

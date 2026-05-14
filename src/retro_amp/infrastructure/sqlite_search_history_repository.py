@@ -51,7 +51,8 @@ class SqliteSearchHistoryRepository:
     def delete(self, query: str) -> None:
         """Loescht eine einzelne Suchanfrage."""
         self._conn.execute(
-            "DELETE FROM search_history WHERE query = ?", (query,),
+            "DELETE FROM search_history WHERE query = ?",
+            (query,),
         )
         self._conn.commit()
 

@@ -4,6 +4,7 @@ Verhindert mehrere gleichzeitige Instanzen von retro-amp.
 Neue Instanzen schreiben den Dateipfad in eine Request-Datei,
 die laufende Instanz prueft diese periodisch per Timer.
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,6 +29,7 @@ def _is_process_alive(pid: int) -> bool:
         # WaitForSingleObject(handle, 0) ist zuverlaessig:
         # WAIT_TIMEOUT (258) = Prozess laeuft, WAIT_OBJECT_0 (0) = beendet.
         import ctypes
+
         kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
         SYNCHRONIZE = 0x00100000
         handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
@@ -80,6 +82,7 @@ def acquire_lock() -> None:
     nicht aufgerufen wird (z.B. Terminal geschlossen).
     """
     import atexit
+
     _LOCK_DIR.mkdir(parents=True, exist_ok=True)
     _LOCK_FILE.write_text(str(os.getpid()), encoding="utf-8")
     atexit.register(release_lock)

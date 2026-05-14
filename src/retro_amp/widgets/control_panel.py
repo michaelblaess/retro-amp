@@ -1,4 +1,5 @@
 """Control-Panel Widget — WinAmp-Style Transport-Buttons mit Textual Buttons."""
+
 from __future__ import annotations
 
 from textual.app import ComposeResult
@@ -8,7 +9,6 @@ from textual.widgets import Button
 
 from ..domain.models import RepeatMode
 from ..i18n import t
-
 
 # Mapping: Button-ID -> Action-Name
 _ACTION_MAP: dict[str, str] = {

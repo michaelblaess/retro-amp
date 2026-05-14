@@ -1,4 +1,5 @@
 """Tests fuer Spectrum-Analyzer (FFT und Band-Berechnung)."""
+
 from __future__ import annotations
 
 import math
@@ -27,10 +28,7 @@ class TestFFT:
         """Reiner Sinus hat einen Peak bei der richtigen Frequenz."""
         n = 256
         freq_bin = 10
-        signal = [
-            complex(math.sin(2 * math.pi * freq_bin * i / n), 0.0)
-            for i in range(n)
-        ]
+        signal = [complex(math.sin(2 * math.pi * freq_bin * i / n), 0.0) for i in range(n)]
         result = _fft(signal)
         magnitudes = [abs(result[k]) for k in range(n // 2)]
         peak_bin = magnitudes.index(max(magnitudes))

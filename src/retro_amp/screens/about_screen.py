@@ -1,4 +1,5 @@
 """About-Screen fuer retro-amp."""
+
 from __future__ import annotations
 
 from rich.text import Text
