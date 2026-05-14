@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 from rich.text import Text
@@ -147,14 +148,12 @@ class FileTable(Widget):
         if old_path and self._name_col_key is not None:
             for track in self._filtered_tracks:
                 if track.path == old_path:
-                    try:
+                    with contextlib.suppress(Exception):
                         table.update_cell(
                             str(old_path),
                             self._name_col_key,
                             track.display_name,
                         )
-                    except Exception:
-                        pass
                     break
 
         # Neuen Marker setzen
@@ -162,14 +161,12 @@ class FileTable(Widget):
             for track in self._filtered_tracks:
                 if track.path == path:
                     styled = Text(f"\u25b6 {track.display_name}", style="bold green")
-                    try:
+                    with contextlib.suppress(Exception):
                         table.update_cell(
                             str(path),
                             self._name_col_key,
                             styled,
                         )
-                    except Exception:
-                        pass
                     break
 
     @property
@@ -198,8 +195,8 @@ class FileTable(Widget):
     def highlight_track(self, track: AudioTrack) -> None:
         """Bewegt den Cursor zum angegebenen Track."""
         table = self.query_one("#file-data", DataTable)
-        for idx, t in enumerate(self._filtered_tracks):
-            if t.path == track.path:
+        for idx, candidate in enumerate(self._filtered_tracks):
+            if candidate.path == track.path:
                 table.move_cursor(row=idx)
                 break
 

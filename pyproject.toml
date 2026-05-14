@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "retro-amp"
 version = "0.23.0"
-description = "Terminal-Musikplayer mit Retro-Charme — 31 Vintage-Themes via textual-themes"
+description = "Terminal-Musikplayer mit Retro-Charme - 31 Vintage-Themes via textual-themes"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -70,4 +70,4 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "ASYNC"]
-ignore = ["E501"]
+ignore = ["E501", "ASYNC109", "ASYNC240"]
