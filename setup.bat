@@ -14,7 +14,9 @@ echo Aktualisiere pip...
 python -m pip install --upgrade pip >nul 2>&1
 
 echo Installiere retro-amp mit Dev-Dependencies...
-pip install -e ".[dev]"
+REM --upgrade: zieht neueste erlaubte Versionen (auch neue git-Commits),
+REM sonst laesst pip bereits erfuellte Dependencies veraltet stehen.
+pip install --upgrade -e ".[dev]"
 
 echo.
 echo === Setup abgeschlossen ===

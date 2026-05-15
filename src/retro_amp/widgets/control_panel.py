@@ -131,6 +131,12 @@ class ControlPanel(Widget):
         """Erzeugt einen Button mit Tooltip."""
         btn = Button(label, id=btn_id, classes=classes) if classes else Button(label, id=btn_id)
         btn.tooltip = tooltip
+        # Textuals Button setzt line-pad:1. Bei schmalem Inhalt (z.B. "■ ",
+        # Content-Bereich nur 2 Zellen) rechnet Textual width-line_pad*2 = 0
+        # und stuerzt in chop_cells mit "range() arg 3 must not be zero" ab.
+        # line_pad:0 verhindert die Null-Breite. Per CSS nicht moeglich, weil
+        # Textuals Integer-Parser den Wert 0 generell ablehnt — daher inline.
+        btn.styles.line_pad = 0
         return btn
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
