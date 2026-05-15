@@ -1,8 +1,8 @@
 # retro-amp
 
 <p align="center">
-  <a href="README.md">English</a> ·
-  <b>Deutsch</b>
+  🇬🇧 <a href="README.md">English</a> ·
+  🇩🇪 <b>Deutsch</b>
 </p>
 
 [![Stars](https://img.shields.io/github/stars/michaelblaess/retro-amp?logo=github&logoColor=white&color=fbbf24)](https://github.com/michaelblaess/retro-amp/stargazers)
