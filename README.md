@@ -1,5 +1,10 @@
 # retro-amp
 
+<p align="center">
+  <b>English</b> ·
+  <a href="README.de.md">Deutsch</a>
+</p>
+
 [![Stars](https://img.shields.io/github/stars/michaelblaess/retro-amp?logo=github&logoColor=white&color=fbbf24)](https://github.com/michaelblaess/retro-amp/stargazers)
 [![Forks](https://img.shields.io/github/forks/michaelblaess/retro-amp?logo=github&logoColor=white&color=34d399)](https://github.com/michaelblaess/retro-amp/network/members)
 [![Issues](https://img.shields.io/github/issues/michaelblaess/retro-amp?logo=github&logoColor=white&color=f87171)](https://github.com/michaelblaess/retro-amp/issues)
@@ -10,31 +15,29 @@
 [![Python](https://img.shields.io/badge/python-3.12+-3b82f6?logo=python&logoColor=white)](https://www.python.org/)
 [![Themes](https://img.shields.io/badge/themes-31-fbbf24)](https://github.com/michaelblaess/textual-themes)
 
-Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
-
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.17.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
-*Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal. / Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
+![retro-amp v0.17.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+*Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
-*BeBox Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
+*BeBox theme — folder browser, file table, lyrics, spectral visualizer*
 
 | | |
 |---|---|
 | ![Classic Terminal](docs/screenshots/02-ibm-theme.png) | ![Boing](docs/screenshots/09-amiga-theme.png) |
-| *Classic Terminal — Phosphor-Gruen* | *Boing — Blau/Orange* |
+| *Classic Terminal — phosphor green* | *Boing — blue/orange* |
 
 | | |
 |---|---|
 | ![Brotkasten Theme](docs/screenshots/05-c64-theme.png) | ![Lyrics](docs/screenshots/04-lyrics.png) |
-| *Brotkasten — YouTube-Links* | *Lyrics — Original (Englisch)* |
+| *Brotkasten — YouTube links* | *Lyrics — original (English)* |
 
 ## Installation
 
 ### One-Click Installer
 
-Keine Abhaengigkeiten noetig — kein Python, kein Git. / No dependencies needed — no Python, no Git.
+No dependencies needed — no Python, no Git.
 
 **Linux / macOS:**
 
@@ -42,13 +45,13 @@ Keine Abhaengigkeiten noetig — kein Python, kein Git. / No dependencies needed
 curl -fsSL https://github.com/michaelblaess/retro-amp/releases/latest/download/install.sh | bash
 ```
 
-**Windows (PowerShell als Administrator):**
+**Windows (PowerShell as Administrator):**
 
 ```powershell
 irm https://github.com/michaelblaess/retro-amp/releases/latest/download/install.ps1 | iex
 ```
 
-### Installationspfade / Installation Paths
+### Installation Paths
 
 | Platform | Path |
 |----------|------|
@@ -56,13 +59,13 @@ irm https://github.com/michaelblaess/retro-amp/releases/latest/download/install.
 | macOS | `/usr/local/bin/retro-amp` |
 | Windows | `C:\Program Files\retro-amp\retro-amp.exe` |
 
-### Optionale Abhaengigkeit / Optional Dependency
+### Optional Dependency
 
-Fuer M4A/AAC-Playback wird **ffmpeg** benoetigt. Ohne ffmpeg werden alle anderen Formate normal abgespielt — nur M4A/AAC wird uebersprungen (mit Log-Hinweis). / For M4A/AAC playback, **ffmpeg** is required. Without ffmpeg, all other formats play normally — only M4A/AAC is skipped (with log message).
+For M4A/AAC playback, **ffmpeg** is required. Without ffmpeg, all other formats play normally — only M4A/AAC is skipped (with a log message).
 
 ```bash
 # Windows
-choco install ffmpeg        # oder: scoop install ffmpeg / winget install ffmpeg
+choco install ffmpeg        # or: scoop install ffmpeg / winget install ffmpeg
 
 # Linux
 sudo apt install ffmpeg
@@ -71,14 +74,14 @@ sudo apt install ffmpeg
 brew install ffmpeg
 ```
 
-### Manuell / Manual (Python >= 3.12)
+### Manual (Python >= 3.12)
 
 ```bash
 pip install git+https://github.com/michaelblaess/retro-amp.git
 retro-amp
 ```
 
-### Aus Quellcode / From Source
+### From Source
 
 ```bash
 git clone https://github.com/michaelblaess/retro-amp.git
@@ -90,67 +93,67 @@ pip install -e ".[dev]"
 retro-amp
 ```
 
-## Benutzung / Usage
+## Usage
 
 ```bash
-retro-amp                     # Startet mit Standard-Musikordner / Start with default music folder
-retro-amp /pfad/zur/musik     # Startet in einem bestimmten Ordner / Start in specific folder
-retro-amp song.mp3            # Spielt eine Datei direkt ab / Play a file directly
-retro-amp --lang en           # Startet mit englischer Oberflaeche / Start with English UI
-retro-amp --version           # Zeigt die Version / Show version
+retro-amp                     # Start with default music folder
+retro-amp /path/to/music      # Start in a specific folder
+retro-amp song.mp3            # Play a file directly
+retro-amp --lang en           # Start with English UI
+retro-amp --version           # Show version
 ```
 
 ## Features
 
-- **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch
-- **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
-- **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
-- **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
-- **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
-- **Spektral-Visualizer** — Echte FFT-Analyse, 5 Darstellungs-Modi (Bars, Blocks, Scope, Matrix, LCD VU-Meter im Kassettendeck-Style), Theme-bewusste Farben. Modus per Right-Click auf den Visualizer wechseln oder im Settings-Tab "Visualizer" konfigurieren.
-- **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
-- **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
-- **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
-- **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Eintraege gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach uebergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal.
-- **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
-- **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
-- **31 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
-- **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
-- **Session-Recovery** — Nach einem Crash wird der letzte Track und Ordner wiederhergestellt (ohne Auto-Play)
-- **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
-- **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
-- **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
-- **Anpassbare Panels** — Mit der Maus kann die Groesse zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
-- **Datei-Verknuepfung** — Doppelklick auf Audio-Datei oeffnet retro-amp direkt
-- **Single-Instance** — Zweiter Doppelklick sendet den Track an die laufende Instanz
+- **Folder browser** — Left panel with directory tree, automatically filters audio files
+- **Favorites view** — All favorites as a tree, toggle with TAB
+- **Playlist view** — Playlists as a tree, play or remove songs directly
+- **File table** — Right panel with name, format, bitrate, duration (via mutagen)
+- **Audio playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
+- **Spectral visualizer** — Real FFT analysis, 5 display modes (Bars, Blocks, Scope, Matrix, LCD VU meter in cassette-deck style), theme-aware colors. Switch mode by right-clicking the visualizer or configure it in the "Visualizer" settings tab.
+- **Synced lyrics** — Time-stamped lyrics from [lrclib.net](https://lrclib.net), color-synced (played/current/upcoming), click-to-seek on any line, auto-scroll with a 3s timeout after manual scrolling
+- **Liner notes** — Wikipedia info on the current artist (key I), cached automatically
+- **Album cover art** — Embedded covers from audio tags (ID3, FLAC, MP4) or image files in the folder (cover.jpg, folder.jpg, etc.), rendered as Unicode half-blocks via [Pillow](https://pillow.readthedocs.io/)
+- **Global search with history** — Search files across the whole library; clicking the search field shows the last 20 queries, typing filters matching entries and highlights hits (persisted in SQLite). Hits appear in the "Search" tab on the left as a tree, grouped by parent directory — when several hits share the same album folder, the path is shown only once.
+- **Playlists** — Stored as Markdown files, default playlist "Favorites"
+- **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
+- **31 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
+- **Multilingual** — German (default) and English, switchable via `--lang`
+- **Session recovery** — After a crash, the last track and folder are restored (without auto-play)
+- **Debug log** — Detailed log with artist/title, paths, events (key O)
+- **File management** — Rename (U) and delete (DEL) directly from the player
+- **Settings persistence** — Volume, last folder, theme and language are saved
+- **Resizable panels** — The mouse can freely adjust the size between the file browser on the left and the file table/lyrics on the right (vertical splitter), as well as between file table and lyrics (horizontal splitter). The layout is persisted in settings.
+- **File association** — Double-click an audio file to open retro-amp directly
+- **Single instance** — A second double-click sends the track to the running instance
 
-## Tastenbelegung / Keybindings
+## Keybindings
 
-| Taste / Key | Aktion / Action |
-|-------------|-----------------|
+| Key | Action |
+|-----|--------|
 | `Space` | Play / Pause |
-| `+` `-` | Lautstaerke / Volume |
-| `TAB` | Ansicht wechseln: Dateien → Favoriten → Playlists → Verlauf / Cycle view |
-| `↑` `↓` | Navigation in der Liste / Navigate list |
-| `Enter` | Song abspielen / Ordner oeffnen / Play track / Open folder |
-| `F` | Favorit hinzufuegen/entfernen / Toggle favorite |
-| `P` | Playlist-Menue / Playlist menu |
-| `U` | Datei umbenennen / Rename file |
-| `DEL` | Datei loeschen / Delete file |
-| `T` | Theme wechseln / Cycle theme |
-| `S` | Einstellungen / Settings |
+| `+` `-` | Volume |
+| `TAB` | Cycle view: Files → Favorites → Playlists → History |
+| `↑` `↓` | Navigate list |
+| `Enter` | Play track / Open folder |
+| `F` | Toggle favorite |
+| `P` | Playlist menu |
+| `U` | Rename file |
+| `DEL` | Delete file |
+| `T` | Cycle theme |
+| `S` | Settings |
 | `I` | Info / About |
-| `L` | Debug-Log ein-/ausblenden / Toggle debug log |
-| `C` | Debug-Log kopieren / Copy debug log |
-| `X` | Shuffle ein/aus / Toggle shuffle |
-| `R` | Repeat: Off → All → One / Cycle repeat mode |
-| `Q` | Beenden / Quit |
+| `L` | Toggle debug log |
+| `C` | Copy debug log |
+| `X` | Toggle shuffle |
+| `R` | Repeat: Off → All → One |
+| `Q` | Quit |
 
-Naechster/Vorheriger Track, Seek (5 s) und Globale Suche sind ueber die Steuerleiste und die Suchleiste per Maus erreichbar. / Next/previous track, seeking (5 s) and global search are available via the control bar and search field (mouse).
+Next/previous track, seeking (5 s) and global search are available via the control bar and search field (mouse).
 
-## Dateiverknuepfung / File Association
+## File Association
 
-retro-amp kann als Standard-Player fuer Audio-Dateien registriert werden. / retro-amp can be registered as default player for audio files.
+retro-amp can be registered as the default player for audio files.
 
 **Windows (PowerShell):**
 
@@ -170,39 +173,36 @@ register-file-types.bat
 ./register-file-types.sh
 ```
 
-Doppelklick auf eine Audio-Datei startet retro-amp. Bei laufender Instanz wird der neue Track automatisch uebernommen (Single-Instance).
-
-Double-click an audio file to start retro-amp. If already running, the new track is sent to the existing instance (single-instance).
+Double-click an audio file to start retro-amp. If it is already running, the new track is sent to the existing instance (single-instance).
 
 ## Themes
 
-Mit `T` durch die Themes wechseln, oder per Theme-Picker (`Ctrl+P` →
-"theme"). / Press `T` to cycle, or open the theme picker.
+Press `T` to cycle through themes, or use the theme picker (`Ctrl+P` → "theme").
 
-retro-amp registriert alle Themes aus dem
-[textual-themes](https://github.com/michaelblaess/textual-themes) Paket
-(31 Themes — Dark + Light, von 8-bit ueber Terminal-Phosphor bis zu
-80s-Pastel und Comic-Pulp). Die komplette Galerie mit Live-Carousel:
+retro-amp registers all themes from the
+[textual-themes](https://github.com/michaelblaess/textual-themes) package
+(31 themes — dark + light, from 8-bit through terminal phosphor to
+80s-pastel and comic-pulp). The full gallery with a live carousel:
 **[michaelblaess.github.io/textual-themes](https://michaelblaess.github.io/textual-themes/)**.
 
-> **Migration aus aelteren Versionen:** retro-amp 0.16+ migriert
-> gespeicherte Theme-Slugs automatisch beim Laden — wer vorher z.B.
-> `c64` als Lieblings-Theme hatte, landet auf dem umbenannten
-> `brotkasten` ohne dass etwas zu tun ist.
+> **Migrating from older versions:** retro-amp 0.16+ migrates stored
+> theme slugs automatically on load — anyone who previously had e.g.
+> `c64` as their favorite theme ends up on the renamed
+> `brotkasten` without doing anything.
 
-## Spektral-Visualizer
+## Spectral Visualizer
 
-- Echte FFT-basierte Analyse (stdlib `cmath`, kein numpy)
-- 2048-Punkt-FFT mit Hann-Fenster
-- 32 log-skalierte Frequenzbaender (20 Hz – 18 kHz)
-- Spektralfarben: Rot (Bass) → Gelb → Gruen → Cyan → Blau (Hoehen)
-- Peak-Hold mit fallendem Effekt
-- 3-zeilige Multi-Row-Darstellung (24 Hoehenstufen)
-- PCM-Laden im Hintergrund-Thread
+- Real FFT-based analysis (stdlib `cmath`, no numpy)
+- 2048-point FFT with Hann window
+- 32 log-scaled frequency bands (20 Hz – 18 kHz)
+- Spectral colors: red (bass) → yellow → green → cyan → blue (treble)
+- Peak-hold with a falling effect
+- 3-row multi-row display (24 height levels)
+- PCM loading in a background thread
 
 ## Playlists
 
-Playlists werden als Markdown-Dateien in `~/.retro-amp/playlists/` gespeichert:
+Playlists are stored as Markdown files in `~/.retro-amp/playlists/`:
 
 ```markdown
 # Favoriten
@@ -211,39 +211,39 @@ Playlists werden als Markdown-Dateien in `~/.retro-amp/playlists/` gespeichert:
 - D:\Dropbox\MUSIK\C64\last_ninja.sid
 ```
 
-- `F` — Song zu Favoriten hinzufuegen/entfernen
-- `P` — Playlist-Menue: neue erstellen, bestehende laden, Song hinzufuegen
+- `F` — Add/remove a song to favorites
+- `P` — Playlist menu: create a new one, load an existing one, add a song
 
-## Architektur / Architecture
+## Architecture
 
-Clean Architecture mit strikter Dependency Rule:
+Clean architecture with a strict dependency rule:
 
 ```
 src/retro_amp/
-├── domain/           # Models, Protocols — keine externen Imports
+├── domain/           # Models, protocols — no external imports
 │   ├── models.py     #   AudioTrack, PlayerState, Playlist
 │   └── protocols.py  #   AudioPlayer, MetadataReader, PlaylistRepository
-├── services/         # Business-Logik — importiert nur domain/
+├── services/         # Business logic — imports domain/ only
 │   ├── player_service.py
 │   ├── playlist_service.py
 │   └── metadata_service.py
-├── infrastructure/   # Implementierungen — pygame, mutagen, JSON
-│   ├── audio_player.py   # PygameAudioPlayer
+├── infrastructure/   # Implementations — pygame, mutagen, JSON
+│   ├── audio_player.py    # PygameAudioPlayer
 │   ├── spectrum.py        # SpectrumAnalyzer (FFT)
-│   ├── metadata_reader.py # MutagenMetadataReader + Cover-Art-Extraktion
+│   ├── metadata_reader.py # MutagenMetadataReader + cover-art extraction
 │   ├── playlist_store.py  # MarkdownPlaylistStore
 │   ├── settings.py        # JsonSettingsStore
-│   ├── session.py         # Crash-Recovery (session.json)
-│   └── single_instance.py # Single-Instance Lock + Play-Request
-├── widgets/          # Textual Widgets
+│   ├── session.py         # Crash recovery (session.json)
+│   └── single_instance.py # Single-instance lock + play request
+├── widgets/          # Textual widgets
 ├── screens/          # Textual ModalScreens
-├── i18n.py           # Internationalisierung (de/en)
-├── locale/           # JSON-Sprachpakete (de.json, en.json)
-├── themes.py         # Re-Export aus textual-themes
-└── app.py            # Composition Root
+├── i18n.py           # Internationalization (de/en)
+├── locale/           # JSON language packs (de.json, en.json)
+├── themes.py         # Re-export from textual-themes
+└── app.py            # Composition root
 ```
 
-## Entwicklung / Development
+## Development
 
 ```bash
 # Setup
@@ -256,45 +256,39 @@ pip install -e ".[dev]"
 # Tests
 pytest
 
-# Type-Check
+# Type check
 mypy src/
 
-# Lokaler Build / Local Build (Standalone EXE)
+# Local build (standalone EXE)
 pip install pyinstaller
 pyinstaller retro-amp.spec --noconfirm
 ```
 
-### Release erstellen / Create Release
+### Create a Release
 
 ```bash
 git tag v0.4.0
 git push origin v0.4.0
-# GitHub Actions baut automatisch Windows/macOS/Linux Installer
+# GitHub Actions automatically builds the Windows/macOS/Linux installers
 ```
 
-## Tech-Stack
+## Tech Stack
 
-| Komponente / Component | Library |
-|------------------------|---------|
-| TUI-Framework | [Textual](https://textual.textualize.io/) >= 0.85 |
-| Rich Text | [Rich](https://rich.readthedocs.io/) >= 13.0 |
-| Audio-Playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
-| Audio-Metadaten | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
-| Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
-| Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
+| Component | Library |
+|-----------|---------|
+| TUI framework | [Textual](https://textual.textualize.io/) >= 0.85 |
+| Rich text | [Rich](https://rich.readthedocs.io/) >= 13.0 |
+| Audio playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
+| Audio metadata | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
+| Album cover art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
+| Cover rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI-Widgets (Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.5.2 |
-| Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
+| UI widgets (search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.5.2 |
+| Lyrics API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
-| Type-Checking | mypy (strict) |
+| Type checking | mypy (strict) |
 
-## Inspiration & Dank / Credits
-
-Synced Lyrics, Album Art Rendering und Session-Recovery wurden inspiriert von [ytm-player](https://github.com/peternaame-boop/ytm-player) — einem YouTube-Music-Player in Textual.
-
-Mehrere Visualizer-Modi und das UX-Konzept "Player-First, Fokus auf Tastatur" wurden inspiriert von [cliamp](https://github.com/bjarneo/cliamp) ([cliamp.stream](https://www.cliamp.stream/)) von **[@bjarneo](https://github.com/bjarneo)** — einem Winamp-inspirierten Terminal-Player in Go.
-
-Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel basiert auf der grossartigen [textual-image](https://github.com/lnqs/textual-image) von **[@lnqs](https://github.com/lnqs)** — herzlichen Dank!
+## Credits
 
 Synced lyrics, album art rendering, and session recovery were inspired by [ytm-player](https://github.com/peternaame-boop/ytm-player) — a YouTube Music player built with Textual.
 
@@ -302,10 +296,10 @@ Multiple visualizer modes and the "player-first, keyboard-driven" UX approach we
 
 Pixel-perfect cover rendering via TGP (Kitty protocol) and Sixel is powered by the wonderful [textual-image](https://github.com/lnqs/textual-image) library by **[@lnqs](https://github.com/lnqs)** — many thanks!
 
-## Lizenz / License
+## License
 
-Apache License 2.0 — siehe [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE).
 
-## Autor / Author
+## Author
 
 Michael Blaess — [GitHub](https://github.com/michaelblaess)
