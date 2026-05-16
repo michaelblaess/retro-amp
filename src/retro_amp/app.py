@@ -26,7 +26,12 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
 )
-from textual_widgets import HorizontalSplitter, SearchInputWithHistory, VerticalSplitter
+from textual_widgets import (
+    HorizontalSplitter,
+    SearchInputWithHistory,
+    VerticalSplitter,
+    set_terminal_title,
+)
 
 from . import __version__
 from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode, VisualizerMode
@@ -1598,6 +1603,21 @@ class RetroAmpApp(App):
             return
         if self._player_service.state.current_track is None:
             self.sub_title = self._idle_subtitle(theme_name)
+
+    def watch_sub_title(self, sub_title: str) -> None:
+        """Spiegelt den sub_title in den Terminal-Tab-Titel.
+
+        Textual ruft watch_sub_title bei jeder Aenderung des sub_title-
+        Reactives auf. Laeuft ein Track, zeigt der Tab dessen Namen, sonst
+        die Versionsnummer.
+        """
+        if not hasattr(self, "_player_service"):
+            return
+        track = self._player_service.state.current_track
+        if track is not None:
+            set_terminal_title(f"♬ retro-amp - {track.display_name}")
+        else:
+            set_terminal_title(f"♬ retro-amp v{__version__}")
 
     def _idle_subtitle(self, theme_name: str | None = None) -> str:
         """Liefert den Idle-sub_title (Theme-Anzeige, kein Track aktiv)."""

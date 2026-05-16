@@ -6,6 +6,8 @@ import argparse
 import os
 import sys
 
+from textual_widgets import reset_terminal_title, set_terminal_title
+
 from retro_amp import __version__
 from retro_amp.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, load_locale
 from retro_amp.infrastructure.settings import JsonSettingsStore
@@ -71,8 +73,15 @@ def main() -> None:
 
     from retro_amp.app import RetroAmpApp
 
-    app = RetroAmpApp(start_path=start_path, play_file=play_file)
-    app.run()
+    # Terminal-Titel setzen — Textual macht das nicht selbst. Der Titel
+    # bleibt ueber den Alt-Screen-Wechsel hinweg erhalten und wird waehrend
+    # der Wiedergabe vom App-Code auf den aktuellen Track aktualisiert.
+    set_terminal_title(f"♬ retro-amp v{__version__}")
+    try:
+        app = RetroAmpApp(start_path=start_path, play_file=play_file)
+        app.run()
+    finally:
+        reset_terminal_title()
 
 
 def _preinit_graphics_backend() -> None:
