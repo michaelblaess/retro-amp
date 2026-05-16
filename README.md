@@ -19,7 +19,7 @@
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.17.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.24.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -128,6 +128,7 @@ retro-amp --version           # Show version
 - **Resizable panels** — The mouse can freely adjust the size between the file browser on the left and the file table/lyrics on the right (vertical splitter), as well as between file table and lyrics (horizontal splitter). The layout is persisted in settings.
 - **File association** — Double-click an audio file to open retro-amp directly
 - **Single instance** — A second double-click sends the track to the running instance
+- **Terminal tab title** — The terminal tab shows the playing track; set before Textual starts and updated live during playback
 
 ## Keybindings
 
@@ -278,14 +279,14 @@ git push origin v0.4.0
 
 | Component | Library |
 |-----------|---------|
-| TUI framework | [Textual](https://textual.textualize.io/) >= 0.85 |
+| TUI framework | [Textual](https://textual.textualize.io/) >= 8.2.6 |
 | Rich text | [Rich](https://rich.readthedocs.io/) >= 13.0 |
 | Audio playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
 | Audio metadata | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
 | Album cover art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
-| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI widgets (search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.5.2 |
+| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
+| UI widgets (search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.8 |
 | Lyrics API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type checking | mypy (strict) |

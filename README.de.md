@@ -19,7 +19,7 @@
 
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.17.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.24.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -128,6 +128,7 @@ retro-amp --version           # Zeigt die Version
 - **Anpassbare Panels** — Mit der Maus kann die Groesse zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
 - **Datei-Verknuepfung** — Doppelklick auf Audio-Datei oeffnet retro-amp direkt
 - **Single-Instance** — Zweiter Doppelklick sendet den Track an die laufende Instanz
+- **Terminal-Tab-Titel** — Der Terminal-Tab zeigt den laufenden Track; wird vor dem Textual-Start gesetzt und während der Wiedergabe live aktualisiert
 
 ## Tastenbelegung
 
@@ -278,14 +279,14 @@ git push origin v0.4.0
 
 | Komponente | Library |
 |------------|---------|
-| TUI-Framework | [Textual](https://textual.textualize.io/) >= 0.85 |
+| TUI-Framework | [Textual](https://textual.textualize.io/) >= 8.2.6 |
 | Rich Text | [Rich](https://rich.readthedocs.io/) >= 13.0 |
 | Audio-Playback | [pygame.mixer](https://www.pygame.org/) >= 2.5 |
 | Audio-Metadaten | [mutagen](https://mutagen.readthedocs.io/) >= 1.47 |
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
-| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.5 |
-| UI-Widgets (Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.5.2 |
+| Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
+| UI-Widgets (Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.8 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
