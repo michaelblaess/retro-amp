@@ -39,8 +39,6 @@ if (-not $isAdmin) {
 
 # --- Architektur erkennen ---
 $Arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
-$Artifact = "${AppName}-win-${Arch}"
-$Archive = "${Artifact}.zip"
 
 Write-Host "  Plattform / Platform: Windows ($Arch)"
 Write-Host ""
@@ -57,10 +55,13 @@ try {
     exit 1
 }
 
-$Asset = $Release.assets | Where-Object { $_.name -eq $Archive } | Select-Object -First 1
+# Windows-Asset versionsunabhaengig per Teilstring waehlen
+$Asset = $Release.assets |
+    Where-Object { $_.name -like '*-windows-*.zip' } |
+    Select-Object -First 1
 
 if (-not $Asset) {
-    Write-Host "  [FEHLER] Kein Release fuer ${Archive} gefunden!" -ForegroundColor Red
+    Write-Host "  [FEHLER] Kein Windows-Asset im Release gefunden!" -ForegroundColor Red
     Write-Host ""
     Write-Host "  Verfuegbare Assets:"
     $Release.assets | ForEach-Object { Write-Host "    $($_.name)" }
@@ -68,6 +69,7 @@ if (-not $Asset) {
 }
 
 $DownloadUrl = $Asset.browser_download_url
+$Archive = $Asset.name
 $Version = $Release.tag_name
 Write-Host "  [OK] Release gefunden: $Version" -ForegroundColor Green
 Write-Host ""
