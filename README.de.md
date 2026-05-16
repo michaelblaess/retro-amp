@@ -261,11 +261,32 @@ pytest
 
 # Type-Check
 mypy src/
+```
 
-# Lokaler Build (Standalone EXE)
+### Lokaler Build (Standalone-Binary)
+
+Zwei Wege zu einer eigenständigen Binary, die ohne Python-Installation läuft:
+
+**PyInstaller** — bündelt den CPython-Interpreter, schnell eingerichtet:
+
+```bash
 pip install pyinstaller
 pyinstaller retro-amp.spec --noconfirm
 ```
+
+**Nuitka** — kompiliert zu einer nativen Binary (schnellerer Kaltstart, ein
+verteilbares Archiv). Ein Skript pro OS; jedes führt zuerst `uv sync` aus und
+schreibt nach `dist/`:
+
+```bash
+.\compile-win64.ps1     # Windows -> dist/retro-amp-vX.Y.Z-win64.zip
+./compile-linux.sh      # Linux   -> dist/retro-amp-vX.Y.Z-linux-x86_64.tar.gz
+./compile-macos.sh      # macOS   -> dist/retro-amp-vX.Y.Z-macos-<arch>.tar.gz
+```
+
+Nuitka braucht `nuitka` im venv (`uv pip install nuitka`) und einen C-Compiler —
+Windows: MSVC; Linux: `gcc patchelf python3-dev`; macOS: Xcode Command Line Tools.
+Nuitka cross-kompiliert nicht — jedes OS wird auf dem jeweiligen OS gebaut.
 
 ### Release erstellen
 
