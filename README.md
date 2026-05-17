@@ -19,7 +19,7 @@
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.24.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.25.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -122,7 +122,8 @@ retro-amp --version           # Show version
 - **31 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Multilingual** — German (default) and English, switchable via `--lang`
 - **Session recovery** — After a crash, the last track and folder are restored (without auto-play)
-- **Debug log** — Detailed log with artist/title, paths, events (key O)
+- **Crash guard** — An unexpected error opens a dialog with a copyable error report instead of crashing the app — you decide whether to continue or quit
+- **Debug log** — Detailed log with artist/title, paths, events (key L). Right-click the log panel for a context menu — copy, export to a text file, or hide it. A splitter above the panel resizes it
 - **File management** — Rename (U) and delete (DEL) directly from the player
 - **Settings persistence** — Volume, last folder, theme and language are saved
 - **Resizable panels** — The mouse can freely adjust the size between the file browser on the left and the file table/lyrics on the right (vertical splitter), as well as between file table and lyrics (horizontal splitter). The layout is persisted in settings.
@@ -306,7 +307,7 @@ git push origin v0.4.0
 | Album cover art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
-| UI widgets (search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.8 |
+| UI widgets (about dialog, crash guard, search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.10 |
 | Lyrics API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type checking | mypy (strict) |

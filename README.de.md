@@ -19,7 +19,7 @@
 
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.24.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.25.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -122,7 +122,8 @@ retro-amp --version           # Zeigt die Version
 - **31 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
 - **Session-Recovery** — Nach einem Crash wird der letzte Track und Ordner wiederhergestellt (ohne Auto-Play)
-- **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste O)
+- **Crash-Schutz** — Ein unerwarteter Fehler oeffnet einen Dialog mit kopierbarem Fehlerbericht, statt die App abstuerzen zu lassen — du entscheidest, ob du weitermachst oder beendest
+- **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste L). Rechtsklick auf das Log-Panel oeffnet ein Kontextmenue — kopieren, als Textdatei exportieren oder ausblenden. Ein Splitter oberhalb des Panels passt die Groesse an
 - **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
 - **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
 - **Anpassbare Panels** — Mit der Maus kann die Groesse zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
@@ -307,7 +308,7 @@ git push origin v0.4.0
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
-| UI-Widgets (Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.8 |
+| UI-Widgets (About-Dialog, Crash-Schutz, Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.10 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
