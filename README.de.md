@@ -28,7 +28,7 @@ Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](ht
 | | |
 |---|---|
 | ![Classic Terminal](docs/screenshots/02-ibm-theme.png) | ![Boing](docs/screenshots/09-amiga-theme.png) |
-| *Classic Terminal — Phosphor-Gruen* | *Boing — Blau/Orange* |
+| *Classic Terminal — Phosphor-Grün* | *Boing — Blau/Orange* |
 
 | | |
 |---|---|
@@ -39,7 +39,7 @@ Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](ht
 
 ### One-Click-Installer
 
-Keine Abhaengigkeiten noetig — kein Python, kein Git.
+Keine Abhängigkeiten nötig — kein Python, kein Git.
 
 **Linux / macOS:**
 
@@ -61,9 +61,9 @@ irm https://github.com/michaelblaess/retro-amp/releases/latest/download/install.
 | macOS | `/usr/local/bin/retro-amp` |
 | Windows | `C:\Program Files\retro-amp\retro-amp.exe` |
 
-### Optionale Abhaengigkeit
+### Optionale Abhängigkeit
 
-Fuer M4A/AAC-Playback wird **ffmpeg** benoetigt. Ohne ffmpeg werden alle anderen Formate normal abgespielt — nur M4A/AAC wird uebersprungen (mit Log-Hinweis).
+Für M4A/AAC-Playback wird **ffmpeg** benötigt. Ohne ffmpeg werden alle anderen Formate normal abgespielt — nur M4A/AAC wird übersprungen (mit Log-Hinweis).
 
 ```bash
 # Windows
@@ -101,7 +101,7 @@ retro-amp
 retro-amp                     # Startet mit Standard-Musikordner
 retro-amp /pfad/zur/musik     # Startet in einem bestimmten Ordner
 retro-amp song.mp3            # Spielt eine Datei direkt ab
-retro-amp --lang en           # Startet mit englischer Oberflaeche
+retro-amp --lang en           # Startet mit englischer Oberfläche
 retro-amp --version           # Zeigt die Version
 ```
 
@@ -116,18 +116,18 @@ retro-amp --version           # Zeigt die Version
 - **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
-- **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Eintraege gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach uebergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal.
+- **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Einträge gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach übergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal.
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **31 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang`
 - **Session-Recovery** — Nach einem Crash wird der letzte Track und Ordner wiederhergestellt (ohne Auto-Play)
-- **Crash-Schutz** — Ein unerwarteter Fehler oeffnet einen Dialog mit kopierbarem Fehlerbericht, statt die App abstuerzen zu lassen — du entscheidest, ob du weitermachst oder beendest
-- **Debug-Log** — Ausfuehrliches Log mit Artist/Titel, Pfaden, Events (Taste L). Rechtsklick auf das Log-Panel oeffnet ein Kontextmenue — kopieren, als Textdatei exportieren oder ausblenden. Ein Splitter oberhalb des Panels passt die Groesse an
-- **Dateiverwaltung** — Umbenennen (U) und Loeschen (DEL) direkt aus dem Player
-- **Settings-Persistenz** — Lautstaerke, letzter Ordner, Theme, Sprache werden gespeichert
-- **Anpassbare Panels** — Mit der Maus kann die Groesse zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
-- **Datei-Verknuepfung** — Doppelklick auf Audio-Datei oeffnet retro-amp direkt
+- **Crash-Schutz** — Ein unerwarteter Fehler öffnet einen Dialog mit kopierbarem Fehlerbericht, statt die App abstürzen zu lassen — du entscheidest, ob du weitermachst oder beendest
+- **Debug-Log** — Ausführliches Log mit Artist/Titel, Pfaden, Events (Taste L). Rechtsklick auf das Log-Panel öffnet ein Kontextmenü — kopieren, als Textdatei exportieren oder ausblenden. Ein Splitter oberhalb des Panels passt die Größe an
+- **Dateiverwaltung** — Umbenennen (U) und Löschen (DEL) direkt aus dem Player
+- **Settings-Persistenz** — Lautstärke, letzter Ordner, Theme, Sprache werden gespeichert
+- **Anpassbare Panels** — Mit der Maus kann die Größe zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
+- **Datei-Verknüpfung** — Doppelklick auf Audio-Datei öffnet retro-amp direkt
 - **Single-Instance** — Zweiter Doppelklick sendet den Track an die laufende Instanz
 - **Terminal-Tab-Titel** — Der Terminal-Tab zeigt den laufenden Track; wird vor dem Textual-Start gesetzt und während der Wiedergabe live aktualisiert
 
@@ -136,14 +136,14 @@ retro-amp --version           # Zeigt die Version
 | Taste | Aktion |
 |-------|--------|
 | `Space` | Play / Pause |
-| `+` `-` | Lautstaerke |
+| `+` `-` | Lautstärke |
 | `TAB` | Ansicht wechseln: Dateien → Favoriten → Playlists → Verlauf |
 | `↑` `↓` | Navigation in der Liste |
-| `Enter` | Song abspielen / Ordner oeffnen |
-| `F` | Favorit hinzufuegen/entfernen |
-| `P` | Playlist-Menue |
+| `Enter` | Song abspielen / Ordner öffnen |
+| `F` | Favorit hinzufügen/entfernen |
+| `P` | Playlist-Menü |
 | `U` | Datei umbenennen |
-| `DEL` | Datei loeschen |
+| `DEL` | Datei löschen |
 | `T` | Theme wechseln |
 | `S` | Einstellungen |
 | `I` | Info / About |
@@ -153,11 +153,11 @@ retro-amp --version           # Zeigt die Version
 | `R` | Repeat: Off → All → One |
 | `Q` | Beenden |
 
-Naechster/Vorheriger Track, Seek (5 s) und Globale Suche sind ueber die Steuerleiste und die Suchleiste per Maus erreichbar.
+Nächster/Vorheriger Track, Seek (5 s) und Globale Suche sind über die Steuerleiste und die Suchleiste per Maus erreichbar.
 
-## Dateiverknuepfung
+## Dateiverknüpfung
 
-retro-amp kann als Standard-Player fuer Audio-Dateien registriert werden.
+retro-amp kann als Standard-Player für Audio-Dateien registriert werden.
 
 **Windows (PowerShell):**
 
@@ -177,7 +177,7 @@ register-file-types.bat
 ./register-file-types.sh
 ```
 
-Doppelklick auf eine Audio-Datei startet retro-amp. Bei laufender Instanz wird der neue Track automatisch uebernommen (Single-Instance).
+Doppelklick auf eine Audio-Datei startet retro-amp. Bei laufender Instanz wird der neue Track automatisch übernommen (Single-Instance).
 
 ## Themes
 
@@ -185,11 +185,11 @@ Mit `T` durch die Themes wechseln, oder per Theme-Picker (`Ctrl+P` → "theme").
 
 retro-amp registriert alle Themes aus dem
 [textual-themes](https://github.com/michaelblaess/textual-themes) Paket
-(31 Themes — Dark + Light, von 8-bit ueber Terminal-Phosphor bis zu
+(31 Themes — Dark + Light, von 8-bit über Terminal-Phosphor bis zu
 80s-Pastel und Comic-Pulp). Die komplette Galerie mit Live-Carousel:
 **[michaelblaess.github.io/textual-themes](https://michaelblaess.github.io/textual-themes/)**.
 
-> **Migration aus aelteren Versionen:** retro-amp 0.16+ migriert
+> **Migration aus älteren Versionen:** retro-amp 0.16+ migriert
 > gespeicherte Theme-Slugs automatisch beim Laden — wer vorher z.B.
 > `c64` als Lieblings-Theme hatte, landet auf dem umbenannten
 > `brotkasten` ohne dass etwas zu tun ist.
@@ -198,10 +198,10 @@ retro-amp registriert alle Themes aus dem
 
 - Echte FFT-basierte Analyse (stdlib `cmath`, kein numpy)
 - 2048-Punkt-FFT mit Hann-Fenster
-- 32 log-skalierte Frequenzbaender (20 Hz – 18 kHz)
-- Spektralfarben: Rot (Bass) → Gelb → Gruen → Cyan → Blau (Hoehen)
+- 32 log-skalierte Frequenzbänder (20 Hz – 18 kHz)
+- Spektralfarben: Rot (Bass) → Gelb → Grün → Cyan → Blau (Höhen)
 - Peak-Hold mit fallendem Effekt
-- 3-zeilige Multi-Row-Darstellung (24 Hoehenstufen)
+- 3-zeilige Multi-Row-Darstellung (24 Höhenstufen)
 - PCM-Laden im Hintergrund-Thread
 
 ## Playlists
@@ -215,8 +215,8 @@ Playlists werden als Markdown-Dateien in `~/.retro-amp/playlists/` gespeichert:
 - D:\Dropbox\MUSIK\C64\last_ninja.sid
 ```
 
-- `F` — Song zu Favoriten hinzufuegen/entfernen
-- `P` — Playlist-Menue: neue erstellen, bestehende laden, Song hinzufuegen
+- `F` — Song zu Favoriten hinzufügen/entfernen
+- `P` — Playlist-Menü: neue erstellen, bestehende laden, Song hinzufügen
 
 ## Architektur
 
@@ -308,7 +308,7 @@ git push origin v0.4.0
 | Album Cover Art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover-Rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
-| UI-Widgets (About-Dialog, Crash-Schutz, Such-Verlauf, Kontextmenue, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.10 |
+| UI-Widgets (About-Dialog, Crash-Schutz, Such-Verlauf, Kontextmenü, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.10 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
@@ -319,7 +319,7 @@ Synced Lyrics, Album Art Rendering und Session-Recovery wurden inspiriert von [y
 
 Mehrere Visualizer-Modi und das UX-Konzept "Player-First, Fokus auf Tastatur" wurden inspiriert von [cliamp](https://github.com/bjarneo/cliamp) ([cliamp.stream](https://www.cliamp.stream/)) von **[@bjarneo](https://github.com/bjarneo)** — einem Winamp-inspirierten Terminal-Player in Go.
 
-Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel basiert auf der grossartigen [textual-image](https://github.com/lnqs/textual-image) von **[@lnqs](https://github.com/lnqs)** — herzlichen Dank!
+Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel basiert auf der großartigen [textual-image](https://github.com/lnqs/textual-image) von **[@lnqs](https://github.com/lnqs)** — herzlichen Dank!
 
 ## Lizenz
 
