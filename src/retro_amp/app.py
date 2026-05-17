@@ -17,6 +17,7 @@ import contextlib
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.events import Click
 from textual.widgets import (
     DirectoryTree,
     Footer,
@@ -27,6 +28,9 @@ from textual.widgets import (
     TabPane,
 )
 from textual_widgets import (
+    ContextMenuItem,
+    ContextMenuScreen,
+    CrashGuard,
     HorizontalSplitter,
     SearchInputWithHistory,
     VerticalSplitter,
@@ -35,7 +39,7 @@ from textual_widgets import (
 
 from . import __version__
 from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode, VisualizerMode
-from .i18n import t
+from .i18n import current_language, t
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
@@ -77,7 +81,7 @@ from .widgets.visualizer import Visualizer
 from .widgets.youtube_panel import YoutubePanel
 
 
-class RetroAmpApp(App):
+class RetroAmpApp(CrashGuard, App):
     """retro-amp — Terminal-Musikplayer mit Retro-Charme."""
 
     CSS_PATH = "app.tcss"
@@ -85,6 +89,9 @@ class RetroAmpApp(App):
 
     def __init__(self, start_path: str = "", play_file: str = "") -> None:
         super().__init__()
+
+        # Crash-Guard: Fehlerdialog statt Total-Absturz, Sprache aus i18n
+        self.crash_guard_lang = current_language()
 
         # Bindings im Footer (sichtbar)
         self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
@@ -280,6 +287,7 @@ class RetroAmpApp(App):
             yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
             yield ControlPanel(id="control-panel")
             yield TransportBar(id="transport")
+        yield HorizontalSplitter(target_id="main-container", min_size=10, id="log-splitter")
         yield RichLog(id="app-log", highlight=True, markup=True)
         yield Footer()
 
@@ -574,10 +582,23 @@ class RetroAmpApp(App):
         self.notify(t("notify.theme", name=display))
 
     def action_show_about(self) -> None:
-        """About-Dialog anzeigen."""
-        from .screens.about_screen import AboutScreen  # Lazy import
+        """About-Dialog anzeigen (standardisierter AboutScreen aus textual-widgets)."""
+        from textual_widgets import AboutScreen
 
-        self.push_screen(AboutScreen())
+        from . import __author__, __year__
+        from .i18n import current_language
+
+        description = t("about.description") + t("about.subtitle") + "MP3 · OGG · FLAC · WAV · MOD · XM · S3M · SID"
+        self.push_screen(
+            AboutScreen(
+                app_name="retro-amp",
+                version=__version__,
+                author=__author__,
+                release=__year__,
+                description=description,
+                lang=current_language(),
+            )
+        )
 
     def action_show_settings(self) -> None:
         """Settings-Dialog anzeigen."""
@@ -709,7 +730,15 @@ class RetroAmpApp(App):
     def action_toggle_log(self) -> None:
         """Debug-Log ein-/ausblenden."""
         log_widget = self.query_one("#app-log", RichLog)
+        splitter = self.query_one("#log-splitter", HorizontalSplitter)
+        was_visible = log_widget.has_class("visible")
         log_widget.toggle_class("visible")
+        splitter.toggle_class("visible")
+        if was_visible:
+            # Splitter-Drag setzt eine konkrete Hoehe auf main-container —
+            # beim Ausblenden auf 4fr zuruecksetzen, sonst bleibt der
+            # Hauptbereich klein und ein leerer Streifen entsteht.
+            self.query_one("#main-container").styles.height = "4fr"
 
     def action_copy_log(self) -> None:
         """Gesamten Log-Inhalt in die Zwischenablage kopieren."""
@@ -719,6 +748,49 @@ class RetroAmpApp(App):
         text = "\n".join(self._log_lines)
         self.copy_to_clipboard(text)
         self.notify(t("notify.log_copied", count=len(self._log_lines)))
+
+    def _export_log(self) -> None:
+        """Speichert den Log-Inhalt als Textdatei im Home-Verzeichnis."""
+        if not self._log_lines:
+            self.notify(t("notify.log_empty"), severity="warning")
+            return
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        out_path = Path.home() / f"retro-amp-log-{timestamp}.txt"
+        try:
+            out_path.write_text("\n".join(self._log_lines) + "\n", encoding="utf-8")
+        except OSError as exc:
+            self.notify(t("notify.log_export_error", error=str(exc)), severity="error")
+            return
+        self.notify(t("notify.log_exported", path=str(out_path)))
+
+    def on_click(self, event: Click) -> None:
+        """Rechtsklick auf das Log-Panel oeffnet das Kontextmenue."""
+        if event.button != 3:
+            return
+        log_widget = self.query_one("#app-log", RichLog)
+        if not log_widget.has_class("visible"):
+            return
+        if not log_widget.region.contains(event.screen_x, event.screen_y):
+            return
+        items = [
+            ContextMenuItem("copy", t("logmenu.copy")),
+            ContextMenuItem("export", t("logmenu.export")),
+            ContextMenuItem.separator(),
+            ContextMenuItem("hide", t("logmenu.hide")),
+        ]
+        self.push_screen(
+            ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
+            callback=self._on_log_menu_action,
+        )
+
+    def _on_log_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Log-Kontextmenue gewaehlte Aktion."""
+        if action_id == "copy":
+            self.action_copy_log()
+        elif action_id == "export":
+            self._export_log()
+        elif action_id == "hide":
+            self.action_toggle_log()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Suchleiste: Enter gedrueckt → Suche starten."""
@@ -1393,8 +1465,14 @@ class RetroAmpApp(App):
         self,
         event: HorizontalSplitter.Resized,
     ) -> None:
-        """Horizontaler Splitter wurde geloest — neue Hoehe persistieren."""
-        self._save_pane_size(event.target_id, event.size)
+        """Horizontaler Splitter wurde geloest — neue Hoehe persistieren.
+
+        Der Log-Splitter (target main-container) wird NICHT persistiert: das
+        Log-Panel ist beim Start ausgeblendet, eine konkrete main-container-
+        Hoehe wuerde dann einen leeren Streifen hinterlassen.
+        """
+        if event.target_id == "file-table":
+            self._save_pane_size(event.target_id, event.size)
 
     def on_visualizer_mode_change_requested(
         self,
