@@ -15,11 +15,11 @@
 [![Last Commit](https://img.shields.io/github/last-commit/michaelblaess/retro-amp?logo=git&logoColor=white&color=3b82f6)](https://github.com/michaelblaess/retro-amp/commits/main)
 [![License](https://img.shields.io/badge/license-Apache_2.0-3b82f6)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3b82f6?logo=python&logoColor=white)](https://www.python.org/)
-[![Themes](https://img.shields.io/badge/themes-31-fbbf24)](https://github.com/michaelblaess/textual-themes)
+[![Themes](https://img.shields.io/badge/themes-38-fbbf24)](https://github.com/michaelblaess/textual-themes)
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.25.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.26.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -119,8 +119,11 @@ retro-amp --version           # Show version
 - **Global search with history** — Search files across the whole library; clicking the search field shows the last 20 queries, typing filters matching entries and highlights hits (persisted in SQLite). Hits appear in the "Search" tab on the left as a tree, grouped by parent directory — when several hits share the same album folder, the path is shown only once.
 - **Playlists** — Stored as Markdown files, default playlist "Favorites"
 - **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
-- **31 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
-- **Multilingual** — German (default) and English, switchable via `--lang`
+- **38 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
+- **Settings dialog** — tabbed settings (key S): cover renderer, visualizer mode, database journal mode, history, language, plus a storage tab that opens the data folders (settings.json, database, caches)
+- **Footer tooltips** — hover over any key in the footer to see a full description of what the command does
+- **Clickable links** — links in the About dialog, Wikipedia source and YouTube panel open on a normal click (no Ctrl needed) and highlight on hover
+- **Multilingual** — German (default) and English, switchable via `--lang` or the Settings dialog (Language tab)
 - **Session recovery** — After a crash, the last track and folder are restored (without auto-play)
 - **Crash guard** — An unexpected error opens a dialog with a copyable error report instead of crashing the app — you decide whether to continue or quit
 - **Debug log** — Detailed log with artist/title, paths, events (key L). Right-click the log panel for a context menu — copy, export to a text file, or hide it. A splitter above the panel resizes it
@@ -185,7 +188,7 @@ Press `T` to cycle through themes, or use the theme picker (`Ctrl+P` → "theme"
 
 retro-amp registers all themes from the
 [textual-themes](https://github.com/michaelblaess/textual-themes) package
-(31 themes — dark + light, from 8-bit through terminal phosphor to
+(38 themes — dark + light, from 8-bit through terminal phosphor to
 80s-pastel and comic-pulp). The full gallery with a live carousel:
 **[michaelblaess.github.io/textual-themes](https://michaelblaess.github.io/textual-themes/)**.
 
@@ -307,7 +310,7 @@ git push origin v0.4.0
 | Album cover art | [Pillow](https://pillow.readthedocs.io/) >= 10.0 |
 | Cover rendering (TGP/Sixel) | [textual-image](https://github.com/lnqs/textual-image) >= 0.12 |
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
-| UI widgets (about dialog, crash guard, search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.10 |
+| UI widgets (about dialog, crash guard, settings dialog, search history, context menu, splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.25 |
 | Lyrics API | [lrclib.net](https://lrclib.net/) (synced + plain) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type checking | mypy (strict) |
