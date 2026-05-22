@@ -112,6 +112,10 @@ class RetroAmpApp(CrashGuard, App):
         self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), show=False, priority=True)
         self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), show=False, priority=True)
 
+        # Footer-Tooltips fuer alle Bindings setzen (Pflicht). BindingsMap.bind()
+        # kennt keinen tooltip-Parameter, darum nachtraeglich per replace.
+        self._apply_binding_tooltips()
+
         # Retro-Themes registrieren
         for retro_theme in RETRO_THEMES:
             self.register_theme(retro_theme)
@@ -241,6 +245,40 @@ class RetroAmpApp(CrashGuard, App):
         # eintreffender Scan-Apply).
         self._last_play_path: str | None = None
         self._last_play_time: float = 0.0
+
+    def _apply_binding_tooltips(self) -> None:
+        """Setzt fuer jedes App-Binding einen erklaerenden Footer-Tooltip.
+
+        Der Footer zeigt den Tooltip beim Maus-Hover ueber der Taste. Da
+        `BindingsMap.bind()` keinen tooltip-Parameter kennt und `Binding`
+        frozen ist, wird der Tooltip nach dem Binden per `dataclasses.replace`
+        gesetzt. Schluessel-Schema: ``tooltip.<action>`` in den Sprachdateien.
+        """
+        actions_with_tooltip = {
+            "cycle_view",
+            "quit",
+            "toggle_pause",
+            "volume_up",
+            "volume_down",
+            "toggle_favorite",
+            "show_playlists",
+            "rename_file",
+            "delete_file",
+            "cycle_theme",
+            "show_settings",
+            "show_about",
+            "toggle_log",
+            "copy_log",
+            "toggle_shuffle",
+            "cycle_repeat",
+        }
+        for key, bindings in self._bindings.key_to_bindings.items():
+            for i, binding in enumerate(bindings):
+                if binding.action in actions_with_tooltip:
+                    self._bindings.key_to_bindings[key][i] = dataclasses.replace(
+                        binding,
+                        tooltip=t(f"tooltip.{binding.action}"),
+                    )
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -597,6 +635,7 @@ class RetroAmpApp(CrashGuard, App):
                 release=__year__,
                 description=description,
                 lang=current_language(),
+                url="https://github.com/michaelblaess/retro-amp",
             )
         )
 
@@ -614,7 +653,12 @@ class RetroAmpApp(CrashGuard, App):
             ),
         }
         self.push_screen(
-            SettingsScreen(current, db_settings, on_clear_history=self._clear_history),
+            SettingsScreen(
+                current,
+                db_settings,
+                on_clear_history=self._clear_history,
+                lang=current_language(),
+            ),
             callback=self._on_settings_closed,
         )
 
@@ -626,19 +670,33 @@ class RetroAmpApp(CrashGuard, App):
             self._refresh_history_tree()
         return count
 
+    # DB-Settings-Schluessel — beim Schliessen aus dem flachen Ergebnis-Dict
+    # von BaseSettingsScreen herausgetrennt und in der DB statt settings.json
+    # gespeichert.
+    _DB_SETTING_KEYS = ("db_journal_mode", "history_enabled", "history_limit")
+
     def _on_settings_closed(
         self,
-        result: dict[str, dict[str, object]] | None,
+        result: dict[str, object] | None,
     ) -> None:
-        """Callback nach Schliessen des Settings-Dialogs."""
+        """Callback nach Schliessen des Settings-Dialogs.
+
+        BaseSettingsScreen liefert ein einzelnes flaches Dict. Die
+        DB-Settings werden anhand von ``_DB_SETTING_KEYS`` herausgetrennt,
+        der Rest landet in settings.json.
+        """
         if result is None:
             return
-        new_settings = result.get("settings", {})
-        new_db_settings = result.get("db_settings", {})
+        db_keys = set(self._DB_SETTING_KEYS)
+        new_settings = {k: v for k, v in result.items() if k not in db_keys}
+        new_db_settings = {k: result[k] for k in self._DB_SETTING_KEYS if k in result}
 
         current = self._settings_store.load()
         changed_renderer = current.get("cover_renderer") != new_settings.get("cover_renderer")
         changed_visualizer = current.get("visualizer_mode") != new_settings.get("visualizer_mode")
+        old_lang = str(current.get("language", current_language()))
+        new_lang = str(new_settings.get("language", old_lang))
+        changed_language = old_lang != new_lang
         current.update(new_settings)
         self._settings_store.save(current)
 
@@ -673,7 +731,7 @@ class RetroAmpApp(CrashGuard, App):
         with contextlib.suppress(Exception):
             self._refresh_history_tree()
 
-        needs_restart = changed_renderer or changed_journal
+        needs_restart = changed_renderer or changed_journal or changed_language
         if needs_restart:
             self.notify(
                 f"{t('settings.saved')} — {t('settings.restart_hint')}",

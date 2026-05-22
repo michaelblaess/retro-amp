@@ -927,8 +927,8 @@ dependencies = [
 
 [[package]]
 name = "textual-widgets"
-version = "0.10.0"
-source = { git = "https://github.com/michaelblaess/textual-widgets.git#42cd8d31c2d4c436d8acbed42041dea3490601a5" }
+version = "0.25.0"
+source = { git = "https://github.com/michaelblaess/textual-widgets.git#bfe6a4a3a17a81606bddc8d642f528088d5b76bf" }
 dependencies = [
     { name = "rich" },
     { name = "textual" },
