@@ -5,6 +5,7 @@ from __future__ import annotations
 import urllib.parse
 import webbrowser
 
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
@@ -14,22 +15,18 @@ from ..i18n import t
 
 
 class _YTLink(Static, can_focus=True):
-    """Klickbarer YouTube-Link — oeffnet den Browser bei Klick oder Enter."""
+    """Klickbarer YouTube-Link — oeffnet den Browser bei Klick oder Enter.
+
+    Verwendet Textual-Action-Markup (``[@click=...]``), damit der Link ohne
+    CTRL klickbar ist und beim Hover farblich hervorgehoben wird — derselbe
+    Effekt wie beim AboutScreen-Link. Kein eigenes ``:hover``-CSS noetig.
+    """
 
     DEFAULT_CSS = """
     _YTLink {
         height: auto;
         margin-bottom: 1;
         padding: 0 1;
-        color: $text;
-    }
-    _YTLink:hover {
-        text-style: bold underline;
-        color: $accent;
-    }
-    _YTLink:focus {
-        text-style: bold underline;
-        color: $accent;
     }
     """
 
@@ -42,17 +39,15 @@ class _YTLink(Static, can_focus=True):
         self._url: str = ""
 
     def set_link(self, label: str, url: str) -> None:
-        """Setzt Label und URL."""
+        """Setzt Label und URL als klickbares Action-Markup."""
         self._url = url
-        self.update(label)
-
-    def on_click(self) -> None:
-        """Oeffnet den Link im Standard-Browser."""
-        if self._url:
-            webbrowser.open(self._url)
+        if url:
+            self.update(f"[@click=open_link][underline]{escape(label)}[/underline][/]")
+        else:
+            self.update("")
 
     def action_open_link(self) -> None:
-        """Oeffnet den Link im Standard-Browser (Enter-Taste)."""
+        """Oeffnet den Link im Standard-Browser (Klick oder Enter)."""
         if self._url:
             webbrowser.open(self._url)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import webbrowser
 
+from rich.markup import escape
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
@@ -14,7 +15,12 @@ from ..i18n import t
 
 
 class _SourceLink(Static, can_focus=True):
-    """Klickbarer Quellen-Link (Wikipedia etc.)."""
+    """Klickbarer Quellen-Link (Wikipedia etc.).
+
+    Verwendet Textual-Action-Markup (``[@click=...]``), damit der Link ohne
+    CTRL klickbar ist und beim Hover farblich hervorgehoben wird — derselbe
+    Effekt wie beim AboutScreen-Link. Kein eigenes ``:hover``-CSS noetig.
+    """
 
     DEFAULT_CSS = """
     _SourceLink {
@@ -22,14 +28,6 @@ class _SourceLink(Static, can_focus=True):
         margin-top: 1;
         padding: 0 1;
         color: $text-muted;
-    }
-    _SourceLink:hover {
-        text-style: underline;
-        color: $accent;
-    }
-    _SourceLink:focus {
-        text-style: underline;
-        color: $accent;
     }
     """
 
@@ -40,15 +38,15 @@ class _SourceLink(Static, can_focus=True):
         self._url: str = ""
 
     def set_source(self, label: str, url: str) -> None:
-        """Setzt Label und URL."""
+        """Setzt Label und URL als klickbares Action-Markup."""
         self._url = url
-        self.update(label)
-
-    def on_click(self) -> None:
-        if self._url:
-            webbrowser.open(self._url)
+        if url:
+            self.update(f"[@click=open_link][underline]{escape(label)}[/underline][/]")
+        else:
+            self.update("")
 
     def action_open_link(self) -> None:
+        """Oeffnet den Link im Standard-Browser (Klick oder Enter)."""
         if self._url:
             webbrowser.open(self._url)
 
