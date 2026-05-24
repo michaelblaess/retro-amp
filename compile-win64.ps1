@@ -54,6 +54,15 @@ $started = Get-Date
 # --include-package-data=retro_amp : locale\*.json mitnehmen
 # --include-package-data=pyogg     : die per ctypes geladenen Audio-Libs mitnehmen
 # (kein --windows-console-mode: Default behaelt die Konsole - noetig fuer das TUI)
+# Nuitka als Build-Tool sicherstellen (kein Dev-Dep, wird ad-hoc installiert).
+# 'uv sync' ohne --inexact entfernt es wieder, daher: nach jedem Sync pruefen.
+& $python -m nuitka --version 2>$null 1>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Nuitka fehlt im venv - installiere..." -ForegroundColor Yellow
+    & uv pip install nuitka
+    if ($LASTEXITCODE -ne 0) { throw "Nuitka-Installation fehlgeschlagen" }
+}
+
 & $python -m nuitka `
     --standalone `
     --assume-yes-for-downloads `

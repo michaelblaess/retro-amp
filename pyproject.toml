@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "retro-amp"
-version = "0.26.0"
+version = "0.26.1"
 description = "Terminal-Musikplayer mit Retro-Charme - 38 Vintage-Themes via textual-themes"
 license = "Apache-2.0"
 requires-python = ">=3.12"
