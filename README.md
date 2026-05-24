@@ -19,7 +19,7 @@
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.26.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.27.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -108,6 +108,7 @@ retro-amp --version           # Show version
 ## Features
 
 - **Folder browser** — Left panel with directory tree, automatically filters audio files
+- **Quick-jump sidebar** — At the top of the Files tab: Home, Music (= configured library), XDG folders (Downloads, Desktop, Documents, Pictures, Videos) and accessible drives. Clicking an entry switches the tree root *temporarily* — the persistent library stays untouched, the friendly label (e.g. `💾 C:\`, `📁 Downloads`) is also shown as the tree root
 - **Favorites view** — All favorites as a tree, toggle with TAB
 - **Playlist view** — Playlists as a tree, play or remove songs directly
 - **File table** — Right panel with name, format, bitrate, duration (via mutagen)
@@ -120,7 +121,7 @@ retro-amp --version           # Show version
 - **Playlists** — Stored as Markdown files, default playlist "Favorites"
 - **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
 - **38 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
-- **Settings dialog** — tabbed settings (key S): cover renderer, visualizer mode, database journal mode, history, language, plus a storage tab that opens the data folders (settings.json, database, caches)
+- **Settings dialog** — tabbed settings (key S): library default directory, cover renderer, visualizer mode, database journal mode, history, language, plus a storage tab that opens the data folders (settings.json, database, caches)
 - **Footer tooltips** — hover over any key in the footer to see a full description of what the command does
 - **Clickable links** — links in the About dialog, Wikipedia source and YouTube panel open on a normal click (no Ctrl needed) and highlight on hover
 - **Multilingual** — German (default) and English, switchable via `--lang` or the Settings dialog (Language tab)

@@ -19,7 +19,7 @@
 
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.26.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.27.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -108,6 +108,7 @@ retro-amp --version           # Zeigt die Version
 ## Features
 
 - **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch
+- **Quick-Jump-Sidebar** — Oben im Dateien-Tab: Home, Musik (= konfigurierte Bibliothek), XDG-Ordner (Downloads, Desktop, Dokumente, Bilder, Videos) und verfügbare Laufwerke. Klick auf einen Eintrag wechselt den Tree-Root *temporär* — die persistierte Bibliothek bleibt unverändert, das freundliche Label (z.B. `💾 C:\`, `📁 Downloads`) erscheint auch als Wurzel im Baum
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
@@ -120,7 +121,7 @@ retro-amp --version           # Zeigt die Version
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **38 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
-- **Einstellungs-Dialog** — Einstellungen in Tabs (Taste S): Cover-Renderer, Visualizer-Modus, Datenbank-Journal-Modus, Verlauf, Sprache, plus ein Speicherort-Tab, der die Datenordner öffnet (settings.json, Datenbank, Caches)
+- **Einstellungs-Dialog** — Einstellungen in Tabs (Taste S): Default-Musik-Verzeichnis (Bibliothek), Cover-Renderer, Visualizer-Modus, Datenbank-Journal-Modus, Verlauf, Sprache, plus ein Speicherort-Tab, der die Datenordner öffnet (settings.json, Datenbank, Caches)
 - **Footer-Tooltips** — Maus über eine Taste im Footer zeigt eine ausführliche Beschreibung, was der Befehl macht
 - **Klickbare Links** — Links im About-Dialog, in der Wikipedia-Quelle und im YouTube-Panel öffnen per normalem Klick (kein Ctrl nötig) und werden beim Hover hervorgehoben
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang` oder im Einstellungs-Dialog (Sprache-Tab)
