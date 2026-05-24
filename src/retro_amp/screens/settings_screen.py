@@ -8,6 +8,7 @@ Speicherort-Tab, Save/Cancel-Leiste und die Standard-Bindings. Die App-Tabs
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from textual_widgets import BaseSettingsScreen
 
 from ..domain.models import VisualizerMode
 from ..i18n import t
+from .library_picker_screen import LibraryPickerScreen
 
 _JOURNAL_MODES: tuple[str, ...] = ("DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF")
 _VISUALIZER_MODES: tuple[VisualizerMode, ...] = (
@@ -50,6 +52,14 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         margin-top: 1;
         text-align: center;
     }
+    SettingsScreen #library-path {
+        color: $accent;
+        text-style: bold;
+        padding: 0 1;
+    }
+    SettingsScreen #btn-change-library {
+        margin: 1 0;
+    }
     """
 
     def __init__(
@@ -80,10 +90,18 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         except (TypeError, ValueError):
             self._history_limit = 1000
 
+        # Default-Musik-Verzeichnis (settings.music_library). Wird im
+        # Bibliothek-Tab als aktueller Pfad angezeigt und kann ueber den
+        # "Verzeichnis wechseln..."-Button via LibraryPickerScreen geaendert
+        # werden. Aenderungen landen beim Save in result["music_library"].
+        self._music_library = str(merged.get("music_library", "") or "")
+
     # --- Hooks von BaseSettingsScreen ---
 
     def app_tabs(self) -> ComposeResult:
-        """App-spezifische Tabs: Cover, Visualizer, Datenbank, Verlauf."""
+        """App-spezifische Tabs: Bibliothek, Cover, Visualizer, Datenbank, Verlauf."""
+        with TabPane(t("settings.tab_library"), id="tab-library"), VerticalScroll():
+            yield from self._library_fields()
         with TabPane(t("settings.tab_cover"), id="tab-cover"), VerticalScroll():
             yield from self._cover_fields()
         with TabPane(t("settings.tab_visualizer"), id="tab-visualizer"), VerticalScroll():
@@ -121,6 +139,8 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             maximum=1_000_000,
         )
 
+        settings["music_library"] = self._music_library
+
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Speicherorte fuer den Speicherort-Tab."""
         return [
@@ -131,6 +151,17 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         ]
 
     # --- Feld-Builder ---
+
+    def _library_fields(self) -> ComposeResult:
+        """Felder fuer den Bibliothek-Tab."""
+        yield Label(t("settings.library_path_label"))
+        yield Static(self._music_library or "—", id="library-path", markup=False)
+        yield Button(
+            t("settings.library_change_button"),
+            id="btn-change-library",
+            variant="primary",
+        )
+        yield Static(t("settings.library_hint"), classes="settings-hint")
 
     def _cover_fields(self) -> ComposeResult:
         """Felder fuer den Cover-Tab."""
@@ -201,6 +232,38 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         yield Static(t("settings.history_hint"), classes="settings-hint")
 
     # --- Button-Handling ---
+
+    @on(Button.Pressed, "#btn-change-library")
+    def _on_change_library_pressed(self) -> None:
+        """Oeffnet den LibraryPickerScreen und uebernimmt den gewaehlten Pfad.
+
+        Aenderung wird erst beim Speichern (Ctrl+S) persistiert; bis dahin
+        sieht der Nutzer den neuen Pfad nur im Label.
+        """
+        from pathlib import Path as _Path
+
+        candidates: list[_Path] = []
+        if self._music_library:
+            current = _Path(self._music_library)
+            if current.is_dir():
+                candidates.append(current)
+        music_dir = _Path.home() / "Music"
+        if music_dir.is_dir() and music_dir not in candidates:
+            candidates.append(music_dir)
+        self.app.push_screen(
+            LibraryPickerScreen(candidates),
+            callback=self._on_library_picker_result,
+        )
+
+    def _on_library_picker_result(self, chosen: object) -> None:
+        """Callback vom LibraryPicker — Pfad ins Label uebernehmen."""
+        from pathlib import Path as _Path
+
+        if not isinstance(chosen, _Path):
+            return
+        self._music_library = str(chosen)
+        with contextlib.suppress(Exception):
+            self.query_one("#library-path", Static).update(self._music_library)
 
     @on(Button.Pressed, "#btn-clear-history")
     def _on_clear_history_pressed(self) -> None:

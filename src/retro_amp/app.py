@@ -74,6 +74,7 @@ from .widgets.history_tree import HistoryTree
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
 from .widgets.playlist_tree import PlaylistTree
+from .widgets.quick_jump_sidebar import QuickJumpSidebar
 from .widgets.search_tree import SearchTree
 from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
@@ -193,6 +194,11 @@ class RetroAmpApp(CrashGuard, App):
         if not self._tree_root.is_dir():
             self._tree_root = Path.home()
 
+        # Persistierte Musik-Bibliothek separat tracken — die Sidebar-"Musik"-Taste
+        # springt immer hierhin, auch wenn _tree_root tempotaer auf einen anderen
+        # Ordner (Downloads, Drive, ...) gesetzt wurde.
+        self._music_library = self._tree_root
+
         # Autoplay-Datei (z.B. Doppelklick auf MP3)
         self._autoplay_file: Path | None = None
         if play_file:
@@ -293,7 +299,9 @@ class RetroAmpApp(CrashGuard, App):
         )
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"), TabbedContent(id="left-tabs"):
-                with TabPane(t("tab.browser"), id="tab-browser"):
+                with TabPane(t("tab.browser"), id="tab-browser"), Vertical(id="browser-pane"):
+                    yield QuickJumpSidebar(self._music_library, id="quick-jump")
+                    yield HorizontalSplitter(target_id="quick-jump", min_size=3, max_size=20)
                     yield FolderBrowser(str(self._tree_root), id="folder-browser")
                 with TabPane(t("tab.favorites"), id="tab-favorites"):
                     yield FavoritesTree(id="favorites-tree")
@@ -383,16 +391,55 @@ class RetroAmpApp(CrashGuard, App):
         if chosen is None:
             return
         self._tree_root = chosen
+        self._music_library = chosen
         self._initial_scan_path = chosen
         # Pfad persistieren
         settings = self._settings_store.load()
         settings["music_library"] = str(chosen)
         self._settings_store.save(settings)
-        # Baum und Tabelle mit neuem Root aktualisieren
+        # Baum und Tabelle mit neuem Root aktualisieren — bei einer echten
+        # Library-Aenderung wollen wir wieder den Default-Label (Pfadname),
+        # also den Sidebar-Override loeschen.
         browser = self.query_one("#folder-browser", FolderBrowser)
+        browser.set_root_label(None)
         browser.path = str(chosen)
         browser.reload()
         self._scan_directory(chosen)
+        # Sidebar-"Musik"-Eintrag aktualisieren
+        with contextlib.suppress(Exception):
+            self.query_one("#quick-jump", QuickJumpSidebar).set_music_library(chosen)
+        self.notify(t("notify.library_changed", path=chosen))
+        self._write_log(t("log.library_changed", path=chosen))
+
+    def on_quick_jump_sidebar_path_chosen(
+        self,
+        event: QuickJumpSidebar.PathChosen,
+    ) -> None:
+        """Sidebar-Klick → Tree-Root tempotaer auf den gewaehlten Pfad setzen.
+
+        Aendert NICHT die persistierte Musik-Library (settings.music_library);
+        der naechste Start landet wieder im Default-Verzeichnis. Wer den Default
+        umstellen will, nutzt den Settings-Tab "Bibliothek".
+
+        Das Sidebar-Label (z.B. "📁 Downloads", "💾 C:\\") wird als
+        Beschriftung der Tree-Wurzel uebernommen, damit oben im Baum die
+        freundliche Bezeichnung statt des Vollpfads steht.
+        """
+        chosen = event.path
+        if not chosen.is_dir():
+            self.notify(t("library.error_not_found", path=chosen), severity="warning")
+            return
+        self._tree_root = chosen
+        self._initial_scan_path = chosen
+        browser = self.query_one("#folder-browser", FolderBrowser)
+        # Erst Override setzen, dann Pfad — so greift der Override auch im
+        # initialen reset_node() durch Textual's internen Reload-Worker.
+        browser.set_root_label(event.label)
+        browser.path = str(chosen)
+        browser.reload()
+        self._scan_directory(chosen)
+        self.notify(t("notify.tree_root_changed", path=chosen))
+        self._write_log(t("log.tree_root_changed", path=chosen))
 
     @work
     async def _expand_tree_to_last_path(self) -> None:
@@ -697,8 +744,28 @@ class RetroAmpApp(CrashGuard, App):
         old_lang = str(current.get("language", current_language()))
         new_lang = str(new_settings.get("language", old_lang))
         changed_language = old_lang != new_lang
+        old_library = str(current.get("music_library", "") or "")
+        new_library = str(new_settings.get("music_library", "") or "")
+        changed_library = bool(new_library) and new_library != old_library
         current.update(new_settings)
         self._settings_store.save(current)
+
+        # Library-Wechsel: Tree-Root, persistierten Anker und Sidebar nachziehen.
+        if changed_library:
+            chosen = Path(new_library)
+            if chosen.is_dir():
+                self._music_library = chosen
+                self._tree_root = chosen
+                self._initial_scan_path = chosen
+                with contextlib.suppress(Exception):
+                    browser = self.query_one("#folder-browser", FolderBrowser)
+                    browser.set_root_label(None)
+                    browser.path = str(chosen)
+                    browser.reload()
+                with contextlib.suppress(Exception):
+                    self.query_one("#quick-jump", QuickJumpSidebar).set_music_library(chosen)
+                self._scan_directory(chosen)
+                self._write_log(t("log.library_changed", path=chosen))
 
         # Visualizer-Modus live anwenden (kein Neustart noetig)
         if changed_visualizer:

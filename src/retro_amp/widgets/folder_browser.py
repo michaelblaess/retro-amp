@@ -27,6 +27,33 @@ class FolderBrowser(DirectoryTree):
 
     ICON_MUSIC = "\u266a "  # ♪
 
+    # Optional uebersteuerter Root-Label-Text (z.B. fuer Sidebar-Schnellzugriffe).
+    # None = Standardverhalten (Verzeichnisname).
+    _root_label_override: str | None = None
+
+    def set_root_label(self, label: str | None) -> None:
+        """Setzt einen festen Root-Label-Text (z.B. "🏠 Home").
+
+        Wird auch bei nachfolgenden internen Reloads (``DirectoryTree._reload``
+        ruft ``reset_node`` auf) wieder angewendet — ohne diesen Override
+        wuerde der Root-Label nach jedem Reload auf ``path.name`` zurueckfallen.
+        ``None`` schaltet den Override ab.
+        """
+        self._root_label_override = label
+        if label is not None:
+            self.root.set_label(label)
+
+    def reset_node(  # type: ignore[override]
+        self,
+        node: TreeNode[DirEntry],
+        label: object,
+        data: DirEntry | None = None,
+    ) -> FolderBrowser:
+        """``DirectoryTree``-Hook: setzt unsere Root-Label-Override durch."""
+        if node is self.root and self._root_label_override is not None:
+            label = self._root_label_override
+        return super().reset_node(node, label, data)  # type: ignore[return-value]
+
     def filter_paths(self, paths: list[Path]) -> list[Path]:  # type: ignore[override]
         """Filtert: nur Ordner und Audio-Dateien anzeigen."""
         result: list[Path] = []

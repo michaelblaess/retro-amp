@@ -60,6 +60,16 @@ Screen {
     height: 1fr;
 }
 
+/* Dateien-Tab: Sidebar oben (auto-Hoehe), FolderBrowser fuellt den Rest. */
+#browser-pane {
+    height: 1fr;
+    layout: vertical;
+}
+
+#browser-pane > #folder-browser {
+    height: 1fr;
+}
+
 /* Splitter oberhalb des Log-Panels — nur sichtbar wenn der Log sichtbar ist */
 #log-splitter {
     display: none;
