@@ -6,6 +6,7 @@ import time
 
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
+from textual.events import Click
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Static
@@ -45,7 +46,11 @@ class LyricLine(Static, can_focus=False):
         super().__init__(text, **kwargs)
         self.timestamp = timestamp
 
-    def on_click(self) -> None:
+    def on_click(self, event: Click) -> None:
+        # Nur Links-Klick triggert Seek — Rechtsklick (Kontextmenue) bubbelt
+        # zur App, ohne die Wiedergabeposition zu aendern.
+        if event.button != 1:
+            return
         self.post_message(self.Clicked(self.timestamp))
 
 

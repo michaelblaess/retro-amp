@@ -52,6 +52,7 @@ from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
 from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.sqlite_search_history_repository import SqliteSearchHistoryRepository
 from .screens.library_picker_screen import LibraryPickerScreen
+from .services.details_service import DetailsResult, DetailsService
 from .services.history_service import DEFAULT_HISTORY_LIMIT, HistoryService
 from .services.liner_notes_service import LinerNotesService
 from .services.lyrics_service import LyricsService
@@ -67,6 +68,7 @@ from .themes import (
 )
 from .widgets.control_panel import ControlPanel
 from .widgets.cover_art_panel import CoverArtPanel
+from .widgets.details_panel import DetailsPanel
 from .widgets.favorites_tree import FavoritesTree
 from .widgets.file_table import FileTable
 from .widgets.folder_browser import FolderBrowser
@@ -160,9 +162,12 @@ class RetroAmpApp(CrashGuard, App):
         )
         self._liner_notes_service = LinerNotesService()
         self._lyrics_service = LyricsService(on_log=self._lyrics_log_from_thread)
+        self._details_service = DetailsService()
 
         # Generations-Counter fuer Lyrics-Thread-Cancellation
         self._lyrics_generation: int = 0
+        # Generations-Counter fuer Details-Thread-Cancellation
+        self._details_generation: int = 0
 
         # Settings laden
         settings = self._settings_store.load()
@@ -335,6 +340,8 @@ class RetroAmpApp(CrashGuard, App):
                         )
                     with TabPane(t("tab.youtube"), id="tab-youtube"):
                         yield YoutubePanel(id="youtube-panel")
+                    with TabPane(t("tab.details"), id="tab-details"):
+                        yield DetailsPanel(id="details-panel")
         with Horizontal(id="transport-row"):
             yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
             yield ControlPanel(id="control-panel")
@@ -839,7 +846,17 @@ class RetroAmpApp(CrashGuard, App):
         self,
         event: TabbedContent.TabActivated,
     ) -> None:
-        """Reagiert auf Tab-Wechsel im linken Panel."""
+        """Reagiert auf Tab-Wechsel (links UND rechts)."""
+        if event.tabbed_content.id == "content-tabs":
+            if event.pane.id == "tab-details":
+                # Lazy: Details erst beim ersten Aktivieren laden.
+                panel = self.query_one("#details-panel", DetailsPanel)
+                pending = panel.pending_path()
+                if pending is not None:
+                    self._trigger_details_load(pending)
+                elif self._player_service.state.current_track is None:
+                    panel.show_no_track()
+            return
         if event.tabbed_content.id != "left-tabs":
             return
         if event.pane.id == "tab-browser":
@@ -922,6 +939,27 @@ class RetroAmpApp(CrashGuard, App):
             self.push_screen(
                 ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
                 callback=self._on_lyrics_menu_action,
+            )
+            return
+
+        # Translation-Panel: nur Copy + Save
+        try:
+            translation_widget = self.query_one("#translation-panel", TranslationPanel)
+        except Exception:
+            translation_widget = None
+        if (
+            translation_widget is not None
+            and translation_widget.display
+            and translation_widget.region.contains(event.screen_x, event.screen_y)
+        ):
+            has_text = translation_widget.has_translation()
+            items = [
+                ContextMenuItem("copy", t("translationmenu.copy"), enabled=has_text),
+                ContextMenuItem("save", t("translationmenu.save"), enabled=has_text),
+            ]
+            self.push_screen(
+                ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
+                callback=self._on_translation_menu_action,
             )
             return
 
@@ -1046,6 +1084,42 @@ class RetroAmpApp(CrashGuard, App):
         artist, title = terms
         query = urllib.parse.quote_plus(f"{artist} {title} lyrics")
         webbrowser.open(f"https://www.google.com/search?q={query}")
+
+    def _on_translation_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Translation-Kontextmenue gewaehlte Aktion."""
+        if action_id == "copy":
+            self._copy_translation()
+        elif action_id == "save":
+            self._save_translation()
+
+    def _copy_translation(self) -> None:
+        """Kopiert die uebersetzten Lyrics in die Zwischenablage."""
+        panel = self.query_one("#translation-panel", TranslationPanel)
+        text = panel.get_translation_text().strip()
+        if not text:
+            self.notify(t("notify.lyrics_empty"), severity="warning")
+            return
+        self.copy_to_clipboard(text)
+        line_count = text.count("\n") + 1
+        self.notify(t("notify.translation_copied", count=line_count))
+
+    def _save_translation(self) -> None:
+        """Speichert die uebersetzten Lyrics als .txt im Home-Verzeichnis."""
+        panel = self.query_one("#translation-panel", TranslationPanel)
+        text = panel.get_translation_text().strip()
+        if not text:
+            self.notify(t("notify.lyrics_empty"), severity="warning")
+            return
+        artist = _sanitize_filename(panel.artist) or "Unknown"
+        title = _sanitize_filename(panel.title) or "Untitled"
+        lang = current_language()
+        out_path = Path.home() / f"{artist} - {title} ({lang}).txt"
+        try:
+            out_path.write_text(text + "\n", encoding="utf-8")
+        except OSError as exc:
+            self.notify(t("notify.lyrics_save_error", error=str(exc)), severity="error")
+            return
+        self.notify(t("notify.lyrics_saved", path=str(out_path)))
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Suchleiste: Enter gedrueckt → Suche starten."""
@@ -1990,8 +2064,19 @@ class RetroAmpApp(CrashGuard, App):
         )
         self._fetch_cover_art_async(track, artist or track.path.parent.name, title)
 
+        # Details-Panel: NUR anmelden — Laden erst beim Tab-Aktivieren.
+        details_panel = self.query_one("#details-panel", DetailsPanel)
+        details_panel.set_pending(track.path)
+        if self._is_details_tab_active():
+            self._trigger_details_load(track.path)
+
         if not artist:
-            self._clear_all_tabs()
+            # Nur die artist-abhaengigen Tabs leeren — Cover + Details laufen
+            # auch ohne Artist (Datei-/Embed-Info).
+            self.query_one("#lyrics-panel", LyricsPanel).clear()
+            self.query_one("#translation-panel", TranslationPanel).clear()
+            self.query_one("#info-panel", InfoPanel).clear()
+            self.query_one("#youtube-panel", YoutubePanel).clear()
 
     def _clear_all_tabs(self) -> None:
         """Leert alle Tab-Panels."""
@@ -2000,6 +2085,45 @@ class RetroAmpApp(CrashGuard, App):
         self.query_one("#info-panel", InfoPanel).clear()
         self.query_one("#cover-panel", CoverArtPanel).clear()
         self.query_one("#youtube-panel", YoutubePanel).clear()
+        self.query_one("#details-panel", DetailsPanel).show_no_track()
+        self._details_generation += 1
+
+    def _is_details_tab_active(self) -> bool:
+        """True wenn der Details-Tab gerade sichtbar ist."""
+        try:
+            tabs = self.query_one("#content-tabs", TabbedContent)
+            return tabs.active == "tab-details"
+        except Exception:
+            return False
+
+    def _trigger_details_load(self, path: Path) -> None:
+        """Startet (falls noetig) den Details-Worker fuer den uebergebenen Track."""
+        panel = self.query_one("#details-panel", DetailsPanel)
+        if not panel.is_load_needed():
+            return
+        self._details_generation += 1
+        generation = self._details_generation
+        panel.show_loading(path)
+        self._load_details_async(path, generation)
+
+    @work(exclusive=True, group="details", thread=True)
+    def _load_details_async(self, path: Path, generation: int) -> None:
+        """Liest Details im Background-Thread (mutagen ist blocking)."""
+        result = self._details_service.read_details(path)
+        if generation != self._details_generation:
+            return
+        self.call_from_thread(self._apply_details, path, result, generation)
+
+    def _apply_details(
+        self,
+        path: Path,
+        result: DetailsResult,
+        generation: int,
+    ) -> None:
+        """Schreibt das Details-Ergebnis ins Panel (Main-Thread)."""
+        if generation != self._details_generation:
+            return
+        self.query_one("#details-panel", DetailsPanel).show_details(path, result)
 
     @work(exclusive=True, group="lyrics", thread=True)
     def _fetch_lyrics_async(
