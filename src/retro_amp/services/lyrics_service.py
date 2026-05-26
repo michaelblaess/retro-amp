@@ -12,7 +12,10 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+
+from ..i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +37,23 @@ def _safe_filename(name: str) -> str:
 class LyricsService:
     """Holt und cached Song-Lyrics mit optionaler Uebersetzung."""
 
-    def __init__(self, lyrics_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        lyrics_dir: Path | None = None,
+        on_log: Callable[[str], None] | None = None,
+    ) -> None:
         self._lyrics_dir = lyrics_dir or Path.home() / ".retro-amp" / "lyrics"
         self._lyrics_dir.mkdir(parents=True, exist_ok=True)
+        self._on_log = on_log
+
+    def _log(self, message: str) -> None:
+        """Sendet eine Log-Nachricht ans LogPanel (sofern Callback gesetzt)."""
+        if self._on_log is None:
+            return
+        try:
+            self._on_log(message)
+        except Exception:
+            logger.debug("Lyrics-Log-Callback fehlgeschlagen", exc_info=True)
 
     def get_lyrics(
         self,
@@ -60,7 +77,12 @@ class LyricsService:
         # Cache pruefen
         cached = self._read_cache(artist, title)
         if cached is not None:
+            original_cached, _translated_cached, synced_cached = cached
+            lines = len(synced_cached) if synced_cached else (original_cached.count("\n") + 1 if original_cached else 0)
+            self._log(t("log.lyrics_cache_hit", artist=artist, title=title, lines=lines))
             return cached
+
+        self._log(t("log.lyrics_cache_miss", artist=artist, title=title))
 
         # Von lrclib.net holen
         original, synced_lines = self._fetch_lyrics(artist, title)
@@ -82,6 +104,20 @@ class LyricsService:
         """Pfad zur Cache-Datei."""
         filename = _safe_filename(f"{artist} - {title}")
         return self._lyrics_dir / f"{filename}.json"
+
+    def invalidate_cache(self, artist: str, title: str) -> bool:
+        """Loescht die Cache-Datei fuer einen Track. Gibt True zurueck wenn geloescht."""
+        if not artist or not title:
+            return False
+        path = self._cache_path(artist.strip(), title.strip())
+        try:
+            if path.exists():
+                path.unlink()
+                self._log(t("log.lyrics_cache_invalidated", artist=artist, title=title))
+                return True
+        except OSError:
+            logger.debug("Lyrics-Cache loeschen fehlgeschlagen: %s", path)
+        return False
 
     def _read_cache(
         self,
@@ -138,17 +174,49 @@ class LyricsService:
     ) -> tuple[str, list[tuple[float, str]]]:
         """Holt Lyrics von lrclib.net.
 
+        Zwei-Stufen-Suche:
+        1. Strict: artist_name + track_name (schnelles, exaktes Match)
+        2. Fuzzy: q= mit gesaeubertem Freitext (Jahr raus, Track-Nummer raus)
+
         Gibt (plain_text, synced_lines) zurueck. syncedLyrics werden
         bevorzugt — der Plain-Text wird daraus extrahiert.
         """
+        # Stufe 1: strict
+        self._log(t("log.lyrics_search_strict", artist=artist, title=title))
+        result = self._lrclib_query({"artist_name": artist, "track_name": title})
+        if result[0]:
+            self._log(t("log.lyrics_found", lines=self._count_lines(result)))
+            return result
+
+        # Stufe 2: fuzzy mit gesaeubertem Freitext
+        clean_artist = self._clean_artist_for_search(artist)
+        clean_title = self._clean_title_for_search(title)
+        query = " ".join(part for part in (clean_artist, clean_title) if part).strip()
+        if query and query.lower() != f"{artist} {title}".lower():
+            self._log(t("log.lyrics_search_fuzzy", query=query))
+            result = self._lrclib_query({"q": query})
+            if result[0]:
+                self._log(t("log.lyrics_found", lines=self._count_lines(result)))
+                return result
+
+        self._log(t("log.lyrics_not_found"))
+        return "", []
+
+    @staticmethod
+    def _count_lines(result: tuple[str, list[tuple[float, str]]]) -> int:
+        """Zaehlt Zeilen — synced bevorzugt, sonst plain."""
+        plain, synced = result
+        if synced:
+            return len(synced)
+        return plain.count("\n") + 1 if plain else 0
+
+    def _lrclib_query(
+        self,
+        params: dict[str, str],
+    ) -> tuple[str, list[tuple[float, str]]]:
+        """Ruft lrclib.net/api/search mit den uebergebenen Params auf."""
         try:
-            params = urllib.parse.urlencode(
-                {
-                    "artist_name": artist,
-                    "track_name": title,
-                }
-            )
-            url = f"https://lrclib.net/api/search?{params}"
+            url = f"https://lrclib.net/api/search?{urllib.parse.urlencode(params)}"
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 data = json.loads(resp.read())
@@ -160,16 +228,31 @@ class LyricsService:
                     # syncedLyrics bevorzugen
                     synced_lines = self._parse_synced_lyrics(synced_raw)
                     if synced_lines:
-                        # Plain-Text aus Synced extrahieren
                         if not plain:
                             plain = "\n".join(text for _, text in synced_lines)
                         return plain.strip(), synced_lines
 
-                    # Fallback: nur plainLyrics
                     return plain.strip(), []
         except Exception:
-            logger.debug("Lyrics-Abfrage fehlgeschlagen: %s - %s", artist, title)
+            logger.debug("Lyrics-Abfrage fehlgeschlagen: %s", params)
         return "", []
+
+    @staticmethod
+    def _clean_artist_for_search(artist: str) -> str:
+        """Entfernt 4-stellige Jahresangaben und leere ' - '-Segmente."""
+        # Jahre 19xx/20xx (oft Album-Jahre in Folder-Namen)
+        cleaned = re.sub(r"\b(?:19|20)\d{2}\b", " ", artist)
+        # Mehrfach-Spaces und uebrig gebliebene Dashes aufraeumen
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        cleaned = re.sub(r"\s*-\s*-\s*", " - ", cleaned)  # " - - " → " - "
+        cleaned = cleaned.strip(" -")
+        return cleaned
+
+    @staticmethod
+    def _clean_title_for_search(title: str) -> str:
+        """Entfernt Track-Nummer-Prefix ('01. ', '01 - ', '01.')."""
+        cleaned = re.sub(r"^\d+\s*[.\-]\s*", "", title).strip()
+        return cleaned or title
 
     def _parse_synced_lyrics(
         self,

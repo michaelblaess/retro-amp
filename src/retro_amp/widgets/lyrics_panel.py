@@ -95,6 +95,27 @@ class LyricsPanel(Widget):
         self._synced_lines: list[tuple[float, str]] = []
         self._current_line_index: int = -1
         self._is_synced: bool = False
+        self._artist: str = ""
+        self._title: str = ""
+        self._plain_text: str = ""
+
+    @property
+    def artist(self) -> str:
+        return self._artist
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    def get_lyrics_text(self) -> str:
+        """Liefert die aktuell angezeigten Lyrics als Plain-Text (Copy/Save)."""
+        if self._is_synced and self._synced_lines:
+            return "\n".join(text for _, text in self._synced_lines)
+        return self._plain_text
+
+    def has_lyrics(self) -> bool:
+        """True wenn Lyrics fuer den aktuellen Track verfuegbar sind."""
+        return bool(self.get_lyrics_text().strip())
 
     def compose(self) -> ComposeResult:
         with LyricsScroll(id="lyrics-scroll"):
@@ -106,6 +127,9 @@ class LyricsPanel(Widget):
         self._is_synced = False
         self._synced_lines = []
         self._current_line_index = -1
+        self._artist = artist
+        self._title = title
+        self._plain_text = ""
         self.query_one("#lyrics-title", Static).update(f"\u266a {artist} \u2014 {title}")
         # Alte Lyric-Zeilen entfernen
         for line in self.query(LyricLine):
@@ -120,6 +144,9 @@ class LyricsPanel(Widget):
         synced_lines: list[tuple[float, str]] | None = None,
     ) -> None:
         """Zeigt Lyrics an — synced wenn verfuegbar, sonst plain."""
+        self._artist = artist
+        self._title = title
+        self._plain_text = text
         self.query_one("#lyrics-title", Static).update(f"\u266a {artist} \u2014 {title}")
 
         # Alte Lyric-Zeilen entfernen
@@ -188,6 +215,9 @@ class LyricsPanel(Widget):
         self._is_synced = False
         self._synced_lines = []
         self._current_line_index = -1
+        self._artist = ""
+        self._title = ""
+        self._plain_text = ""
         self.query_one("#lyrics-title", Static).update("")
         self.query_one("#lyrics-text", Static).update("")
         for line in self.query(LyricLine):

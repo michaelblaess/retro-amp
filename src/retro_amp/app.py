@@ -82,6 +82,12 @@ from .widgets.visualizer import Visualizer
 from .widgets.youtube_panel import YoutubePanel
 
 
+def _sanitize_filename(name: str) -> str:
+    """Erzeugt einen sicheren Dateinamen (keine Pfad-/Wildcard-Zeichen)."""
+    safe = re.sub(r'[<>:"/\\|?*]', "_", name).strip(". ")
+    return safe[:120]
+
+
 class RetroAmpApp(CrashGuard, App):
     """retro-amp — Terminal-Musikplayer mit Retro-Charme."""
 
@@ -153,7 +159,7 @@ class RetroAmpApp(CrashGuard, App):
             ),
         )
         self._liner_notes_service = LinerNotesService()
-        self._lyrics_service = LyricsService()
+        self._lyrics_service = LyricsService(on_log=self._lyrics_log_from_thread)
 
         # Generations-Counter fuer Lyrics-Thread-Cancellation
         self._lyrics_generation: int = 0
@@ -889,9 +895,36 @@ class RetroAmpApp(CrashGuard, App):
         self.notify(t("notify.log_exported", path=str(out_path)))
 
     def on_click(self, event: Click) -> None:
-        """Rechtsklick auf das Log-Panel oeffnet das Kontextmenue."""
+        """Rechtsklick auf Log- oder Lyrics-Panel oeffnet das Kontextmenue."""
         if event.button != 3:
             return
+
+        # Lyrics-Panel hat Vorrang (liegt ueber Log-Panel im Layout)
+        try:
+            lyrics_widget = self.query_one("#lyrics-panel", LyricsPanel)
+        except Exception:
+            lyrics_widget = None
+        if (
+            lyrics_widget is not None
+            and lyrics_widget.display
+            and lyrics_widget.region.contains(event.screen_x, event.screen_y)
+        ):
+            has_lyrics = lyrics_widget.has_lyrics()
+            items = [
+                ContextMenuItem("copy", t("lyricsmenu.copy"), enabled=has_lyrics),
+                ContextMenuItem("save", t("lyricsmenu.save"), enabled=has_lyrics),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reload", t("lyricsmenu.reload")),
+                ContextMenuItem.separator(),
+                ContextMenuItem("open_lrclib", t("lyricsmenu.open_lrclib")),
+                ContextMenuItem("search_google", t("lyricsmenu.search_google")),
+            ]
+            self.push_screen(
+                ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
+                callback=self._on_lyrics_menu_action,
+            )
+            return
+
         log_widget = self.query_one("#app-log", RichLog)
         if not log_widget.has_class("visible"):
             return
@@ -916,6 +949,103 @@ class RetroAmpApp(CrashGuard, App):
             self._export_log()
         elif action_id == "hide":
             self.action_toggle_log()
+
+    def _on_lyrics_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Lyrics-Kontextmenue gewaehlte Aktion."""
+        if action_id == "copy":
+            self._copy_lyrics()
+        elif action_id == "save":
+            self._save_lyrics()
+        elif action_id == "reload":
+            self._reload_lyrics()
+        elif action_id == "open_lrclib":
+            self._open_lyrics_at_lrclib()
+        elif action_id == "search_google":
+            self._search_lyrics_at_google()
+
+    def _copy_lyrics(self) -> None:
+        """Kopiert die aktuell angezeigten Lyrics in die Zwischenablage."""
+        panel = self.query_one("#lyrics-panel", LyricsPanel)
+        text = panel.get_lyrics_text().strip()
+        if not text:
+            self.notify(t("notify.lyrics_empty"), severity="warning")
+            return
+        self.copy_to_clipboard(text)
+        line_count = text.count("\n") + 1
+        self.notify(t("notify.lyrics_copied", count=line_count))
+
+    def _save_lyrics(self) -> None:
+        """Speichert die aktuell angezeigten Lyrics als .txt im Home-Verzeichnis."""
+        panel = self.query_one("#lyrics-panel", LyricsPanel)
+        text = panel.get_lyrics_text().strip()
+        if not text:
+            self.notify(t("notify.lyrics_empty"), severity="warning")
+            return
+        artist = _sanitize_filename(panel.artist) or "Unknown"
+        title = _sanitize_filename(panel.title) or "Untitled"
+        out_path = Path.home() / f"{artist} - {title}.txt"
+        try:
+            out_path.write_text(text + "\n", encoding="utf-8")
+        except OSError as exc:
+            self.notify(t("notify.lyrics_save_error", error=str(exc)), severity="error")
+            return
+        self.notify(t("notify.lyrics_saved", path=str(out_path)))
+
+    def _reload_lyrics(self) -> None:
+        """Loescht den Lyrics-Cache und holt die Lyrics neu."""
+        panel = self.query_one("#lyrics-panel", LyricsPanel)
+        artist = panel.artist
+        title = panel.title
+        if not artist or not title:
+            self.notify(t("notify.lyrics_no_track"), severity="warning")
+            return
+        self._lyrics_service.invalidate_cache(artist, title)
+        self._lyrics_generation += 1
+        generation = self._lyrics_generation
+        panel.show_loading(artist, title)
+        self.query_one("#translation-panel", TranslationPanel).show_loading(artist, title)
+        self._fetch_lyrics_async(artist, title, generation)
+        self.notify(t("notify.lyrics_reloading"))
+
+    def _lyrics_search_terms(self) -> tuple[str, str] | None:
+        """Liefert (artist, title) fuer Lyrics-Websuchen mit aufgeraeumten Werten.
+
+        Schneidet Track-Nummer-Prefixe ab ('01. ', '01 - ', '01-', '01 ').
+        Gibt None zurueck wenn keine Lyrics geladen sind.
+        """
+        panel = self.query_one("#lyrics-panel", LyricsPanel)
+        artist = panel.artist.strip()
+        title = panel.title.strip()
+        if not artist or not title:
+            return None
+        clean_title = re.sub(r"^\d+\s*[.\-]\s*", "", title).strip() or title
+        return artist, clean_title
+
+    def _open_lyrics_at_lrclib(self) -> None:
+        """Oeffnet die lrclib.net-Suche fuer den aktuellen Track im Browser."""
+        terms = self._lyrics_search_terms()
+        if terms is None:
+            self.notify(t("notify.lyrics_no_track"), severity="warning")
+            return
+        import urllib.parse
+        import webbrowser
+
+        artist, title = terms
+        query = urllib.parse.quote(f"{artist} {title}")
+        webbrowser.open(f"https://lrclib.net/search/{query}")
+
+    def _search_lyrics_at_google(self) -> None:
+        """Sucht den aktuellen Track bei Google im Browser."""
+        terms = self._lyrics_search_terms()
+        if terms is None:
+            self.notify(t("notify.lyrics_no_track"), severity="warning")
+            return
+        import urllib.parse
+        import webbrowser
+
+        artist, title = terms
+        query = urllib.parse.quote_plus(f"{artist} {title} lyrics")
+        webbrowser.open(f"https://www.google.com/search?q={query}")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Suchleiste: Enter gedrueckt → Suche starten."""
@@ -1985,6 +2115,20 @@ class RetroAmpApp(CrashGuard, App):
             self._log_lines.append(f"{timestamp} {message}")
         except Exception:
             pass
+
+    def _lyrics_log_from_thread(self, message: str) -> None:
+        """Routet Log-Nachrichten des LyricsService ins LogPanel.
+
+        Kann sowohl aus dem Main-Thread (Cache-Invalidate via Click)
+        als auch aus einem Worker-Thread (Lyrics-Fetch) aufgerufen werden.
+        """
+        import threading
+
+        if threading.current_thread() is threading.main_thread():
+            self._write_log(message)
+            return
+        with contextlib.suppress(Exception):
+            self.call_from_thread(self._write_log, message)
 
     def on_unmount(self) -> None:
         """Cleanup beim Beenden."""
