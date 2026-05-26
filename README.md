@@ -19,7 +19,7 @@
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.27.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.28.0 — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)

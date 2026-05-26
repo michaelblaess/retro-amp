@@ -19,7 +19,7 @@
 
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.27.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp v0.28.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
