@@ -48,7 +48,8 @@ class QuickJumpItem(Static):
         color: $text;
     }
     QuickJumpItem:hover {
-        background: $boost;
+        background: $primary 30%;
+        color: $text;
         text-style: bold;
     }
     """
@@ -91,6 +92,7 @@ class QuickJumpSidebar(VerticalScroll):
         max-height: 14;
         padding: 0;
         scrollbar-size: 1 1;
+        background: $surface;
     }
     """
 
