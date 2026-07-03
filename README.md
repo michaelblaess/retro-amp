@@ -85,14 +85,14 @@ retro-amp
 
 ### From Source
 
+Needs [uv](https://docs.astral.sh/uv/). `bootstrap` creates the `.venv`,
+installs all dependencies from `uv.lock` and the Nuitka build tool.
+
 ```bash
 git clone https://github.com/michaelblaess/retro-amp.git
 cd retro-amp
-python -m venv .venv
-.venv/Scripts/activate      # Windows
-# source .venv/bin/activate  # Linux/macOS
-pip install -e ".[dev]"
-retro-amp
+.\bootstrap.ps1     # Windows      (Linux/macOS: ./bootstrap.sh)
+.\run.ps1           # start it      (Linux/macOS: ./run.sh)
 ```
 
 ## Usage
@@ -254,33 +254,23 @@ src/retro_amp/
 ## Development
 
 ```bash
-# Setup
+# Setup (uv: .venv + dev dependencies + Nuitka)
 git clone https://github.com/michaelblaess/retro-amp.git
 cd retro-amp
-python -m venv .venv
-.venv/Scripts/activate      # Windows
-pip install -e ".[dev]"
+.\bootstrap.ps1     # Windows      (Linux/macOS: ./bootstrap.sh)
 
-# Tests
-pytest
-
-# Type check
-mypy src/
+# Tasks (poethepoet, defined in pyproject.toml)
+uv run poe test         # pytest
+uv run poe typecheck    # mypy strict
+uv run poe lint         # ruff
+uv run poe run          # start retro-amp
 ```
 
 ### Local build (standalone binary)
 
-Two ways to build a self-contained binary that runs without a Python install:
-
-**PyInstaller** — bundles the CPython interpreter, quick to set up:
-
-```bash
-pip install pyinstaller
-pyinstaller retro-amp.spec --noconfirm
-```
-
-**Nuitka** — compiles to a native binary (faster cold start, one distributable
-archive). One script per OS; each runs `uv sync` first and writes to `dist/`:
+**Nuitka** compiles retro-amp to a native, self-contained binary that runs
+without a Python install (one distributable archive per OS). One script per OS;
+each runs `uv sync` first and writes to `dist/`:
 
 ```bash
 .\compile-win64.ps1     # Windows -> dist/retro-amp-vX.Y.Z-win64.zip
