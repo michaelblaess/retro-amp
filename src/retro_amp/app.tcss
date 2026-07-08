@@ -92,3 +92,9 @@ Screen {
 #app-log.visible {
     display: block;
 }
+
+/* Collapse-Icon in der Log-Titelzeile: nur der Log-Body verschwindet,
+   die Titelzeile (Splitter) bleibt als schmale Leiste sichtbar. */
+#app-log.visible.collapsed {
+    display: none;
+}

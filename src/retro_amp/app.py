@@ -346,7 +346,14 @@ class RetroAmpApp(CrashGuard, App):
             yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
             yield ControlPanel(id="control-panel")
             yield TransportBar(id="transport")
-        yield HorizontalSplitter(target_id="main-container", min_size=10, id="log-splitter")
+        yield HorizontalSplitter(
+            target_id="main-container",
+            min_size=10,
+            id="log-splitter",
+            title=t("binding.log"),
+            show_collapse=True,
+            show_close=True,
+        )
         yield RichLog(id="app-log", highlight=True, markup=True)
         yield Footer()
 
@@ -887,6 +894,11 @@ class RetroAmpApp(CrashGuard, App):
             # beim Ausblenden auf 4fr zuruecksetzen, sonst bleibt der
             # Hauptbereich klein und ein leerer Streifen entsteht.
             self.query_one("#main-container").styles.height = "4fr"
+        else:
+            # Beim Einblenden immer expandiert starten: Collapse-Zustand aus
+            # einer frueheren Session/Aktion zuruecksetzen (Body + Glyph).
+            log_widget.remove_class("collapsed")
+            splitter.set_collapsed(False)
 
     def action_copy_log(self) -> None:
         """Gesamten Log-Inhalt in die Zwischenablage kopieren."""
@@ -1802,6 +1814,27 @@ class RetroAmpApp(CrashGuard, App):
         """
         if event.target_id == "file-table":
             self._save_pane_size(event.target_id, event.size)
+
+    def on_horizontal_splitter_close_requested(
+        self,
+        event: HorizontalSplitter.CloseRequested,
+    ) -> None:
+        """Close-Icon in der Log-Titelzeile — Log komplett ausblenden (wie 'l')."""
+        if self.query_one("#app-log", RichLog).has_class("visible"):
+            self.action_toggle_log()
+
+    def on_horizontal_splitter_collapse_requested(
+        self,
+        event: HorizontalSplitter.CollapseRequested,
+    ) -> None:
+        """Collapse-Icon in der Log-Titelzeile — nur den Log-Body ein-/ausklappen.
+
+        Die Titelzeile (Splitter) bleibt als schmale Leiste sichtbar; der freie
+        Platz geht an den Hauptbereich zurueck, damit kein leerer Streifen bleibt.
+        """
+        log_widget = self.query_one("#app-log", RichLog)
+        log_widget.set_class(event.collapsed, "collapsed")
+        self.query_one("#main-container").styles.height = "4fr"
 
     def on_visualizer_mode_change_requested(
         self,
