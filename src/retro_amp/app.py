@@ -188,27 +188,35 @@ class RetroAmpApp(CrashGuard, App):
 
         # Baumwurzel bestimmen (immer der Musik-Root, nicht der letzte Ordner)
         self._needs_library_picker = False
+        saved_library = str(settings.get("music_library", ""))
+        library = Path(saved_library) if saved_library and Path(saved_library).is_dir() else None
+
         if start_path:
             self._tree_root = Path(start_path).expanduser().resolve()
-            # CLI-Pfad als music_library persistieren
-            settings["music_library"] = str(self._tree_root)
-            self._settings_store.save(settings)
+            # Ein CLI-Pfad ist ein Ausflug, KEINE neue Bibliothek — er darf die
+            # persistierte music_library nicht kapern (sonst macht ein einmaliges
+            # "retro-amp <temp-ordner>" den Temp-Ordner dauerhaft zur Library und
+            # die globale Suche findet die eigene Sammlung nicht mehr).
+            # Nur wenn noch gar keine Bibliothek gesetzt ist, dient er als
+            # Erstbelegung.
+            if library is None:
+                library = self._tree_root
+                settings["music_library"] = str(library)
+                self._settings_store.save(settings)
+        elif library is not None:
+            self._tree_root = library
         else:
-            saved_library = str(settings.get("music_library", ""))
-            if saved_library and Path(saved_library).is_dir():
-                self._tree_root = Path(saved_library)
-            else:
-                # Kein gespeicherter Pfad — Picker beim Start zeigen
-                self._needs_library_picker = True
-                self._tree_root = Path.home() / "Music" if (Path.home() / "Music").is_dir() else Path.home()
+            # Kein gespeicherter Pfad — Picker beim Start zeigen
+            self._needs_library_picker = True
+            self._tree_root = Path.home() / "Music" if (Path.home() / "Music").is_dir() else Path.home()
 
         if not self._tree_root.is_dir():
             self._tree_root = Path.home()
 
         # Persistierte Musik-Bibliothek separat tracken — die Sidebar-"Musik"-Taste
-        # springt immer hierhin, auch wenn _tree_root tempotaer auf einen anderen
-        # Ordner (Downloads, Drive, ...) gesetzt wurde.
-        self._music_library = self._tree_root
+        # und die globale Suche gehen immer hierhin, auch wenn _tree_root
+        # tempotaer auf einem anderen Ordner (Downloads, Drive, CLI-Pfad) steht.
+        self._music_library = library if library is not None else self._tree_root
 
         # Autoplay-Datei (z.B. Doppelklick auf MP3)
         self._autoplay_file: Path | None = None
@@ -1154,6 +1162,7 @@ class RetroAmpApp(CrashGuard, App):
         left_tabs = self.query_one("#left-tabs", TabbedContent)
         left_tabs.active = "tab-search"
         # Suche im Background-Thread starten
+        self._write_log(t("log.search_start", query=query, path=self._search_root()))
         self._run_global_search(query)
 
     def on_search_input_with_history_history_entry_delete_requested(
@@ -1171,10 +1180,24 @@ class RetroAmpApp(CrashGuard, App):
     @work(exclusive=True, group="search", thread=True)
     def _run_global_search(self, query: str) -> None:
         """Globale Dateisuche im Background-Thread."""
-        results = self._do_file_search(query, self._tree_root)
-        self.call_from_thread(self._apply_search_results, query, results)
+        root = self._search_root()
+        found = self._do_file_search(query, root)
+        results = found[: self._MAX_SEARCH_RESULTS]
+        self.call_from_thread(self._apply_search_results, query, results, root, len(found))
+
+    def _search_root(self) -> Path:
+        """Wurzel der globalen Suche.
+
+        Immer die persistierte Musik-Bibliothek — NICHT ``_tree_root``. Der
+        Tree-Root wandert bei Sidebar-Spruengen (Downloads, Laufwerke) oder beim
+        Start per Doppelklick auf eine Datei ausserhalb der Library mit; eine
+        Suche wuerde sonst still nur diesen Ausflugs-Ordner durchsuchen.
+        """
+        library = self._music_library
+        return library if library.is_dir() else self._tree_root
 
     _SEPARATOR_RE = re.compile(r"[.\-_]")
+    _MAX_SEARCH_RESULTS = 200
 
     def _do_file_search(
         self,
@@ -1199,17 +1222,21 @@ class RetroAmpApp(CrashGuard, App):
                         results.append((p, False))
         except PermissionError:
             pass
-        return results[:200]
+        return results
 
     def _apply_search_results(
         self,
         query: str,
         results: list[tuple[Path, bool]],
+        root: Path,
+        total: int,
     ) -> None:
         """Zeigt Suchergebnisse im Suchbaum an (Main-Thread)."""
         search_tree = self.query_one("#search-tree", SearchTree)
-        search_tree.load_results(query, results, self._tree_root)
+        search_tree.load_results(query, results, root)
         self._write_log(t("log.search_results", query=query, count=len(results)))
+        if total > len(results):
+            self._write_log(t("log.search_truncated", total=total, shown=len(results)))
 
     def on_search_tree_track_selected(
         self,
