@@ -27,6 +27,38 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y patchelf
 
+      # fpcalc (Chromaprint) fuer die AcoustID-Titelerkennung. Die compile-Skripte
+      # buendeln es - falls auf dem PATH - neben die Binary. Direkter Download der
+      # offiziellen, gepinnten Chromaprint-Release (macOS-Build ist universal).
+      - name: Install fpcalc (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ver = "1.6.0"
+          $url = "https://github.com/acoustid/chromaprint/releases/download/v$ver/chromaprint-fpcalc-$ver-windows-x86_64.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\fpcalc.zip"
+          Expand-Archive "$env:RUNNER_TEMP\fpcalc.zip" -DestinationPath "$env:RUNNER_TEMP\fpcalc"
+          $exe = Get-ChildItem "$env:RUNNER_TEMP\fpcalc" -Recurse -Filter fpcalc.exe | Select-Object -First 1
+          Add-Content -Path $env:GITHUB_PATH -Value $exe.DirectoryName
+
+      - name: Install fpcalc (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ver=1.6.0
+          curl -fsSL -o "$RUNNER_TEMP/fpcalc.tar.gz" "https://github.com/acoustid/chromaprint/releases/download/v$ver/chromaprint-fpcalc-$ver-linux-x86_64.tar.gz"
+          mkdir -p "$RUNNER_TEMP/fpcalc"
+          tar -xzf "$RUNNER_TEMP/fpcalc.tar.gz" -C "$RUNNER_TEMP/fpcalc"
+          dirname "$(find "$RUNNER_TEMP/fpcalc" -name fpcalc -type f | head -1)" >> "$GITHUB_PATH"
+
+      - name: Install fpcalc (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          ver=1.6.0
+          curl -fsSL -o "$RUNNER_TEMP/fpcalc.tar.gz" "https://github.com/acoustid/chromaprint/releases/download/v$ver/chromaprint-fpcalc-$ver-macos-universal.tar.gz"
+          mkdir -p "$RUNNER_TEMP/fpcalc"
+          tar -xzf "$RUNNER_TEMP/fpcalc.tar.gz" -C "$RUNNER_TEMP/fpcalc"
+          dirname "$(find "$RUNNER_TEMP/fpcalc" -name fpcalc -type f | head -1)" >> "$GITHUB_PATH"
+
       # bootstrap (venv + Deps + Nuitka) + compile (Nuitka-Build)
       - name: Build (Windows)
         if: runner.os == 'Windows'
