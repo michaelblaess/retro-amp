@@ -96,6 +96,12 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         # werden. Aenderungen landen beim Save in result["music_library"].
         self._music_library = str(merged.get("music_library", "") or "")
 
+        # Auto-Titel (Titel ergaenzen): Quellen + AcoustID-API-Key.
+        self._auto_title_musicbrainz = bool(merged.get("auto_title_musicbrainz", True))
+        self._auto_title_from_filename = bool(merged.get("auto_title_from_filename", True))
+        self._auto_title_acoustid = bool(merged.get("auto_title_acoustid", False))
+        self._auto_title_acoustid_key = str(merged.get("auto_title_acoustid_key", "") or "")
+
     # --- Hooks von BaseSettingsScreen ---
 
     def app_tabs(self) -> ComposeResult:
@@ -110,6 +116,8 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             yield from self._database_fields()
         with TabPane(t("settings.tab_history"), id="tab-history"), VerticalScroll():
             yield from self._history_fields()
+        with TabPane(t("settings.tab_autotitle"), id="tab-autotitle"), VerticalScroll():
+            yield from self._autotitle_fields()
 
     def collect_app_settings(self, settings: dict[str, object]) -> None:
         """Sammelt die Werte der App-Tabs ins Ergebnis-Dict."""
@@ -140,6 +148,14 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         )
 
         settings["music_library"] = self._music_library
+
+        settings["auto_title_musicbrainz"] = self._get_checkbox("check-autotitle-mb")
+        settings["auto_title_from_filename"] = self._get_checkbox("check-autotitle-filename")
+        settings["auto_title_acoustid"] = self._get_checkbox("check-autotitle-acoustid")
+        settings["auto_title_acoustid_key"] = self._get_text_input(
+            "input-autotitle-acoustid-key",
+            self._auto_title_acoustid_key,
+        )
 
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Speicherorte fuer den Speicherort-Tab."""
@@ -231,6 +247,41 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             )
         yield Static(t("settings.history_hint"), classes="settings-hint")
 
+    def _autotitle_fields(self) -> ComposeResult:
+        """Felder fuer den Auto-Titel-Tab (Quellen + AcoustID-API-Key)."""
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.autotitle_mb_label"))
+            yield Checkbox(
+                t("settings.autotitle_mb_checkbox"),
+                value=self._auto_title_musicbrainz,
+                id="check-autotitle-mb",
+            )
+        yield Static(t("settings.autotitle_mb_hint"), classes="settings-hint")
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.autotitle_filename_label"))
+            yield Checkbox(
+                t("settings.autotitle_filename_checkbox"),
+                value=self._auto_title_from_filename,
+                id="check-autotitle-filename",
+            )
+        yield Static(t("settings.autotitle_filename_hint"), classes="settings-hint")
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.autotitle_acoustid_label"))
+            yield Checkbox(
+                t("settings.autotitle_acoustid_checkbox"),
+                value=self._auto_title_acoustid,
+                id="check-autotitle-acoustid",
+            )
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.autotitle_acoustid_key_label"))
+            yield Input(
+                value=self._auto_title_acoustid_key,
+                password=True,
+                placeholder=t("settings.autotitle_acoustid_key_placeholder"),
+                id="input-autotitle-acoustid-key",
+            )
+        yield Static(t("settings.autotitle_acoustid_hint"), classes="settings-hint")
+
     # --- Button-Handling ---
 
     @on(Button.Pressed, "#btn-change-library")
@@ -293,6 +344,12 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             return bool(self.query_one(f"#{checkbox_id}", Checkbox).value)
         except Exception:
             return False
+
+    def _get_text_input(self, input_id: str, fallback: str) -> str:
+        try:
+            return str(self.query_one(f"#{input_id}", Input).value).strip()
+        except Exception:
+            return fallback
 
     def _get_select_value(self, select_id: str, fallback: str) -> str:
         try:

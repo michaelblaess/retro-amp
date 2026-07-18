@@ -38,11 +38,20 @@ from textual_widgets import (
 )
 
 from . import __version__
-from .domain.models import AudioFormat, AudioTrack, PlaybackState, RepeatMode, VisualizerMode
+from .domain.models import (
+    AudioFormat,
+    AudioTrack,
+    PlaybackState,
+    RepeatMode,
+    TitleProposal,
+    VisualizerMode,
+)
 from .i18n import current_language, t
+from .infrastructure.acoustid_client import AcoustIDClient
 from .infrastructure.audio_player import PygameAudioPlayer
 from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
+from .infrastructure.musicbrainz_client import MusicBrainzClient
 from .infrastructure.playlist_migration import migrate_markdown_playlists
 from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.settings import JsonSettingsStore
@@ -51,6 +60,7 @@ from .infrastructure.spectrum import SpectrumAnalyzer
 from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
 from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.sqlite_search_history_repository import SqliteSearchHistoryRepository
+from .infrastructure.tag_io import MutagenTagIO
 from .screens.library_picker_screen import LibraryPickerScreen
 from .services.details_service import DetailsResult, DetailsService
 from .services.history_service import DEFAULT_HISTORY_LIMIT, HistoryService
@@ -59,6 +69,7 @@ from .services.lyrics_service import LyricsService
 from .services.metadata_service import MetadataService
 from .services.player_service import PlayerService
 from .services.playlist_service import PlaylistService
+from .services.tagging_service import TaggingService
 from .themes import (
     DEFAULT_THEME,
     RETRO_THEME_NAMES,
@@ -111,6 +122,7 @@ class RetroAmpApp(CrashGuard, App):
         self._bindings.bind("f", "toggle_favorite", t("binding.favorite"), priority=True)
         self._bindings.bind("p", "show_playlists", t("binding.playlists"), priority=True)
         self._bindings.bind("u", "rename_file", t("binding.rename"), priority=True)
+        self._bindings.bind("g", "auto_title", t("binding.auto_title"), priority=True)
         self._bindings.bind("delete", "delete_file", t("binding.delete"), key_display="DEL", priority=True)
         self._bindings.bind("t", "cycle_theme", t("binding.theme"), priority=True)
         self._bindings.bind("s", "show_settings", t("binding.settings"), priority=True)
@@ -132,6 +144,7 @@ class RetroAmpApp(CrashGuard, App):
         # Infrastructure (Composition Root — hier wird verdrahtet)
         self._audio_player = PygameAudioPlayer()
         self._metadata_reader = MutagenMetadataReader()
+        self._tag_io = MutagenTagIO()
         self._settings_store = JsonSettingsStore()
         self._database = Database()
         self._database.open()
@@ -147,6 +160,16 @@ class RetroAmpApp(CrashGuard, App):
         # Services
         self._player_service = PlayerService(self._audio_player)
         self._metadata_service = MetadataService(self._metadata_reader)
+        self._musicbrainz_client = MusicBrainzClient(__version__, on_log=self._log_from_thread)
+        self._acoustid_client = AcoustIDClient(
+            key_provider=self._acoustid_api_key,
+            on_log=self._log_from_thread,
+        )
+        self._tagging_service = TaggingService(
+            self._tag_io,
+            self._musicbrainz_client,
+            self._acoustid_client,
+        )
         self._playlist_service = PlaylistService(self._playlist_store)
         self._history_repo = SqliteHistoryRepository(self._database.connection)
         self._search_history_repo = SqliteSearchHistoryRepository(self._database.connection)
@@ -288,6 +311,7 @@ class RetroAmpApp(CrashGuard, App):
             "toggle_favorite",
             "show_playlists",
             "rename_file",
+            "auto_title",
             "delete_file",
             "cycle_theme",
             "show_settings",
@@ -1373,6 +1397,132 @@ class RetroAmpApp(CrashGuard, App):
         self.notify(t("notify.renamed", name=new_path.name))
         self._write_log(t("log.renamed", path=new_path))
 
+    def action_auto_title(self) -> None:
+        """Auto-Titel: fehlende Titel im aktuellen Ordner ergaenzen (Vorschau)."""
+        tracks = list(self._current_tracks)
+        if not tracks:
+            self.notify(t("notify.no_files"), severity="warning")
+            return
+        self.notify(t("notify.auto_title_scanning"))
+        self._build_title_proposals(tracks)
+
+    @work(exclusive=True, group="auto-title", thread=True)
+    def _build_title_proposals(self, tracks: list[AudioTrack]) -> None:
+        """Baut die Titel-Vorschlaege im Background-Thread."""
+        settings = self._settings_store.load()
+        enable_acoustid = bool(settings.get("auto_title_acoustid", False))
+        enable_musicbrainz = bool(settings.get("auto_title_musicbrainz", True))
+        enable_filename = bool(settings.get("auto_title_from_filename", True))
+        if enable_acoustid and not self._acoustid_client.available():
+            self._log_from_thread(t("log.auto_title_acoustid_unavailable"))
+        proposals = self._tagging_service.build_proposals(
+            tracks,
+            enable_acoustid=enable_acoustid,
+            enable_musicbrainz=enable_musicbrainz,
+            enable_filename_fallback=enable_filename,
+        )
+        self.call_from_thread(self._open_tag_preview, proposals)
+
+    def _open_tag_preview(self, proposals: list[TitleProposal]) -> None:
+        """Oeffnet den Vorschau-Dialog (im Main-Thread)."""
+        matched = sum(1 for proposal in proposals if proposal.has_match)
+        if matched == 0:
+            self.notify(t("notify.auto_title_none"), severity="warning")
+            self._write_log(t("log.auto_title_none"))
+            return
+        from .screens.tag_preview_screen import TagPreviewScreen  # Lazy import
+
+        self.push_screen(TagPreviewScreen(proposals), callback=self._on_tag_preview_result)
+
+    def _on_tag_preview_result(self, accepted: list[TitleProposal] | None) -> None:
+        """Callback nach dem Vorschau-Dialog."""
+        if not accepted:
+            return
+        self._apply_title_proposals(accepted)
+
+    def _apply_title_proposals(self, accepted: list[TitleProposal]) -> None:
+        """Wendet die akzeptierten Vorschlaege an: Tag schreiben + umbenennen.
+
+        Die gerade spielende Datei haelt einen File-Handle - ist sie betroffen,
+        wird der Player entladen, umbenannt und mit Resume-Position auf dem
+        neuen Pfad fortgesetzt.
+        """
+        state = self._player_service.state
+        playing = state.current_track
+        playing_path = playing.path if (playing and not state.is_stopped) else None
+        target_paths = {proposal.track.path for proposal in accepted}
+
+        resume_position = 0.0
+        unload_needed = playing_path is not None and playing_path in target_paths
+        if unload_needed:
+            resume_position = state.position_seconds
+            self._player_service.unload()
+
+        renames: list[tuple[Path, Path]] = []
+        new_playing_path: Path | None = None
+        tagged_only = 0
+        skipped = 0
+        for proposal in accepted:
+            old = proposal.track.path
+            # 1) Titel-Tag schreiben (immer - auch bei "nur Tag"). Fehler nicht fatal.
+            tag_ok = True
+            try:
+                self._tag_io.write_title(old, proposal.title)
+            except Exception:
+                tag_ok = False
+                logger.debug("Titel-Tag konnte nicht geschrieben werden: %s", old)
+
+            # 2) Umbenennen nur, wenn ein neuer Name vorgeschlagen ist. Ist der
+            # Dateiname schon gut (nur Tag fehlte), bleibt er unveraendert.
+            new = old.parent / proposal.proposed_name if proposal.renames else old
+            if not proposal.renames or new == old:
+                if tag_ok:
+                    tagged_only += 1
+                else:
+                    skipped += 1
+                continue
+            if new.exists():
+                skipped += 1
+                self._write_log(t("log.auto_title_skip_exists", name=new.name))
+                continue
+            try:
+                old.rename(new)
+            except OSError:
+                skipped += 1
+                logger.exception("Umbenennen fehlgeschlagen: %s", old)
+                self._write_log(t("log.auto_title_error", name=old.name))
+                continue
+            renames.append((old, new))
+            if playing_path is not None and old == playing_path:
+                new_playing_path = new
+
+        # Playlist-/Verlauf-Pfade auf die neuen Namen nachziehen
+        for old, new in renames:
+            self._playlist_store.update_path(old, new)
+            self._history_repo.update_path(old, new)
+
+        # Ordner neu einlesen (rechte Tabelle zeigt die neuen Titel) + bei
+        # Umbenennungen zusaetzlich den linken Baum-Knoten aktualisieren.
+        album_dir = renames[0][1].parent if renames else (accepted[0].track.path.parent if accepted else None)
+        if album_dir is not None and (renames or tagged_only):
+            self._scan_directory(album_dir)
+            if renames:
+                with contextlib.suppress(Exception):
+                    self.query_one("#folder-browser", FolderBrowser).reload_dir(album_dir)
+
+        # Betroffenen Track weiterspielen
+        if unload_needed:
+            resume_path = new_playing_path or playing_path
+            if resume_path is not None and resume_path.exists():
+                new_track = self._metadata_service.read_track(resume_path)
+                self._player_service.play_file(new_track)
+                if resume_position > 0:
+                    self._player_service._player.seek(resume_position)
+                    self._player_service.state.position_seconds = resume_position
+
+        self.notify(t("notify.auto_title_done", renamed=len(renames), tagged=tagged_only, skipped=skipped))
+        self._write_log(t("log.auto_title_done", renamed=len(renames), tagged=tagged_only, skipped=skipped))
+
     def action_delete_file(self) -> None:
         """Datei oder Ordner loeschen — Bestaetigungsdialog oeffnen."""
 
@@ -2299,6 +2449,20 @@ class RetroAmpApp(CrashGuard, App):
             self._log_lines.append(f"{timestamp} {message}")
         except Exception:
             pass
+
+    def _acoustid_api_key(self) -> str:
+        """Liest den AcoustID-API-Key aus den Settings (Provider fuer den Client)."""
+        return str(self._settings_store.load().get("auto_title_acoustid_key", "") or "")
+
+    def _log_from_thread(self, message: str) -> None:
+        """Thread-sicheres Routen einer Log-Nachricht ins LogPanel."""
+        import threading
+
+        if threading.current_thread() is threading.main_thread():
+            self._write_log(message)
+            return
+        with contextlib.suppress(Exception):
+            self.call_from_thread(self._write_log, message)
 
     def _lyrics_log_from_thread(self, message: str) -> None:
         """Routet Log-Nachrichten des LyricsService ins LogPanel.

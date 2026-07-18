@@ -84,6 +84,13 @@ class PlaylistRepository(Protocol):
         """Loescht eine Playlist."""
         ...
 
+    def update_path(self, old: Path, new: Path) -> int:
+        """Ersetzt einen Track-Pfad in allen Playlists (nach Umbenennung).
+
+        Gibt die Anzahl der geaenderten Eintraege zurueck.
+        """
+        ...
+
 
 class HistoryRepository(Protocol):
     """Interface fuer Wiedergabeverlauf-Persistenz."""
@@ -102,6 +109,13 @@ class HistoryRepository(Protocol):
 
     def trim(self, max_entries: int) -> None:
         """Behaelt nur die letzten ``max_entries`` Eintraege."""
+        ...
+
+    def update_path(self, old: Path, new: Path) -> int:
+        """Ersetzt einen Pfad im Verlauf (nach Umbenennung).
+
+        Gibt die Anzahl der geaenderten Eintraege zurueck.
+        """
         ...
 
 
@@ -138,6 +152,68 @@ class SettingsStore(Protocol):
 
     def save(self, data: dict[str, object]) -> None:
         """Speichert Settings."""
+        ...
+
+
+class TagIO(Protocol):
+    """Interface zum Lesen eingebetteter Tags und Schreiben des Titels."""
+
+    def read_embedded_title(self, path: Path) -> str:
+        """Liest den eingebetteten Titel-Tag (leer wenn keiner)."""
+        ...
+
+    def read_embedded_artist(self, path: Path) -> str:
+        """Liest den eingebetteten Artist-Tag (leer wenn keiner)."""
+        ...
+
+    def read_embedded_album(self, path: Path) -> str:
+        """Liest den eingebetteten Album-Tag (leer wenn keiner)."""
+        ...
+
+    def read_track_number(self, path: Path) -> int:
+        """Liest die Tracknummer aus den Tags (0 wenn keine)."""
+        ...
+
+    def write_title(self, path: Path, title: str) -> None:
+        """Schreibt den Titel in die Tags.
+
+        Wirft ``UnsupportedTagFormatError`` bei Formaten ohne Tag-Support.
+        """
+        ...
+
+
+class TrackTitleLookup(Protocol):
+    """Interface fuer eine Einzeltrack-Titelsuche per Audio-Fingerprint (AcoustID)."""
+
+    def available(self) -> bool:
+        """True wenn die Quelle einsatzbereit ist (Werkzeug + API-Key vorhanden)."""
+        ...
+
+    def lookup_title(self, path: Path, duration_seconds: float) -> str | None:
+        """Erkennt den Titel einer Datei am Audio-Fingerprint.
+
+        Gibt den Titel zurueck oder ``None``, wenn kein eindeutiger,
+        abgesicherter Treffer vorliegt.
+        """
+        ...
+
+
+class AlbumTitleLookup(Protocol):
+    """Interface fuer eine Album-Trackliste-Suche (z.B. MusicBrainz)."""
+
+    def lookup_tracklist(
+        self,
+        artist: str,
+        album: str,
+        track_count: int,
+        durations: list[float] | None = None,
+    ) -> list[str] | None:
+        """Sucht die Titel eines Albums in Positionsreihenfolge.
+
+        Gibt eine Liste der Laenge ``track_count`` zurueck (Titel je Position)
+        oder ``None``, wenn kein eindeutiger, abgesicherter Treffer vorliegt.
+        ``durations`` (Sekunden je Position) dient der Plausibilitaetspruefung.
+        """
         ...
 
 

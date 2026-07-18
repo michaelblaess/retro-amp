@@ -43,6 +43,34 @@ class FolderBrowser(DirectoryTree):
         if label is not None:
             self.root.set_label(label)
 
+    def reload_dir(self, directory: Path) -> None:
+        """Laedt den Knoten eines bestimmten Ordners neu (Dateinamen aktualisieren).
+
+        Haelt die restliche Baum-Position und Expansion, statt wie ``reload()``
+        den ganzen Baum zu kollabieren. Faellt auf einen vollen Reload zurueck,
+        wenn der Ordner-Knoten (noch) nicht geladen ist.
+        """
+        node = self._find_dir_node(directory, self.root)
+        if node is not None:
+            self.reload_node(node)
+        else:
+            self.reload()
+
+    def _find_dir_node(
+        self,
+        directory: Path,
+        node: TreeNode[DirEntry],
+    ) -> TreeNode[DirEntry] | None:
+        """Sucht rekursiv den geladenen Baum-Knoten zu einem Ordnerpfad."""
+        data = node.data
+        if data is not None and data.path == directory:
+            return node
+        for child in node.children:
+            found = self._find_dir_node(directory, child)
+            if found is not None:
+                return found
+        return None
+
     def reset_node(  # type: ignore[override]
         self,
         node: TreeNode[DirEntry],

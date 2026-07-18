@@ -88,3 +88,12 @@ class SqlitePlaylistRepository:
         """Loescht eine Playlist (Entries werden per CASCADE mitgeloescht)."""
         self._conn.execute("DELETE FROM playlists WHERE name = ?", (name,))
         self._conn.commit()
+
+    def update_path(self, old: Path, new: Path) -> int:
+        """Ersetzt einen Track-Pfad in allen Playlists (nach Umbenennung)."""
+        cursor = self._conn.execute(
+            "UPDATE playlist_entries SET path = ? WHERE path = ?",
+            (str(new), str(old)),
+        )
+        self._conn.commit()
+        return cursor.rowcount if cursor.rowcount is not None else 0

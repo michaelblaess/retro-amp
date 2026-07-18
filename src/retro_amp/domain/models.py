@@ -34,6 +34,25 @@ class VisualizerMode(Enum):
     LCD = "lcd"  # 2 horizontale Segment-VU-Meter (Kassettendeck-Style)
 
 
+class MatchSource(Enum):
+    """Herkunft eines Titel-Vorschlags - bestimmt die Sicherheit.
+
+    ``is_confirmed`` unterscheidet bewiesene Quellen (eingebettete Tags,
+    Audio-Fingerprint) von der heuristischen MusicBrainz-Trackliste.
+    """
+
+    NONE = "none"  # kein Treffer
+    ID3 = "id3"  # eingebetteter Tag - bestaetigt
+    ACOUSTID = "acoustid"  # Audio-Fingerprint - bestaetigt
+    MUSICBRAINZ = "musicbrainz"  # Trackliste (Ordner/Nummer) - heuristisch
+    FILENAME = "filename"  # aus dem Dateinamen abgeleitet - Fallback, nur Tag
+
+    @property
+    def is_confirmed(self) -> bool:
+        """True wenn die Quelle als sicher gilt (nicht geraten)."""
+        return self in (MatchSource.ID3, MatchSource.ACOUSTID)
+
+
 class AudioFormat(Enum):
     """Unterstuetzte Audio-Formate."""
 
@@ -162,6 +181,37 @@ class AudioTrack:
             return dt.strftime("%d.%m.%Y")
         except (ValueError, TypeError):
             return self.modified_date
+
+
+@dataclass
+class TitleProposal:
+    """Vorschlag, einen fehlenden Titel fuer eine Datei zu ergaenzen.
+
+    ``title``/``proposed_name`` sind leer, wenn kein sicherer Treffer vorliegt.
+    ``selected`` steuert die Vorauswahl im Vorschau-Dialog (bestaetigte Quellen
+    vorausgewaehlt, heuristische nicht).
+    """
+
+    track: AudioTrack
+    title: str = ""  # vorgeschlagener Titel ("" = kein Treffer)
+    proposed_name: str = ""  # neuer Dateiname inkl. Endung ("" = nur Tag, keine Umbenennung)
+    source: MatchSource = MatchSource.NONE
+    selected: bool = False  # Vorauswahl im Vorschau-Dialog
+
+    @property
+    def has_match(self) -> bool:
+        """True wenn ein verwertbarer Titel vorliegt (Umbenennen ODER nur Tag)."""
+        return bool(self.title) and self.source is not MatchSource.NONE
+
+    @property
+    def renames(self) -> bool:
+        """True wenn die Datei umbenannt wird (sonst wird nur der Tag gesetzt)."""
+        return bool(self.proposed_name)
+
+    @property
+    def current_name(self) -> str:
+        """Aktueller Dateiname."""
+        return self.track.path.name
 
 
 @dataclass

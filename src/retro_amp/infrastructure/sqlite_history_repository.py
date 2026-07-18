@@ -50,6 +50,15 @@ class SqliteHistoryRepository:
         self._conn.execute("DELETE FROM history")
         self._conn.commit()
 
+    def update_path(self, old: Path, new: Path) -> int:
+        """Ersetzt einen Pfad im Verlauf (nach Umbenennung)."""
+        cursor = self._conn.execute(
+            "UPDATE history SET path = ? WHERE path = ?",
+            (str(new), str(old)),
+        )
+        self._conn.commit()
+        return cursor.rowcount if cursor.rowcount is not None else 0
+
     def trim(self, max_entries: int) -> None:
         """Behaelt nur die letzten ``max_entries`` Eintraege (nach played_at)."""
         if max_entries < 0:
