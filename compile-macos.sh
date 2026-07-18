@@ -79,20 +79,42 @@ if ! "$python" -m nuitka --version >/dev/null 2>&1; then
     uv pip install nuitka || { echo "Nuitka-Installation fehlgeschlagen" >&2; exit 1; }
 fi
 
-"$python" -m nuitka \
-    --standalone \
-    --assume-yes-for-downloads \
-    --remove-output \
-    --include-package=retro_amp \
-    --include-package-data=retro_amp \
-    --include-package-data=pyogg \
-    --output-dir="$out_dir" \
-    --output-filename=retro-amp \
-    "$entry"
+# Nuitka-Argumente sammeln, damit das App-Icon konditional angehaengt werden kann
+nuitka_args=(
+    --standalone
+    --assume-yes-for-downloads
+    --remove-output
+    --include-package=retro_amp
+    --include-package-data=retro_amp
+    --include-package-data=pyogg
+    --output-dir="$out_dir"
+    --output-filename=retro-amp
+)
+
+# App-Icon einbetten (assets/icon.icns - NICHT PNG, sonst will Nuitka 'imageio'
+# zur Konvertierung nachinstallieren).
+if [ -f "$root/assets/icon.icns" ]; then
+    nuitka_args+=(--macos-app-icon="$root/assets/icon.icns")
+else
+    echo "Hinweis: assets/icon.icns fehlt - App wird ohne Icon gebaut."
+fi
+
+"$python" -m nuitka "${nuitka_args[@]}" "$entry"
 
 # Nuitka benennt den dist-Ordner nach dem Hauptmodul (__main__.dist) - umbenennen
 if [ -d "$out_dir/__main__.dist" ]; then
     mv "$out_dir/__main__.dist" "$dist_dir"
+fi
+
+# fpcalc (Chromaprint) neben die Binary legen - die Auto-Titel-Funktion (AcoustID)
+# findet es zur Laufzeit neben retro-amp. Nur wenn auf dem Build-Rechner vorhanden;
+# sonst laeuft die App ohne AcoustID (MusicBrainz bleibt nutzbar).
+if fpcalc_path="$(command -v fpcalc 2>/dev/null)"; then
+    cp "$fpcalc_path" "$dist_dir/fpcalc"
+    chmod +x "$dist_dir/fpcalc"
+    echo "fpcalc gebuendelt: $fpcalc_path"
+else
+    echo "Hinweis: fpcalc nicht gefunden - Build ohne AcoustID-Fingerprint." >&2
 fi
 
 elapsed=$(( $(date +%s) - started ))

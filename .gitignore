@@ -15,3 +15,9 @@ htmlcov/
 # Lokale Debug-Logs und Preview-Bilder
 debug*.log
 retro-amp-preview.png
+
+# Icon-Rohmaterial (Gemini-Renders) und Scratch-Vorschauen - nicht versioniert.
+# Die fuer make_icon.py/make_hero.py benoetigten Quellen liegen in assets/source/.
+assets/Gemini/
+assets/compare/
+assets/proposals/

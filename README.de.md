@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/retro-amp-cat.jpg" width="400" alt="retro-amp">
+</p>
+
 # retro-amp
 
 <p align="center">
@@ -19,7 +23,7 @@
 
 Terminal-Musikplayer mit Retro-Charme — geschrieben in Python mit [Textual](https://textual.textualize.io/).
 
-![retro-amp v0.28.0 — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
+![retro-amp — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
 
 ![BeBox Theme](docs/screenshots/01-main.png)
@@ -121,7 +125,7 @@ retro-amp --version           # Zeigt die Version
 - **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **38 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
-- **Einstellungs-Dialog** — Einstellungen in Tabs (Taste S): Default-Musik-Verzeichnis (Bibliothek), Cover-Renderer, Visualizer-Modus, Datenbank-Journal-Modus, Verlauf, Sprache, plus ein Speicherort-Tab, der die Datenordner öffnet (settings.json, Datenbank, Caches)
+- **Einstellungs-Dialog** — Einstellungen in Tabs (Taste S): Default-Musik-Verzeichnis (Bibliothek), Cover-Renderer, Visualizer-Modus, Datenbank-Journal-Modus, Verlauf, Auto-Titel (MusicBrainz / AcoustID-API-Key), Sprache, plus ein Speicherort-Tab, der die Datenordner öffnet (settings.json, Datenbank, Caches)
 - **Footer-Tooltips** — Maus über eine Taste im Footer zeigt eine ausführliche Beschreibung, was der Befehl macht
 - **Klickbare Links** — Links im About-Dialog, in der Wikipedia-Quelle und im YouTube-Panel öffnen per normalem Klick (kein Ctrl nötig) und werden beim Hover hervorgehoben
 - **Mehrsprachig** — Deutsch (Standard) und Englisch, umschaltbar via `--lang` oder im Einstellungs-Dialog (Sprache-Tab)
@@ -129,6 +133,7 @@ retro-amp --version           # Zeigt die Version
 - **Crash-Schutz** — Ein unerwarteter Fehler öffnet einen Dialog mit kopierbarem Fehlerbericht, statt die App abstürzen zu lassen — du entscheidest, ob du weitermachst oder beendest
 - **Debug-Log** — Ausführliches Log mit Artist/Titel, Pfaden, Events (Taste L). Rechtsklick auf das Log-Panel öffnet ein Kontextmenü — kopieren, als Textdatei exportieren oder ausblenden. Ein Splitter oberhalb des Panels passt die Größe an
 - **Dateiverwaltung** — Umbenennen (U) und Löschen (DEL) direkt aus dem Player
+- **Auto-Titel (fehlende Titel ergänzen)** — Für Dateien, die nur eine Tracknummer tragen (`01.mp3`, `Track 07.mp3`), sammelt Taste `G` Titel-Vorschläge aus drei Quellen — eingebettete ID3-Tags, [AcoustID](https://acoustid.org/)-Audio-Fingerprint und die [MusicBrainz](https://musicbrainz.org/)-Trackliste — und zeigt vor jeder Änderung einen Vorschau-Dialog. Bestätigte Treffer sind vorausgewählt, die heuristische MusicBrainz-Trackliste nicht. Übernommene Dateien werden nach `NN - Titel.ext` umbenannt und der Titel wird in den Tag geschrieben; siehe den Abschnitt [Auto-Titel](#auto-titel)
 - **Settings-Persistenz** — Lautstärke, letzter Ordner, Theme, Sprache werden gespeichert
 - **Anpassbare Panels** — Mit der Maus kann die Größe zwischen Datei-Browser links und Datei-Tabelle/Lyrics rechts (vertikaler Splitter) sowie zwischen Datei-Tabelle und Lyrics (horizontaler Splitter) frei eingestellt werden. Layout wird in Settings persistiert.
 - **Datei-Verknüpfung** — Doppelklick auf Audio-Datei öffnet retro-amp direkt
@@ -147,6 +152,7 @@ retro-amp --version           # Zeigt die Version
 | `F` | Favorit hinzufügen/entfernen |
 | `P` | Playlist-Menü |
 | `U` | Datei umbenennen |
+| `G` | Auto-Titel (fehlende Titel ergänzen) |
 | `DEL` | Datei löschen |
 | `T` | Theme wechseln |
 | `S` | Einstellungen |
@@ -221,6 +227,40 @@ Playlists werden als Markdown-Dateien in `~/.retro-amp/playlists/` gespeichert:
 
 - `F` — Song zu Favoriten hinzufügen/entfernen
 - `P` — Playlist-Menü: neue erstellen, bestehende laden, Song hinzufügen
+
+## Auto-Titel
+
+Dateien, die im Namen nur eine Tracknummer haben (`01.mp3`, `Track 07.mp3`),
+können ihre echten Titel ergänzt bekommen. Drücke `G` auf einem Ordner —
+retro-amp sammelt Vorschläge und zeigt einen **Vorschau-Dialog**
+(Bestätigen / Abbrechen), bevor etwas angefasst wird. Zeilen ohne sicheren
+Treffer bleiben unverändert.
+
+Vier Quellen, nach Sicherheit geordnet:
+
+1. **Eingebetteter ID3-Tag** — deterministisch, vorausgewählt. Ein generischer
+   Platzhalter-Tag (`Track 01`, `Untitled`) gilt als fehlend, damit ein echter
+   Titel gefunden werden kann.
+2. **AcoustID-Audio-Fingerprint** — erkennt den Titel am echten Audio
+   ([acoustid.org](https://acoustid.org/)); die sicherste Online-Quelle,
+   vorausgewählt. Benötigt das Programm `fpcalc` (Chromaprint) und einen
+   kostenlosen *Application API Key* (Einstellungen → Auto-Titel). Standardmäßig
+   aus.
+3. **MusicBrainz-Trackliste** — ordnet Ordner = Album und Dateinummer = Track
+   der [MusicBrainz](https://musicbrainz.org/)-Trackliste zu. Das ist heuristisch
+   — nur eine exakt passende Track-Anzahl mit plausiblen Dauern wird akzeptiert —
+   deshalb gelb markiert und **nicht** vorausgewählt; Du bestätigst sie.
+   Standardmäßig an.
+4. **Dateiname-Fallback** — letzte Option: Findet keine Quelle einen Titel, der
+   Dateiname trägt aber einen (`01 Jonny Controletti.mp3`), wird der Titel aus
+   dem Dateinamen übernommen. Nicht vorausgewählt. Standardmäßig an.
+
+Übernommene Zeilen werden nach `NN - Titel.ext` umbenannt und der Titel wird in
+den Tag der Datei geschrieben. **Enthält der Dateiname den Titel bereits (nur der
+Tag fehlte oder war generisch), wird ausschließlich der Tag gesetzt — die Datei
+wird nicht umbenannt.** Die gerade spielende Datei wird für die Änderung entladen
+und an derselben Position fortgesetzt; Playlist- und Verlauf-Pfade werden
+automatisch aktualisiert.
 
 ## Architektur
 
@@ -303,6 +343,8 @@ git push origin v0.4.0
 | Themes | [textual-themes](https://github.com/michaelblaess/textual-themes) >= 0.8 |
 | UI-Widgets (About-Dialog, Crash-Schutz, Einstellungs-Dialog, Such-Verlauf, Kontextmenü, Splitter) | [textual-widgets](https://github.com/michaelblaess/textual-widgets) >= 0.25 |
 | Lyrics-API | [lrclib.net](https://lrclib.net/) (synced + plain) |
+| Titelsuche (Fingerprint) | [AcoustID](https://acoustid.org/) + Chromaprint `fpcalc` |
+| Titelsuche (Trackliste) | [MusicBrainz](https://musicbrainz.org/) |
 | Testing | pytest, pytest-asyncio, pytest-cov |
 | Type-Checking | mypy (strict) |
 

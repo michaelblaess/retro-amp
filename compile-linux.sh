@@ -66,6 +66,11 @@ started=$(date +%s)
 # --remove-output     : C-/Objekt-Zwischendateien nach dem Build aufraeumen
 # --include-package-data=retro_amp : locale/*.json mitnehmen
 # --include-package-data=pyogg     : die per ctypes geladenen Audio-Libs mitnehmen
+#
+# Kein App-Icon: ELF-Binaries embedden kein Icon. Nuitkas --linux-icon greift nur
+# fuer AppImage / --onefile. Fuer den Standard-Standalone-Build hier: nichts tun.
+# Falls spaeter eine .desktop-Datei dazukommt: dort 'Icon=...' auf assets/icon.png zeigen.
+#
 # Nuitka als Build-Tool sicherstellen (kein Dev-Dep, wird ad-hoc installiert).
 # 'uv sync' ohne --inexact entfernt es wieder, daher: nach jedem Sync pruefen.
 if ! "$python" -m nuitka --version >/dev/null 2>&1; then
@@ -87,6 +92,17 @@ fi
 # Nuitka benennt den dist-Ordner nach dem Hauptmodul (__main__.dist) - umbenennen
 if [ -d "$out_dir/__main__.dist" ]; then
     mv "$out_dir/__main__.dist" "$dist_dir"
+fi
+
+# fpcalc (Chromaprint) neben die Binary legen - die Auto-Titel-Funktion (AcoustID)
+# findet es zur Laufzeit neben retro-amp. Nur wenn auf dem Build-Rechner vorhanden;
+# sonst laeuft die App ohne AcoustID (MusicBrainz bleibt nutzbar).
+if fpcalc_path="$(command -v fpcalc 2>/dev/null)"; then
+    cp "$fpcalc_path" "$dist_dir/fpcalc"
+    chmod +x "$dist_dir/fpcalc"
+    echo "fpcalc gebuendelt: $fpcalc_path"
+else
+    echo "Hinweis: fpcalc nicht gefunden - Build ohne AcoustID-Fingerprint." >&2
 fi
 
 elapsed=$(( $(date +%s) - started ))

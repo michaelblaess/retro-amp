@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>retro-amp — Terminal Music Player with Retro Charm</title>
   <meta name="description" content="A terminal music player with retro charm — built with Python and Textual. 6 retro themes, FFT visualizer, lyrics, playlists.">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta property="og:title" content="retro-amp — Terminal Music Player with Retro Charm">
+  <meta property="og:description" content="Ein Terminal-Musikplayer mit Retro-Charme — gebaut mit Python und Textual.">
+  <meta property="og:image" content="https://michaelblaess.github.io/retro-amp/retro-amp-cat.jpg">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://michaelblaess.github.io/retro-amp/retro-amp-cat.jpg">
   <link rel="stylesheet" href="css/precision.css">
   <style>
     /* Screenshot gallery */
@@ -151,6 +159,10 @@
       </a>
       <a href="#install" class="btn btn-secondary">Installation</a>
     </div>
+
+    <div class="hero-mascot" style="display:flex;justify-content:center;margin-top:3rem;">
+      <img src="retro-amp-cat.jpg" alt="retro-amp" loading="lazy" style="width:min(460px,90%);height:auto;border-radius:16px;filter:drop-shadow(0 14px 34px rgba(0,0,0,0.45));">
+    </div>
   </section>
 
   <div class="divider"><div class="divider-line"></div></div>
@@ -268,6 +280,11 @@
         <p>Umbenennen und Loeschen direkt aus dem Player. Ordner-Browser mit Baumansicht.</p>
       </div>
       <div class="feature-card">
+        <div class="feature-icon">&#127991;</div>
+        <h3>Auto-Titel</h3>
+        <p>Fehlende Titel ergänzen (Taste G): erst ID3-Tags, dann AcoustID-Fingerprint und die MusicBrainz-Trackliste, zuletzt der Dateiname. Vorschau-Dialog vor jeder Änderung, sichere Treffer vorausgewählt.</p>
+      </div>
+      <div class="feature-card">
         <div class="feature-icon">&#11088;</div>
         <h3>Favoriten &amp; Playlists</h3>
         <p>TAB wechselt zwischen Explorer, Favoriten und Playlists. Baumdarstellung mit direktem Abspielen.</p>
@@ -353,6 +370,7 @@
         <tr><td>F</td><td>Favorit hinzufuegen/entfernen</td></tr>
         <tr><td>P</td><td>Playlist-Menue</td></tr>
         <tr><td>U</td><td>Datei umbenennen</td></tr>
+        <tr><td>G</td><td>Auto-Titel (fehlende Titel ergänzen)</td></tr>
         <tr><td>DEL</td><td>Datei loeschen</td></tr>
         <tr><td>T</td><td>Theme wechseln</td></tr>
         <tr><td>S</td><td>Einstellungen</td></tr>
@@ -394,6 +412,14 @@
       <div class="tech-badge">
         <svg viewBox="0 0 24 24" fill="var(--text-tertiary)" width="18" height="18"><path d="M9 18V6l12 6-12 6z" stroke="var(--text-tertiary)" fill="none" stroke-width="1.5"/></svg>
         mutagen
+      </div>
+      <div class="tech-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" width="18" height="18"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>
+        MusicBrainz
+      </div>
+      <div class="tech-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" width="18" height="18"><path d="M4 12a8 8 0 0116 0M7 12a5 5 0 0110 0M10 12a2 2 0 014 0M12 12v6"/></svg>
+        AcoustID
       </div>
       <div class="tech-badge">
         <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" width="18" height="18"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="1.5"/><path d="M21 15l-5-5-9 9"/></svg>

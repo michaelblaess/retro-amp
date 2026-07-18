@@ -63,26 +63,48 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { throw "Nuitka-Installation fehlgeschlagen" }
 }
 
-& $python -m nuitka `
-    --standalone `
-    --assume-yes-for-downloads `
-    --remove-output `
-    --include-package=retro_amp `
-    --include-package-data=retro_amp `
-    --include-package-data=pyogg `
-    --output-dir=$outDir `
-    --output-filename=retro-amp.exe `
-    --company-name="Michael Blaess" `
-    --product-name="retro-amp" `
-    --file-version=$version `
-    --product-version=$version `
-    $entry
+# Nuitka-Argumente sammeln, damit das App-Icon konditional angehaengt werden kann
+$nuitkaArgs = @(
+    "--standalone"
+    "--assume-yes-for-downloads"
+    "--remove-output"
+    "--include-package=retro_amp"
+    "--include-package-data=retro_amp"
+    "--include-package-data=pyogg"
+    "--output-dir=$outDir"
+    "--output-filename=retro-amp.exe"
+    "--company-name=Michael Blaess"
+    "--product-name=retro-amp"
+    "--file-version=$version"
+    "--product-version=$version"
+)
+
+# App-Icon in die EXE einbetten (assets\icon.ico, multi-resolution).
+$iconPath = Join-Path $root "assets\icon.ico"
+if (Test-Path $iconPath) {
+    $nuitkaArgs += "--windows-icon-from-ico=$iconPath"
+} else {
+    Write-Host "Hinweis: $iconPath fehlt - EXE wird ohne Icon gebaut." -ForegroundColor Yellow
+}
+
+& $python -m nuitka @nuitkaArgs $entry
 
 if ($LASTEXITCODE -ne 0) { throw "Nuitka-Build fehlgeschlagen (Exit $LASTEXITCODE)" }
 
 # Nuitka benennt den dist-Ordner nach dem Hauptmodul (__main__.dist) - umbenennen
 $nuitkaDist = Join-Path $outDir "__main__.dist"
 if (Test-Path $nuitkaDist) { Rename-Item -Path $nuitkaDist -NewName "retro-amp" }
+
+# fpcalc (Chromaprint) neben die EXE legen - die Auto-Titel-Funktion (AcoustID)
+# findet es zur Laufzeit neben retro-amp.exe. Nur wenn auf dem Build-Rechner
+# vorhanden; sonst laeuft die App ohne AcoustID (MusicBrainz bleibt nutzbar).
+$fpcalc = (Get-Command fpcalc -ErrorAction SilentlyContinue).Source
+if ($fpcalc -and (Test-Path $fpcalc)) {
+    Copy-Item -Path $fpcalc -Destination (Join-Path $distDir "fpcalc.exe") -Force
+    Write-Host "fpcalc gebuendelt: $fpcalc" -ForegroundColor Cyan
+} else {
+    Write-Host "Hinweis: fpcalc nicht gefunden - Build ohne AcoustID-Fingerprint." -ForegroundColor Yellow
+}
 
 $elapsed = [int]((Get-Date) - $started).TotalSeconds
 $exe     = Join-Path $distDir "retro-amp.exe"

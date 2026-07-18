@@ -12,7 +12,9 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
-        args: [--maxkb=500]
+        # 1300 KB: laesst die Branding-Assets zu (macOS icon.icns ~526 KB,
+        # Gold-Stereo-Renders in assets/ bis ~1,2 MB).
+        args: [--maxkb=1300]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.20
