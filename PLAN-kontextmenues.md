@@ -1,11 +1,14 @@
-# Kontextmenüs im Ordner-Browser
+# Kontextmenüs in den linken Bäumen
 
-Stand: 30.07.2026 - **umgesetzt**. Entscheidungen und Umsetzung dokumentiert.
+Stand: 30.07.2026 - **umgesetzt** für Ordner-Baum, Favoriten, Verlauf und Suche.
+Entscheidungen und Umsetzung dokumentiert.
 
-Rechtsklick auf einen Knoten im linken Ordner-Baum (`FolderBrowser`) öffnet ein Kontextmenü
-mit den Aktionen, die zu genau diesem Knoten passen - Ordner anders als Datei. Wichtigster
-einzelner Wunsch war **"Alles einklappen"**, um den Baum nach dem Wühlen wieder auf eine
+Rechtsklick auf einen Knoten öffnet ein Kontextmenü mit den Aktionen, die zu genau diesem
+Knoten passen - Ordner anders als Datei, Gruppe anders als Eintrag. Wichtigster einzelner
+Wunsch war **"Alles einklappen"**, um den Baum nach dem Wühlen wieder auf eine
 übersichtliche Größe zu bringen.
+
+Offen bleibt die Datei-Tabelle rechts und der Playlist-Baum - bewusst zurückgestellt.
 
 ## Getroffene Entscheidungen
 
@@ -99,3 +102,72 @@ gemeldet, "Alles einklappen" erwischt auch tiefere Ebenen und lässt die Wurzel 
 Zusätzlich headless gegen die echte App geprüft (Sandbox-Home): Menü-Inhalte für Ordner,
 Datei und Album, ausgegraute Einträge bei einem Ordner ohne eigene Dateien,
 "Alles einklappen" (6 Zeilen -> 2), "Ordner abspielen" startet mit 2 Titeln in der Liste.
+
+---
+
+# Favoriten, Verlauf und Suche
+
+Dieselbe Mechanik für die drei Listen-Bäume links. Alle drei sind `Tree[Path | None]` mit
+demselben Aufbau - Gruppen-Knoten ohne Daten, Blätter mit einem Pfad -, deshalb steckt die
+Rechtsklick-Logik in einer gemeinsamen Basisklasse `widgets/path_context_tree.py`.
+
+## Menüs
+
+**Favoriten** (Track): Abspielen · Aus Favoriten entfernen `DEL` · Zur Playlist hinzufügen ·
+Im Ordner-Baum zeigen
+
+**Verlauf** (Track): Abspielen · Zu Favoriten hinzufügen/entfernen `f` ·
+Zur Playlist hinzufügen · Im Ordner-Baum zeigen · Verlauf löschen `DEL`
+
+**Suche** (Datei): Abspielen · Zu Favoriten hinzufügen/entfernen `f` ·
+Zur Playlist hinzufügen · Im Ordner-Baum zeigen
+**Suche** (Ordner-Treffer): Ordner öffnen · Im Ordner-Baum zeigen
+
+**Gruppen-Knoten** in allen dreien: Ausklappen/Einklappen · Alles einklappen. Im Verlauf
+zusätzlich "Verlauf löschen".
+
+Kein Umbenennen und kein Löschen in diesen Ansichten - `DEL` bedeutet dort "aus der Liste
+entfernen", nicht "Datei löschen". Ein zweites, gegenläufiges Löschen im selben Menü wäre
+eine Falle. Zeigt ein Eintrag auf eine verschwundene Datei, sind Abspielen, Playlist und
+"Im Ordner-Baum zeigen" ausgegraut.
+
+## Details
+
+- Die Basisklasse hält den zuletzt per Rechtsklick getroffenen Knoten (`_menu_node`).
+  Gruppen-Knoten haben keinen Pfad, über den die App sie wiederfinden könnte - deshalb
+  bleibt die Knoten-Referenz im Widget, und die App ruft nur `set_menu_node_expanded()`
+  bzw. `collapse_all()`.
+- Jeder Baum leitet eine eigene `ContextMenuRequested`-Klasse ab. Textual bildet den
+  Handler-Namen aus dem `__qualname__` der Message-Klasse, dadurch bekommt jeder Baum
+  seinen eigenen Handler in der App statt eines gemeinsamen mit Typprüfung.
+- **"Im Ordner-Baum zeigen"** war der einzige Punkt mit echter Tücke:
+  `expand_to_path` klappt den Zielordner zwar auf, wartet aber nicht auf dessen Kinder -
+  der `DirectoryTree` lädt sie erst danach nach. Ohne das Warten stand der Cursor auf dem
+  Ordner statt auf der Datei. `FolderBrowser.reveal_path()` wartet deshalb explizit auf die
+  Load-Queue des Zielknotens. Liegt der Pfad außerhalb der Baumwurzel, kommt eine Meldung.
+
+## Nebenbefunde
+
+- `_clear_history` gab es bereits als Callback des Settings-Dialogs (Rückgabe: Anzahl).
+  Eine gleichnamige zweite Methode hätte sie stillschweigend überschrieben und die Meldung
+  im Settings-Dialog beschädigt - mypy hat das gefunden, nicht die Tests. Die neue Methode
+  heißt `_clear_history_and_notify`.
+- Drei fast identische "navigieren und abspielen"-Handler (Favoriten, Verlauf, Playlist)
+  sind jetzt `_play_existing_path`, ebenso `_open_folder` und `_remove_favorite`.
+
+## Tests
+
+`tests/test_path_context_tree.py` (17 Tests, über alle drei Bäume parametrisiert):
+Rechtsklick postet die baum-eigene Message und löst keine Wiedergabe aus, Linksklick wählt
+genau einmal aus, Gruppen-Knoten melden `path=None`, Cursor springt auf den geklickten
+Knoten, "Alles einklappen" lässt nur die Wurzel offen, `set_menu_node_expanded` wirkt auf
+den zuletzt geklickten Knoten und ignoriert Blätter, Ordner-Treffer der Suche melden ein
+Verzeichnis.
+
+Headless gegen die echte App: alle sechs Menü-Varianten, "Im Ordner-Baum zeigen" landet mit
+Tab-Wechsel auf der Datei, "Alles einklappen" im Verlauf, "Ordner öffnen" aus der Suche
+füllt die Tabelle, Favorit-Umschalten aus dem Verlauf.
+
+**Test-Stolperstein:** Ein programmatischer `tabs.active = ...` springt sofort zurück,
+solange der Fokus in der alten TabPane sitzt - Textual aktiviert die Pane des fokussierten
+Widgets wieder. Im Test vorher `app.set_focus(None)`.

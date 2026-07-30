@@ -10,6 +10,7 @@ from textual.message import Message
 from textual.widgets import Tree
 
 from ..i18n import t
+from .path_context_tree import PathContextTree
 
 _SEPARATOR_RE = re.compile(r"[.\-_]")
 
@@ -19,7 +20,7 @@ def _normalize(s: str) -> str:
     return _SEPARATOR_RE.sub(" ", s)
 
 
-class SearchTree(Tree[Path | None]):
+class SearchTree(PathContextTree):
     """Baum-Ansicht fuer Suchergebnisse.
 
     Gruppiert die Treffer nach uebergeordnetem Verzeichnis (relativ zur
@@ -51,6 +52,9 @@ class SearchTree(Tree[Path | None]):
         def __init__(self, path: Path) -> None:
             super().__init__()
             self.path = path
+
+    class ContextMenuRequested(PathContextTree.ContextMenuRequested):
+        """Rechtsklick im Such-Baum — eigener Handler-Name pro Baum."""
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(t("search.title"), **kwargs)

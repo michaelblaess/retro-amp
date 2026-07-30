@@ -239,11 +239,32 @@ class FolderBrowser(DirectoryTree):
         else:
             node.collapse()
 
-    def highlight_path(self, target: Path) -> None:
+    async def reveal_path(self, target: Path) -> bool:
+        """Klappt bis zum Ziel auf, laedt den Ordnerinhalt und markiert es.
+
+        ``expand_to_path`` klappt den Zielordner zwar auf, wartet aber nicht
+        auf dessen Kinder — der ``DirectoryTree`` laedt sie erst danach aus
+        dem Hintergrund nach. Ohne dieses Warten fände ``highlight_path`` die
+        Datei nicht und der Cursor bliebe auf dem Ordner stehen.
+
+        Returns:
+            True wenn das Ziel im Baum gefunden und markiert wurde.
+        """
+        folder = target if target.is_dir() else target.parent
+        await self.expand_to_path(folder)
+        node = self._find_dir_node(folder, self.root)
+        if node is not None and node.data is not None and not node.data.loaded:
+            await self._add_to_load_queue(node)
+        return self.highlight_path(target)
+
+    def highlight_path(self, target: Path) -> bool:
         """Markiert einen Pfad im Baum und scrollt dorthin.
 
         Verwendet move_cursor statt select_node, damit kein
         FileSelected-Event ausgeloest wird (verhindert Endlos-Schleife).
+
+        Returns:
+            True wenn der Pfad im geladenen Baum gefunden wurde.
         """
         target_str = str(target)
 
@@ -257,7 +278,9 @@ class FolderBrowser(DirectoryTree):
             return None
 
         found = _walk(self.root)
-        if found:
-            # Nur Cursor bewegen — NICHT select_node (wuerde FileSelected feuern)
-            self.move_cursor(found)
-            self.scroll_to_node(found)
+        if found is None:
+            return False
+        # Nur Cursor bewegen — NICHT select_node (wuerde FileSelected feuern)
+        self.move_cursor(found)
+        self.scroll_to_node(found)
+        return True

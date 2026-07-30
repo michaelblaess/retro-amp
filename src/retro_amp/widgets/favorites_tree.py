@@ -9,9 +9,10 @@ from textual.message import Message
 from textual.widgets import Tree
 
 from ..i18n import t
+from .path_context_tree import PathContextTree
 
 
-class FavoritesTree(Tree[Path | None]):
+class FavoritesTree(PathContextTree):
     """Baum-Ansicht fuer Favoriten, gruppiert nach Ordner."""
 
     DEFAULT_CSS = """
@@ -41,6 +42,9 @@ class FavoritesTree(Tree[Path | None]):
         def __init__(self, path: Path) -> None:
             super().__init__()
             self.path = path
+
+    class ContextMenuRequested(PathContextTree.ContextMenuRequested):
+        """Rechtsklick im Favoriten-Baum — eigener Handler-Name pro Baum."""
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(t("favorites.title"), **kwargs)

@@ -16,6 +16,7 @@ from ..services.history_service import (
     GROUP_YESTERDAY,
     HistoryGroup,
 )
+from .path_context_tree import PathContextTree
 
 _GROUP_I18N_KEYS: dict[str, str] = {
     GROUP_TODAY: "history.group_today",
@@ -25,7 +26,7 @@ _GROUP_I18N_KEYS: dict[str, str] = {
 }
 
 
-class HistoryTree(Tree[Path | None]):
+class HistoryTree(PathContextTree):
     """Baum-Ansicht fuer den Wiedergabeverlauf.
 
     Zeigt die Eintraege gruppiert nach Tagen (Heute/Gestern/Diese Woche/Aelter).
@@ -55,6 +56,9 @@ class HistoryTree(Tree[Path | None]):
 
     class ClearRequested(Message):
         """Komplettloeschung des Verlaufs angefordert."""
+
+    class ContextMenuRequested(PathContextTree.ContextMenuRequested):
+        """Rechtsklick im Verlauf-Baum — eigener Handler-Name pro Baum."""
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__(t("history.title"), **kwargs)

@@ -86,6 +86,7 @@ from .widgets.folder_browser import FolderBrowser
 from .widgets.history_tree import HistoryTree
 from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
+from .widgets.path_context_tree import PathContextTree
 from .widgets.playlist_tree import PlaylistTree
 from .widgets.quick_jump_sidebar import QuickJumpSidebar
 from .widgets.search_tree import SearchTree
@@ -298,6 +299,10 @@ class RetroAmpApp(CrashGuard, App):
         # Der ContextMenuScreen liefert im Callback nur die Action-Id zurueck.
         self._tree_menu_path: Path | None = None
         self._tree_menu_is_dir: bool = False
+
+        # Kontextmenue in Favoriten-/Verlaufs-/Such-Baum: Pfad des Menue-Ziels
+        # (None bei Gruppenknoten). Den Knoten selbst haelt das Widget.
+        self._list_menu_path: Path | None = None
 
         # Pfade, die nach der Playlist-Auswahl hinzugefuegt werden sollen
         self._pending_playlist_paths: list[Path] = []
@@ -1296,6 +1301,183 @@ class RetroAmpApp(CrashGuard, App):
             callback=self._on_playlist_target_selected,
         )
 
+    # --- Kontextmenues in Favoriten, Verlauf und Suche ---
+
+    @staticmethod
+    def _tree_group_items(is_expanded: bool) -> list[ContextMenuItem]:
+        """Aus-/Einklappen-Eintraege, die jeder Gruppenknoten bekommt."""
+        return [
+            ContextMenuItem("collapse", t("treemenu.collapse"))
+            if is_expanded
+            else ContextMenuItem("expand", t("treemenu.expand")),
+            ContextMenuItem("collapse_all", t("treemenu.collapse_all")),
+        ]
+
+    def _handle_common_tree_action(
+        self,
+        action_id: str,
+        tree: PathContextTree,
+        path: Path | None,
+    ) -> bool:
+        """Aktionen, die alle Listen-Baeume teilen.
+
+        Returns:
+            True wenn die Aktion hier behandelt wurde.
+        """
+        if action_id == "collapse_all":
+            tree.collapse_all()
+        elif action_id == "expand":
+            tree.set_menu_node_expanded(True)
+        elif action_id == "collapse":
+            tree.set_menu_node_expanded(False)
+        elif path is None:
+            return False
+        elif action_id == "play":
+            self._play_existing_path(path)
+        elif action_id == "playlist":
+            self._add_paths_to_playlist(path, is_dir=False)
+        elif action_id == "reveal":
+            self._reveal_in_tree(path)
+        elif action_id == "favorite":
+            self._toggle_favorite_path(path)
+        else:
+            return False
+        return True
+
+    def _play_existing_path(self, path: Path) -> None:
+        """Spielt eine Datei ab — meldet fehlende Dateien, statt still zu scheitern."""
+        if not path.is_file():
+            self.notify(t("notify.file_not_found"), severity="warning")
+            return
+        self._play_path(path)
+
+    @work
+    async def _reveal_in_tree(self, path: Path) -> None:
+        """Wechselt in den Dateien-Tab und markiert den Pfad im Ordner-Baum."""
+        target = path if path.is_dir() else path.parent
+        self.query_one("#left-tabs", TabbedContent).active = "tab-browser"
+        browser = self.query_one("#folder-browser", FolderBrowser)
+        await browser._add_to_load_queue(browser.root)
+        if not await browser.reveal_path(path):
+            self.notify(t("notify.reveal_not_in_tree", name=path.name), severity="warning")
+            return
+        self._scan_directory(target)
+        self._save_last_path(target)
+
+    def on_favorites_tree_context_menu_requested(
+        self,
+        event: FavoritesTree.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick im Favoriten-Baum."""
+        self._list_menu_path = event.path
+        if event.path is None:
+            items = self._tree_group_items(event.is_expanded)
+        else:
+            exists = event.path.is_file()
+            items = [
+                ContextMenuItem("play", t("treemenu.play"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("remove_favorite", t("treemenu.remove_favorite"), shortcut="DEL"),
+                ContextMenuItem("playlist", t("treemenu.add_to_playlist"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reveal", t("treemenu.reveal"), enabled=exists),
+            ]
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_favorites_menu_action,
+        )
+
+    def _on_favorites_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Favoriten-Kontextmenue gewaehlte Aktion."""
+        if action_id is None:
+            return
+        tree = self.query_one("#favorites-tree", FavoritesTree)
+        path = self._list_menu_path
+        if self._handle_common_tree_action(action_id, tree, path):
+            return
+        if action_id == "remove_favorite" and path is not None:
+            self._remove_favorite(path)
+
+    def on_history_tree_context_menu_requested(
+        self,
+        event: HistoryTree.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick im Verlauf-Baum."""
+        self._list_menu_path = event.path
+        clear_item = ContextMenuItem("clear_history", t("treemenu.clear_history"), shortcut="DEL")
+        if event.path is None:
+            items = [*self._tree_group_items(event.is_expanded), ContextMenuItem.separator(), clear_item]
+        else:
+            exists = event.path.is_file()
+            is_fav = self._playlist_service.is_favorite(event.path)
+            fav_label = t("treemenu.favorite_remove") if is_fav else t("treemenu.favorite_add")
+            items = [
+                ContextMenuItem("play", t("treemenu.play"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("favorite", fav_label, shortcut="f", enabled=exists),
+                ContextMenuItem("playlist", t("treemenu.add_to_playlist"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reveal", t("treemenu.reveal"), enabled=exists),
+                ContextMenuItem.separator(),
+                clear_item,
+            ]
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_history_menu_action,
+        )
+
+    def _on_history_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Verlauf-Kontextmenue gewaehlte Aktion."""
+        if action_id is None:
+            return
+        tree = self.query_one("#history-tree", HistoryTree)
+        if self._handle_common_tree_action(action_id, tree, self._list_menu_path):
+            return
+        if action_id == "clear_history":
+            self._clear_history_and_notify()
+
+    def on_search_tree_context_menu_requested(
+        self,
+        event: SearchTree.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick im Such-Baum — Treffer sind Dateien ODER Ordner."""
+        self._list_menu_path = event.path
+        if event.path is None:
+            items = self._tree_group_items(event.is_expanded)
+        elif event.path.is_dir():
+            items = [
+                ContextMenuItem("open_folder", t("treemenu.open_folder")),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reveal", t("treemenu.reveal")),
+            ]
+        else:
+            exists = event.path.is_file()
+            is_fav = self._playlist_service.is_favorite(event.path)
+            fav_label = t("treemenu.favorite_remove") if is_fav else t("treemenu.favorite_add")
+            items = [
+                ContextMenuItem("play", t("treemenu.play"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("favorite", fav_label, shortcut="f", enabled=exists),
+                ContextMenuItem("playlist", t("treemenu.add_to_playlist"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reveal", t("treemenu.reveal"), enabled=exists),
+            ]
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_search_menu_action,
+        )
+
+    def _on_search_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Such-Kontextmenue gewaehlte Aktion."""
+        if action_id is None:
+            return
+        tree = self.query_one("#search-tree", SearchTree)
+        path = self._list_menu_path
+        if self._handle_common_tree_action(action_id, tree, path):
+            return
+        if action_id == "open_folder" and path is not None:
+            self._open_folder(path)
+
     def _on_playlist_target_selected(self, playlist_name: str | None) -> None:
         """Callback: gewaehlte Playlist um die vorgemerkten Pfade ergaenzen."""
         paths = self._pending_playlist_paths
@@ -1442,22 +1624,18 @@ class RetroAmpApp(CrashGuard, App):
         event: SearchTree.TrackSelected,
     ) -> None:
         """Track im Suchbaum ausgewaehlt → abspielen."""
-        path = event.path
-        if not path.is_file():
-            return
-        parent = path.parent
-        self._scan_directory(parent)
-        self._save_last_path(parent)
-        if self._metadata_service.is_audio_file(path):
-            track = self._metadata_service.read_track(path)
-            self._play_track(track)
+        if event.path.is_file():
+            self._play_path(event.path)
 
     def on_search_tree_folder_selected(
         self,
         event: SearchTree.FolderSelected,
     ) -> None:
         """Ordner im Suchbaum ausgewaehlt → in der Datei-Tabelle oeffnen."""
-        path = event.path
+        self._open_folder(event.path)
+
+    def _open_folder(self, path: Path) -> None:
+        """Zeigt einen Ordner in der Datei-Tabelle."""
         if not path.is_dir():
             return
         self._scan_directory(path)
@@ -1865,49 +2043,43 @@ class RetroAmpApp(CrashGuard, App):
         event: FavoritesTree.TrackSelected,
     ) -> None:
         """Favoriten-Track ausgewaehlt — navigieren und abspielen."""
-        path = event.path
-        if path.is_file():
-            parent = path.parent
-            self._scan_directory(parent)
-            self._save_last_path(parent)
-            if self._metadata_service.is_audio_file(path):
-                track = self._metadata_service.read_track(path)
-                self._play_track(track)
-        else:
-            self.notify(t("notify.file_not_found"), severity="warning")
+        self._play_existing_path(event.path)
 
     def on_favorites_tree_track_remove_requested(
         self,
         event: FavoritesTree.TrackRemoveRequested,
     ) -> None:
         """Track aus Favoriten entfernen."""
-        removed = self._playlist_service.remove_from_favorites(event.path)
-        if removed:
-            self.notify(t("notify.favorite_tree_removed", name=event.path.name))
-            self._refresh_favorites_tree()
-            self._write_log(t("log.favorite_removed", name=event.path.name))
+        self._remove_favorite(event.path)
+
+    def _remove_favorite(self, path: Path) -> None:
+        """Entfernt einen Track aus den Favoriten und aktualisiert den Baum."""
+        if not self._playlist_service.remove_from_favorites(path):
+            return
+        self.notify(t("notify.favorite_tree_removed", name=path.name))
+        self._refresh_favorites_tree()
+        self._write_log(t("log.favorite_removed", name=path.name))
 
     def on_history_tree_track_selected(
         self,
         event: HistoryTree.TrackSelected,
     ) -> None:
         """Verlauf-Track ausgewaehlt — navigieren und abspielen."""
-        path = event.path
-        if path.is_file():
-            parent = path.parent
-            self._scan_directory(parent)
-            self._save_last_path(parent)
-            if self._metadata_service.is_audio_file(path):
-                track = self._metadata_service.read_track(path)
-                self._play_track(track)
-        else:
-            self.notify(t("notify.file_not_found"), severity="warning")
+        self._play_existing_path(event.path)
 
     def on_history_tree_clear_requested(
         self,
         event: HistoryTree.ClearRequested,
     ) -> None:
         """Verlauf auf Wunsch komplett loeschen."""
+        self._clear_history_and_notify()
+
+    def _clear_history_and_notify(self) -> None:
+        """Loescht den kompletten Wiedergabeverlauf, mit Meldung und Log-Eintrag.
+
+        Nicht zu verwechseln mit ``_clear_history`` — das ist der Callback des
+        Settings-Dialogs und liefert nur die Anzahl zurueck.
+        """
         self._history_service.clear_all()
         self._refresh_history_tree()
         self.notify(t("notify.history_cleared"))
