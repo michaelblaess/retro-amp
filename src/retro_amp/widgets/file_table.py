@@ -9,6 +9,7 @@ from typing import Any
 
 from rich.text import Text
 from textual import on
+from textual.events import Click
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import DataTable, Static
@@ -16,6 +17,46 @@ from textual.widgets.data_table import ColumnKey
 
 from ..domain.models import AudioTrack
 from ..i18n import t
+
+
+class FileDataTable(DataTable[Any]):
+    """DataTable, die den Rechtsklick meldet statt die Zeile auszuwaehlen.
+
+    Textuals ``DataTable._on_click`` prueft die Maustaste nicht — ein
+    Rechtsklick wuerde die Zeile auswaehlen und damit die Wiedergabe starten.
+    Ein Override allein genuegt nicht: Textual ruft JEDEN ``_on_click`` entlang
+    der MRO auf, ``DataTable._on_click`` liefe also zusaetzlich. Nur
+    ``prevent_default()`` bricht die Kette ab, ``event.stop()`` verhindert
+    lediglich das Bubbling. Aus demselben Grund steht hier kein
+    ``super()``-Aufruf: den Basis-Handler ruft Textual bei Linksklick selbst auf.
+    """
+
+    class RightClicked(Message):
+        """Rechtsklick auf eine Datenzeile."""
+
+        def __init__(self, table: FileDataTable, row_index: int, at: tuple[int, int]) -> None:
+            super().__init__()
+            self.table = table
+            self.row_index = row_index
+            self.at = at
+
+        @property
+        def control(self) -> FileDataTable:
+            """Absender — ohne das kann der ``@on``-Dekorator nicht filtern."""
+            return self.table
+
+    async def _on_click(self, event: Click) -> None:
+        if event.button != 3:
+            return
+        event.prevent_default()
+        event.stop()
+        # DataTable liefert den Zeilenindex selbst in den Rich-Metadaten —
+        # robuster als screen_y in Zellen umzurechnen. Header hat kein "row".
+        row_index = event.style.meta.get("row", -1)
+        if not isinstance(row_index, int) or row_index < 0:
+            return
+        self.post_message(FileDataTable.RightClicked(self, row_index, (event.screen_x, event.screen_y)))
+
 
 # Sortier-Schluessel je Spaltenindex. Nur Spalten, die hier stehen,
 # reagieren auf einen Klick auf den Spaltenkopf. Rueckgabetyp ist Any,
@@ -100,6 +141,14 @@ class FileTable(Widget):
             super().__init__()
             self.track = track
 
+    class ContextMenuRequested(Message):
+        """Rechtsklick auf eine Track-Zeile — die App baut das Menue."""
+
+        def __init__(self, track: AudioTrack, at: tuple[int, int]) -> None:
+            super().__init__()
+            self.track = track
+            self.at = at
+
     class OrderChanged(Message):
         """Wird gesendet wenn sich die Reihenfolge der Tabelle geaendert hat.
 
@@ -125,7 +174,7 @@ class FileTable(Widget):
 
     def compose(self):  # type: ignore[override]
         yield Static("", id="file-info")
-        yield DataTable(id="file-data", cursor_type="row", zebra_stripes=True)
+        yield FileDataTable(id="file-data", cursor_type="row", zebra_stripes=True)
 
     def on_mount(self) -> None:
         """Initialisiert die Tabellen-Spalten."""
@@ -289,6 +338,19 @@ class FileTable(Widget):
         idx = event.cursor_row
         if 0 <= idx < len(self._filtered_tracks):
             self.post_message(FileTable.TrackSelected(self._filtered_tracks[idx]))
+
+    @on(FileDataTable.RightClicked, "#file-data")
+    def _on_right_clicked(self, event: FileDataTable.RightClicked) -> None:
+        """Rechtsklick auf eine Zeile — Cursor setzen und Menue anfordern."""
+        event.stop()
+        if not 0 <= event.row_index < len(self._filtered_tracks):
+            return
+        # Cursor auf die geklickte Zeile, sonst wirkt die gewaehlte Aktion
+        # auf einen anderen Track als den, auf den gezielt wurde.
+        self.query_one("#file-data", DataTable).move_cursor(row=event.row_index)
+        self.post_message(
+            FileTable.ContextMenuRequested(self._filtered_tracks[event.row_index], event.at),
+        )
 
     @on(DataTable.RowHighlighted, "#file-data")
     def _on_row_highlighted(self, event: DataTable.RowHighlighted) -> None:

@@ -1,14 +1,14 @@
 # Kontextmenüs in den linken Bäumen
 
-Stand: 30.07.2026 - **umgesetzt** für Ordner-Baum, Favoriten, Verlauf und Suche.
-Entscheidungen und Umsetzung dokumentiert.
+Stand: 30.07.2026 - **vollständig umgesetzt**: Ordner-Baum, Favoriten, Verlauf, Suche,
+Playlist-Baum und Datei-Tabelle. Entscheidungen und Umsetzung dokumentiert.
 
 Rechtsklick auf einen Knoten öffnet ein Kontextmenü mit den Aktionen, die zu genau diesem
 Knoten passen - Ordner anders als Datei, Gruppe anders als Eintrag. Wichtigster einzelner
 Wunsch war **"Alles einklappen"**, um den Baum nach dem Wühlen wieder auf eine
 übersichtliche Größe zu bringen.
 
-Offen bleibt die Datei-Tabelle rechts und der Playlist-Baum - bewusst zurückgestellt.
+Offen bleibt nur noch das Löschen einer kompletten Playlist - siehe unten.
 
 ## Getroffene Entscheidungen
 
@@ -19,7 +19,7 @@ Offen bleibt die Datei-Tabelle rechts und der Playlist-Baum - bewusst zurückges
 | Favoriten für Ordner | **nein**, nur für Dateien - die Favoriten sind dateibasiert |
 | "Im Explorer öffnen" | **nein** - keine OS-Integration in retro-amp |
 | Tastatur-Trigger fürs Menü | **nein** - Rechtsklick genügt |
-| Weitere Kontextmenüs (Tabelle, Favoriten-/Playlist-Baum) | **später** - erst der Ordner-Baum |
+| Weitere Kontextmenüs (Tabelle, Favoriten-/Playlist-Baum) | schrittweise nachgezogen - Reihenfolge: Ordner-Baum, dann Favoriten/Verlauf/Suche, dann Playlist-Baum und Datei-Tabelle |
 
 ## Menüs
 
@@ -171,3 +171,67 @@ füllt die Tabelle, Favorit-Umschalten aus dem Verlauf.
 **Test-Stolperstein:** Ein programmatischer `tabs.active = ...` springt sofort zurück,
 solange der Fokus in der alten TabPane sitzt - Textual aktiviert die Pane des fokussierten
 Widgets wieder. Im Test vorher `app.set_focus(None)`.
+
+---
+
+# Playlist-Baum und Datei-Tabelle
+
+## Menüs
+
+**Playlist-Baum**, Playlist-Knoten: Playlist abspielen · Ausklappen/Einklappen ·
+Alles einklappen
+**Playlist-Baum**, Track: Abspielen · Aus Playlist entfernen `DEL` ·
+Zu Favoriten hinzufügen/entfernen `f` · Im Ordner-Baum zeigen
+
+**Datei-Tabelle** (rechtes Panel): Abspielen · Zu Favoriten hinzufügen/entfernen `f` ·
+Zur Playlist hinzufügen `p` · Titel automatisch ergänzen `g` · Umbenennen `u` ·
+Löschen `DEL` · Im Ordner-Baum zeigen
+
+Hier sind Umbenennen und Löschen richtig - die Tabelle zeigt den Ordnerinhalt, und
+`u`/`DEL` wirken dort ohnehin schon auf den markierten Track. In den Listen-Ansichten
+(Favoriten, Verlauf, Playlist) bleiben sie draußen, weil `DEL` dort "aus der Liste
+entfernen" bedeutet.
+
+"Titel automatisch ergänzen" arbeitet aus dem Menü heraus auf **genau dieser Datei**,
+während die Taste `g` weiter den ganzen Ordner durchgeht.
+
+## Details
+
+- Die Basisklasse `PathContextTree` ist jetzt generisch (`Tree[TreeDataType]`). Der
+  Playlist-Baum legt in seinen Gruppen-Knoten den Playlist-Namen als `str` ab, die
+  anderen drei nur `Path | None`. Die Message meldet weiter nur den Pfad, den
+  Playlist-Namen liefert `PlaylistTree.menu_playlist_name` aus dem gemerkten Knoten.
+- Die Datei-Tabelle ist ein `DataTable`, kein `Tree`. `FileDataTable` fängt den
+  Rechtsklick mit demselben `prevent_default()`-Muster ab und meldet den Zeilenindex
+  aus `event.style.meta["row"]` - das liefert Textual selbst, robuster als `screen_y`
+  in Zellen umzurechnen. Die Zeile wird über `_filtered_tracks` aufgelöst, folgt also
+  automatisch der aktiven Spaltensortierung.
+- `FileDataTable.RightClicked` braucht eine `control`-Property, sonst lehnt der
+  `@on`-Dekorator den Selektor ab (`OnDecoratorError: The message class must have a
+  'control' to match with the on decorator`).
+
+## Bewusst nicht umgesetzt: Playlist löschen
+
+Eine ganze Playlist zu löschen geht heute gar nicht - `PlaylistService.delete_playlist`
+existiert, wird aber von keiner Stelle der Oberfläche aufgerufen. Der naheliegende
+Menüeintrag scheitert am Bestätigungsdialog: `ConfirmScreen` ist auf Dateien
+zugeschnitten und **löscht selbst** (`unlink`/`rmtree`), statt nur ja/nein
+zurückzugeben. Das sauber zu lösen heißt, den Dialog zu verallgemeinern - das ist ein
+eigener Schritt und keine Beigabe zum Kontextmenü. Ohne Rückfrage wollte ich eine
+destruktive Aktion nicht einbauen.
+
+## Tests
+
+`tests/test_file_table_menu.py` (6) und `tests/test_playlist_tree_menu.py` (5).
+Abgedeckt: Rechtsklick meldet den richtigen Track bzw. die richtige Playlist und löst
+keine Wiedergabe aus, der Cursor springt auf die geklickte Zeile, Klick auf den
+Spaltenkopf und auf die leere Tabelle tun nichts, und nach dem Umsortieren meldet eine
+Zeile den dort **sichtbaren** Track.
+
+Nebenbefund im Test: `DataTable` sendet `RowSelected` erst beim Klick auf die bereits
+markierte Zeile (`highlight_click` in `DataTable._on_click`) - der erste Klick
+verschiebt nur den Cursor. Der Test bildet das jetzt ab, statt eine falsche Erwartung
+zu formulieren.
+
+Headless gegen die echte App: beide Menüs, "Im Ordner-Baum zeigen" aus der Tabelle,
+"Aus Playlist entfernen" (2 Titel -> 1) und "Playlist abspielen".

@@ -20,7 +20,7 @@ def _normalize(s: str) -> str:
     return _SEPARATOR_RE.sub(" ", s)
 
 
-class SearchTree(PathContextTree):
+class SearchTree(PathContextTree[Path | None]):
     """Baum-Ansicht fuer Suchergebnisse.
 
     Gruppiert die Treffer nach uebergeordnetem Verzeichnis (relativ zur

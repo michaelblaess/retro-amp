@@ -9,9 +9,10 @@ from textual.message import Message
 from textual.widgets import Tree
 
 from ..i18n import t
+from .path_context_tree import PathContextTree
 
 
-class PlaylistTree(Tree[Path | str | None]):
+class PlaylistTree(PathContextTree[Path | str | None]):
     """Baum-Ansicht fuer Playlists, gruppiert nach Playlist-Name."""
 
     DEFAULT_CSS = """
@@ -44,8 +45,28 @@ class PlaylistTree(Tree[Path | str | None]):
             self.path = path
             self.playlist_name = playlist_name
 
+    class ContextMenuRequested(PathContextTree.ContextMenuRequested):
+        """Rechtsklick im Playlist-Baum — eigener Handler-Name pro Baum."""
+
     def __init__(self, **kwargs: object) -> None:
         super().__init__(t("playlists.title"), **kwargs)
+
+    @property
+    def menu_playlist_name(self) -> str:
+        """Playlist des zuletzt per Rechtsklick getroffenen Knotens.
+
+        Bei einem Playlist-Knoten dessen eigener Name, bei einem Track der
+        Name des Elternknotens. Leer, wenn beides nicht zutrifft (Wurzel).
+        """
+        node = self._menu_node
+        if node is None:
+            return ""
+        if isinstance(node.data, str):
+            return node.data
+        parent = node.parent
+        if parent is not None and isinstance(parent.data, str):
+            return parent.data
+        return ""
 
     def load_playlists(
         self,

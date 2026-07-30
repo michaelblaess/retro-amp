@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TypeVar
 
 from textual.events import Click
 from textual.message import Message
 from textual.widgets import Tree
 from textual.widgets._tree import TreeNode
 
+TreeDataType = TypeVar("TreeDataType")
 
-class PathContextTree(Tree[Path | None]):
-    """``Tree[Path | None]`` mit Rechtsklick-Kontextmenue.
 
-    Gemeinsame Basis fuer Favoriten-, Verlaufs- und Such-Baum. Diese Baeume
-    haben denselben Aufbau: Gruppen-Knoten ohne Daten (``data=None``) und
-    Blaetter mit einem ``Path``.
+class PathContextTree(Tree[TreeDataType]):
+    """``Tree`` mit Rechtsklick-Kontextmenue fuer Path-Blaetter.
+
+    Gemeinsame Basis fuer Favoriten-, Verlaufs-, Such- und Playlist-Baum.
+    Diese Baeume haben denselben Aufbau: Gruppen-Knoten ohne Pfad und
+    Blaetter mit einem ``Path``. Generisch, weil der Playlist-Baum in seinen
+    Gruppen-Knoten den Playlist-Namen als ``str`` ablegt.
 
     Das Widget baut das Menue nicht selbst — es meldet nur, welcher Knoten
     getroffen wurde. Favoriten-Status, Playlists und Bibliothekspfad liegen
@@ -47,7 +51,7 @@ class PathContextTree(Tree[Path | None]):
         # Knoten des zuletzt geoeffneten Kontextmenues. Gruppen-Knoten haben
         # keinen Pfad, ueber den die App sie wiederfinden koennte — deshalb
         # bleibt die Knoten-Referenz hier im Widget.
-        self._menu_node: TreeNode[Path | None] | None = None
+        self._menu_node: TreeNode[TreeDataType] | None = None
 
     async def _on_click(self, event: Click) -> None:
         """Rechtsklick meldet den getroffenen Knoten statt ihn auszuwaehlen.

@@ -12,7 +12,7 @@ from ..i18n import t
 from .path_context_tree import PathContextTree
 
 
-class FavoritesTree(PathContextTree):
+class FavoritesTree(PathContextTree[Path | None]):
     """Baum-Ansicht fuer Favoriten, gruppiert nach Ordner."""
 
     DEFAULT_CSS = """

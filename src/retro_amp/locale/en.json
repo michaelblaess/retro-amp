@@ -125,6 +125,8 @@
   "treemenu.open_folder": "Open folder",
   "treemenu.remove_favorite": "Remove from favorites",
   "treemenu.clear_history": "Clear history",
+  "treemenu.play_playlist": "Play playlist",
+  "treemenu.remove_from_playlist": "Remove from playlist",
   "notify.reveal_not_in_tree": "{name} is outside the tree root",
   "notify.folder_no_audio": "No audio files in {name}",
   "notify.added_to_playlist_count": "{count} tracks → {playlist}",

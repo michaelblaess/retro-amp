@@ -26,7 +26,7 @@ _GROUP_I18N_KEYS: dict[str, str] = {
 }
 
 
-class HistoryTree(PathContextTree):
+class HistoryTree(PathContextTree[Path | None]):
     """Baum-Ansicht fuer den Wiedergabeverlauf.
 
     Zeigt die Eintraege gruppiert nach Tagen (Heute/Gestern/Diese Woche/Aelter).

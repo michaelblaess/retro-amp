@@ -9,6 +9,7 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +304,8 @@ class RetroAmpApp(CrashGuard, App):
         # Kontextmenue in Favoriten-/Verlaufs-/Such-Baum: Pfad des Menue-Ziels
         # (None bei Gruppenknoten). Den Knoten selbst haelt das Widget.
         self._list_menu_path: Path | None = None
+        # Playlist des zuletzt geoeffneten Playlist-Kontextmenues
+        self._menu_playlist_name: str = ""
 
         # Pfade, die nach der Playlist-Auswahl hinzugefuegt werden sollen
         self._pending_playlist_paths: list[Path] = []
@@ -1316,7 +1319,7 @@ class RetroAmpApp(CrashGuard, App):
     def _handle_common_tree_action(
         self,
         action_id: str,
-        tree: PathContextTree,
+        tree: PathContextTree[Any],
         path: Path | None,
     ) -> bool:
         """Aktionen, die alle Listen-Baeume teilen.
@@ -1477,6 +1480,108 @@ class RetroAmpApp(CrashGuard, App):
             return
         if action_id == "open_folder" and path is not None:
             self._open_folder(path)
+
+    def on_playlist_tree_context_menu_requested(
+        self,
+        event: PlaylistTree.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick im Playlist-Baum — Playlist-Knoten oder Track."""
+        self._list_menu_path = event.path
+        tree = self.query_one("#playlist-tree", PlaylistTree)
+        self._menu_playlist_name = tree.menu_playlist_name
+
+        if event.path is None:
+            items = list(self._tree_group_items(event.is_expanded))
+            if self._menu_playlist_name:
+                items = [
+                    ContextMenuItem("play_playlist", t("treemenu.play_playlist")),
+                    ContextMenuItem.separator(),
+                    *items,
+                ]
+        else:
+            exists = event.path.is_file()
+            is_fav = self._playlist_service.is_favorite(event.path)
+            fav_label = t("treemenu.favorite_remove") if is_fav else t("treemenu.favorite_add")
+            items = [
+                ContextMenuItem("play", t("treemenu.play"), enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("remove_from_playlist", t("treemenu.remove_from_playlist"), shortcut="DEL"),
+                ContextMenuItem("favorite", fav_label, shortcut="f", enabled=exists),
+                ContextMenuItem.separator(),
+                ContextMenuItem("reveal", t("treemenu.reveal"), enabled=exists),
+            ]
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_playlist_tree_menu_action,
+        )
+
+    def _on_playlist_tree_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Playlist-Kontextmenue gewaehlte Aktion."""
+        if action_id is None:
+            return
+        tree = self.query_one("#playlist-tree", PlaylistTree)
+        path = self._list_menu_path
+        name = self._menu_playlist_name
+        if self._handle_common_tree_action(action_id, tree, path):
+            return
+        if action_id == "play_playlist" and name:
+            self._play_playlist(name)
+        elif action_id == "remove_from_playlist" and path is not None and name:
+            self._remove_from_playlist(name, path)
+
+    def _remove_from_playlist(self, playlist_name: str, path: Path) -> None:
+        """Entfernt einen Track aus einer Playlist und aktualisiert den Baum."""
+        if not self._playlist_service.remove_from_playlist(playlist_name, path):
+            return
+        self.notify(t("notify.playlist_track_removed", playlist=playlist_name, name=path.name))
+        self._refresh_playlist_tree()
+        self._write_log(t("log.playlist_track_removed", playlist=playlist_name, name=path.name))
+
+    def on_file_table_context_menu_requested(
+        self,
+        event: FileTable.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick in der Datei-Tabelle."""
+        path = event.track.path
+        self._list_menu_path = path
+        is_fav = self._playlist_service.is_favorite(path)
+        fav_label = t("treemenu.favorite_remove") if is_fav else t("treemenu.favorite_add")
+        items = [
+            ContextMenuItem("play", t("treemenu.play")),
+            ContextMenuItem.separator(),
+            ContextMenuItem("favorite", fav_label, shortcut="f"),
+            ContextMenuItem("playlist", t("treemenu.add_to_playlist"), shortcut="p"),
+            ContextMenuItem.separator(),
+            ContextMenuItem("auto_title", t("treemenu.auto_title"), shortcut="g"),
+            ContextMenuItem("rename", t("treemenu.rename"), shortcut="u"),
+            ContextMenuItem("delete", t("treemenu.delete"), shortcut="DEL"),
+            ContextMenuItem.separator(),
+            ContextMenuItem("reveal", t("treemenu.reveal")),
+        ]
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_file_table_menu_action,
+        )
+
+    def _on_file_table_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Tabellen-Kontextmenue gewaehlte Aktion."""
+        path = self._list_menu_path
+        if action_id is None or path is None:
+            return
+        if action_id == "play":
+            self._play_existing_path(path)
+        elif action_id == "favorite":
+            self._toggle_favorite_path(path)
+        elif action_id == "playlist":
+            self._add_paths_to_playlist(path, is_dir=False)
+        elif action_id == "auto_title":
+            self._auto_title_for_path(path)
+        elif action_id == "rename":
+            self._rename_with_unload(path)
+        elif action_id == "delete":
+            self._delete_target(path)
+        elif action_id == "reveal":
+            self._reveal_in_tree(path)
 
     def _on_playlist_target_selected(self, playlist_name: str | None) -> None:
         """Callback: gewaehlte Playlist um die vorgemerkten Pfade ergaenzen."""
@@ -1988,23 +2093,27 @@ class RetroAmpApp(CrashGuard, App):
                 self.notify(t("notify.already_in_playlist", playlist=playlist_name), severity="information")
         else:
             # Keine Wiedergabe — Playlist laden und abspielen
-            track_paths = self._playlist_service.load_playlist_tracks(playlist_name)
-            if track_paths:
-                tracks = [self._metadata_service.read_track(p) for p in track_paths if p.is_file()]
-                if tracks:
-                    file_table = self.query_one("#file-table", FileTable)
-                    file_table.update_tracks(tracks)
-                    # Sichtbare Reihenfolge (ggf. sortiert) ist die Abspiel-Reihenfolge
-                    self._current_tracks = file_table.ordered_tracks
-                    self._player_service.load_tracks(self._current_tracks)
-                    self._player_service.play_track(0)
-                    self._sync_visualizer()
-                    self._update_transport()
-                    self.notify(t("notify.playlist_loaded", name=playlist_name, count=len(tracks)))
-                else:
-                    self.notify(t("notify.playlist_empty_files"), severity="warning")
-            else:
-                self.notify(t("notify.playlist_empty", name=playlist_name), severity="information")
+            self._play_playlist(playlist_name)
+
+    def _play_playlist(self, playlist_name: str) -> None:
+        """Laedt eine Playlist in die Tabelle und startet den ersten Titel."""
+        track_paths = self._playlist_service.load_playlist_tracks(playlist_name)
+        if not track_paths:
+            self.notify(t("notify.playlist_empty", name=playlist_name), severity="information")
+            return
+        tracks = [self._metadata_service.read_track(p) for p in track_paths if p.is_file()]
+        if not tracks:
+            self.notify(t("notify.playlist_empty_files"), severity="warning")
+            return
+        file_table = self.query_one("#file-table", FileTable)
+        file_table.update_tracks(tracks)
+        # Sichtbare Reihenfolge (ggf. sortiert) ist die Abspiel-Reihenfolge
+        self._current_tracks = file_table.ordered_tracks
+        self._player_service.load_tracks(self._current_tracks)
+        self._player_service.play_track(0)
+        self._sync_visualizer()
+        self._update_transport()
+        self.notify(t("notify.playlist_loaded", name=playlist_name, count=len(tracks)))
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Bindings bedingt ein-/ausblenden."""
@@ -2090,30 +2199,14 @@ class RetroAmpApp(CrashGuard, App):
         event: PlaylistTree.TrackSelected,
     ) -> None:
         """Playlist-Track ausgewaehlt — navigieren und abspielen."""
-        path = event.path
-        if path.is_file():
-            parent = path.parent
-            self._scan_directory(parent)
-            self._save_last_path(parent)
-            if self._metadata_service.is_audio_file(path):
-                track = self._metadata_service.read_track(path)
-                self._play_track(track)
-        else:
-            self.notify(t("notify.file_not_found"), severity="warning")
+        self._play_existing_path(event.path)
 
     def on_playlist_tree_track_remove_requested(
         self,
         event: PlaylistTree.TrackRemoveRequested,
     ) -> None:
         """Track aus Playlist entfernen."""
-        removed = self._playlist_service.remove_from_playlist(
-            event.playlist_name,
-            event.path,
-        )
-        if removed:
-            self.notify(t("notify.playlist_track_removed", playlist=event.playlist_name, name=event.path.name))
-            self._refresh_playlist_tree()
-            self._write_log(t("log.playlist_track_removed", playlist=event.playlist_name, name=event.path.name))
+        self._remove_from_playlist(event.playlist_name, event.path)
 
     def on_transport_bar_volume_clicked(
         self,
