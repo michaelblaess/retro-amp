@@ -115,7 +115,7 @@ retro-amp --version           # Zeigt die Version
 - **Quick-Jump-Sidebar** — Oben im Dateien-Tab: Home, Musik (= konfigurierte Bibliothek), XDG-Ordner (Downloads, Desktop, Dokumente, Bilder, Videos) und verfügbare Laufwerke. Klick auf einen Eintrag wechselt den Tree-Root *temporär* — die persistierte Bibliothek bleibt unverändert, das freundliche Label (z.B. `💾 C:\`, `📁 Downloads`) erscheint auch als Wurzel im Baum
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
-- **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer (via mutagen)
+- **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer, Datum und Größe (via mutagen). Ein Klick auf den Spaltenkopf sortiert nach dieser Spalte, ein zweiter kehrt die Richtung um. Der Pfeil ▲/▼ zeigt die aktive Sortierung, und die Abspiel-Reihenfolge folgt der sichtbaren Sortierung.
 - **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
 - **Spektral-Visualizer** — Echte FFT-Analyse, 5 Darstellungs-Modi (Bars, Blocks, Scope, Matrix, LCD VU-Meter im Kassettendeck-Style), Theme-bewusste Farben. Modus per Right-Click auf den Visualizer wechseln oder im Settings-Tab "Visualizer" konfigurieren.
 - **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen

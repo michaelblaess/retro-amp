@@ -524,6 +524,11 @@ class RetroAmpApp(CrashGuard, App):
         """Track per Enter ausgewaehlt — abspielen."""
         self._play_track(event.track)
 
+    def on_file_table_order_changed(self, event: FileTable.OrderChanged) -> None:
+        """Tabelle wurde umsortiert — Abspiel-Reihenfolge nachziehen."""
+        self._current_tracks = event.tracks
+        self._sync_player_track_list(highlight=False)
+
     # --- Actions (Keybindings) ---
 
     def action_toggle_pause(self) -> None:
@@ -1640,10 +1645,11 @@ class RetroAmpApp(CrashGuard, App):
             if track_paths:
                 tracks = [self._metadata_service.read_track(p) for p in track_paths if p.is_file()]
                 if tracks:
-                    self._current_tracks = tracks
                     file_table = self.query_one("#file-table", FileTable)
                     file_table.update_tracks(tracks)
-                    self._player_service.load_tracks(tracks)
+                    # Sichtbare Reihenfolge (ggf. sortiert) ist die Abspiel-Reihenfolge
+                    self._current_tracks = file_table.ordered_tracks
+                    self._player_service.load_tracks(self._current_tracks)
                     self._player_service.play_track(0)
                     self._sync_visualizer()
                     self._update_transport()
@@ -1804,22 +1810,36 @@ class RetroAmpApp(CrashGuard, App):
 
     def _apply_scan_result(self, tracks: list[AudioTrack], directory: Path) -> None:
         """Wendet Scan-Ergebnis auf die UI an (im Main-Thread)."""
-        self._current_tracks = tracks
         file_table = self.query_one("#file-table", FileTable)
         file_table.set_path(directory)
-        file_table.update_tracks(self._current_tracks)
+        file_table.update_tracks(tracks)
+        # Sichtbare Reihenfolge (ggf. sortiert) ist die Abspiel-Reihenfolge
+        self._current_tracks = file_table.ordered_tracks
         self._write_log(t("log.directory", path=directory, count=len(tracks)))
 
         # Tracklist im Player synchronisieren wenn der aktuelle Track enthalten ist
-        playing = self._player_service.state.current_track
-        if playing and tracks:
-            for idx, t_ in enumerate(tracks):
-                if t_.path == playing.path:
-                    self._player_service.state.track_list = tracks
-                    self._player_service.state.current_index = idx
-                    self._player_service.state.current_track = t_
+        self._sync_player_track_list()
+
+    def _sync_player_track_list(self, highlight: bool = True) -> None:
+        """Uebernimmt die sichtbare Reihenfolge als Abspiel-Reihenfolge.
+
+        Nur wenn der laufende Track in der Liste vorkommt - sonst spielt
+        gerade etwas aus einem anderen Ordner und bleibt unangetastet.
+        ``highlight=False`` laesst den Cursor stehen (beim Sortieren, damit
+        die Auswahl des Benutzers nicht wegspringt).
+        """
+        state = self._player_service.state
+        playing = state.current_track
+        if not playing or not self._current_tracks:
+            return
+        for idx, candidate in enumerate(self._current_tracks):
+            if candidate.path == playing.path:
+                state.track_list = self._current_tracks
+                state.current_index = idx
+                state.current_track = candidate
+                if highlight:
                     self._highlight_current_track()
-                    break
+                break
 
     def _pick_shuffle_next(self) -> AudioTrack | None:
         """Waehlt einen zufaelligen ungespielten Track aus dem aktuellen Ordner."""
