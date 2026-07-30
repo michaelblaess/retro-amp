@@ -111,7 +111,7 @@ retro-amp --version           # Zeigt die Version
 
 ## Features
 
-- **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch
+- **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch. Rechtsklick öffnet ein Kontextmenü: bei Ordnern Abspielen, Aus-/Einklappen, **Alles einklappen**, zur Playlist hinzufügen, als Musikbibliothek setzen, umbenennen und löschen - bei Dateien zusätzlich Favorit und automatische Titelergänzung
 - **Quick-Jump-Sidebar** — Oben im Dateien-Tab: Home, Musik (= konfigurierte Bibliothek), XDG-Ordner (Downloads, Desktop, Dokumente, Bilder, Videos) und verfügbare Laufwerke. Klick auf einen Eintrag wechselt den Tree-Root *temporär* — die persistierte Bibliothek bleibt unverändert, das freundliche Label (z.B. `💾 C:\`, `📁 Downloads`) erscheint auch als Wurzel im Baum
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen

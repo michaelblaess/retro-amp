@@ -6,6 +6,8 @@ from pathlib import Path
 
 from rich.style import Style
 from rich.text import Text
+from textual.events import Click
+from textual.message import Message
 from textual.widgets import DirectoryTree
 from textual.widgets._directory_tree import DirEntry
 from textual.widgets._tree import TreeNode
@@ -24,6 +26,26 @@ class FolderBrowser(DirectoryTree):
     """
 
     _AUDIO_EXTENSIONS = AudioFormat.supported_extensions()
+
+    class ContextMenuRequested(Message):
+        """Rechtsklick auf einen Knoten — die App baut das passende Menue.
+
+        Das Widget entscheidet nicht, welche Aktionen es gibt: Favoriten-Status,
+        Playlists und Bibliothekspfad liegen in der App.
+        """
+
+        def __init__(
+            self,
+            path: Path,
+            is_dir: bool,
+            is_expanded: bool,
+            at: tuple[int, int],
+        ) -> None:
+            super().__init__()
+            self.path = path
+            self.is_dir = is_dir
+            self.is_expanded = is_expanded
+            self.at = at
 
     ICON_MUSIC = "\u266a "  # ♪
 
@@ -162,6 +184,60 @@ class FolderBrowser(DirectoryTree):
 
         self.move_cursor(current_node)
         self.scroll_to_node(current_node)
+
+    async def _on_click(self, event: Click) -> None:
+        """Rechtsklick oeffnet das Kontextmenue statt den Knoten auszuwaehlen.
+
+        Textuals ``Tree._on_click`` prueft die Maustaste nicht — ein Rechtsklick
+        liefe dort in ``select_cursor`` und wuerde auf einer Datei die Wiedergabe
+        starten. Ein Override allein genuegt nicht: Textual ruft JEDEN
+        ``_on_click`` entlang der MRO auf, ``Tree._on_click`` liefe also
+        zusaetzlich. Nur ``prevent_default()`` bricht die MRO-Kette ab
+        (``_get_dispatch_methods`` prueft ``_no_default_action`` vor jeder
+        weiteren Klasse). Aus demselben Grund darf hier kein ``super()``-Aufruf
+        stehen: den Basis-Handler ruft Textual bei Linksklick selbst auf.
+        """
+        if event.button != 3:
+            return
+
+        event.prevent_default()
+        event.stop()
+        line = event.style.meta.get("line")
+        if line is None:
+            return
+        node = self.get_node_at_line(line)
+        if node is None or node.data is None:
+            return
+
+        # Cursor auf den geklickten Knoten setzen — sonst wirkt die gewaehlte
+        # Aktion auf einen anderen Knoten als den, auf den gezielt wurde.
+        self.move_cursor(node)
+        self.post_message(
+            FolderBrowser.ContextMenuRequested(
+                path=node.data.path,
+                is_dir=bool(node.allow_expand),
+                is_expanded=node.is_expanded,
+                at=(event.screen_x, event.screen_y),
+            )
+        )
+
+    def collapse_all(self) -> None:
+        """Klappt den gesamten Baum zu — nur die Wurzel bleibt offen."""
+        for child in self.root.children:
+            child.collapse_all()
+        self.root.expand()
+        self.move_cursor(self.root)
+        self.scroll_to_line(0, animate=False)
+
+    def set_node_expanded(self, target: Path, expanded: bool) -> None:
+        """Klappt den Knoten eines Pfades auf oder zu (eine Ebene)."""
+        node = self._find_dir_node(target, self.root)
+        if node is None or not node.allow_expand:
+            return
+        if expanded:
+            node.expand()
+        else:
+            node.collapse()
 
     def highlight_path(self, target: Path) -> None:
         """Markiert einen Pfad im Baum und scrollt dorthin.

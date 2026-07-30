@@ -294,6 +294,18 @@ class RetroAmpApp(CrashGuard, App):
         self._last_play_path: str | None = None
         self._last_play_time: float = 0.0
 
+        # Kontextmenue im Ordner-Baum: Ziel des zuletzt geoeffneten Menues.
+        # Der ContextMenuScreen liefert im Callback nur die Action-Id zurueck.
+        self._tree_menu_path: Path | None = None
+        self._tree_menu_is_dir: bool = False
+
+        # Pfade, die nach der Playlist-Auswahl hinzugefuegt werden sollen
+        self._pending_playlist_paths: list[Path] = []
+
+        # Ordner ueber das Kontextmenue abspielen: der Scan laeuft im Thread,
+        # gespielt wird erst wenn das Ergebnis da ist.
+        self._play_after_scan: bool = False
+
     def _apply_binding_tooltips(self) -> None:
         """Setzt fuer jedes App-Binding einen erklaerenden Footer-Tooltip.
 
@@ -511,14 +523,7 @@ class RetroAmpApp(CrashGuard, App):
 
     def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Datei im Baum ausgewaehlt — Ordner aktualisieren und abspielen."""
-        path = event.path
-        if self._metadata_service.is_audio_file(path):
-            # Rechtes Panel mit Ordner-Inhalt aktualisieren
-            parent = path.parent
-            self._scan_directory(parent)
-            self._save_last_path(parent)
-            track = self._metadata_service.read_track(path)
-            self._play_track(track)
+        self._play_path(event.path)
 
     def on_file_table_track_selected(self, event: FileTable.TrackSelected) -> None:
         """Track per Enter ausgewaehlt — abspielen."""
@@ -1141,6 +1146,171 @@ class RetroAmpApp(CrashGuard, App):
         elif action_id == "save":
             self._save_translation()
 
+    # --- Kontextmenue im Ordner-Baum ---
+
+    def on_folder_browser_context_menu_requested(
+        self,
+        event: FolderBrowser.ContextMenuRequested,
+    ) -> None:
+        """Rechtsklick im Ordner-Baum — passendes Menue bauen und zeigen."""
+        self._tree_menu_path = event.path
+        self._tree_menu_is_dir = event.is_dir
+        is_root = event.path == self._tree_root
+
+        if event.is_dir:
+            has_audio = self._folder_has_audio(event.path)
+            items = [
+                ContextMenuItem("play", t("treemenu.play"), enabled=has_audio),
+                ContextMenuItem.separator(),
+                # Nur der Eintrag, der gerade Sinn ergibt — statt zwei Eintraege,
+                # von denen einer immer ausgegraut waere.
+                ContextMenuItem("collapse", t("treemenu.collapse"))
+                if event.is_expanded
+                else ContextMenuItem("expand", t("treemenu.expand")),
+                ContextMenuItem("collapse_all", t("treemenu.collapse_all")),
+                ContextMenuItem.separator(),
+                ContextMenuItem("playlist", t("treemenu.add_to_playlist"), enabled=has_audio),
+                ContextMenuItem("library", t("treemenu.set_library")),
+                ContextMenuItem.separator(),
+                ContextMenuItem("rename", t("treemenu.rename"), shortcut="u", enabled=not is_root),
+                ContextMenuItem("delete", t("treemenu.delete"), shortcut="DEL", enabled=not is_root),
+            ]
+        else:
+            is_fav = self._playlist_service.is_favorite(event.path)
+            fav_label = t("treemenu.favorite_remove") if is_fav else t("treemenu.favorite_add")
+            items = [
+                ContextMenuItem("play", t("treemenu.play")),
+                ContextMenuItem.separator(),
+                ContextMenuItem("favorite", fav_label, shortcut="f"),
+                ContextMenuItem("playlist", t("treemenu.add_to_playlist"), shortcut="p"),
+                ContextMenuItem.separator(),
+                ContextMenuItem("auto_title", t("treemenu.auto_title"), shortcut="g"),
+                ContextMenuItem("rename", t("treemenu.rename"), shortcut="u"),
+                ContextMenuItem("delete", t("treemenu.delete"), shortcut="DEL"),
+            ]
+
+        self.push_screen(
+            ContextMenuScreen(items, at=event.at),
+            callback=self._on_tree_menu_action,
+        )
+
+    def _on_tree_menu_action(self, action_id: str | None) -> None:
+        """Verarbeitet die im Baum-Kontextmenue gewaehlte Aktion."""
+        path = self._tree_menu_path
+        if action_id is None or path is None:
+            return
+        is_dir = self._tree_menu_is_dir
+        folder_browser = self.query_one("#folder-browser", FolderBrowser)
+
+        if action_id == "collapse_all":
+            folder_browser.collapse_all()
+        elif action_id == "expand":
+            folder_browser.set_node_expanded(path, True)
+        elif action_id == "collapse":
+            folder_browser.set_node_expanded(path, False)
+        elif action_id == "play":
+            if is_dir:
+                self._play_folder(path)
+            else:
+                self._play_path(path)
+        elif action_id == "playlist":
+            self._add_paths_to_playlist(path, is_dir)
+        elif action_id == "library":
+            self._on_library_picked(path)
+        elif action_id == "favorite":
+            self._toggle_favorite_path(path)
+        elif action_id == "auto_title":
+            self._auto_title_for_path(path)
+        elif action_id == "rename":
+            self._rename_with_unload(path)
+        elif action_id == "delete":
+            self._delete_target(path)
+
+    def _folder_has_audio(self, folder: Path) -> bool:
+        """True wenn der Ordner direkt Audio-Dateien enthaelt (nicht rekursiv).
+
+        Nicht rekursiv, weil "Abspielen" genau die Titel meint, die die
+        Datei-Tabelle fuer diesen Ordner zeigt.
+        """
+        try:
+            return any(entry.is_file() and self._metadata_service.is_audio_file(entry) for entry in folder.iterdir())
+        except OSError:
+            return False
+
+    def _folder_audio_files(self, folder: Path) -> list[Path]:
+        """Audio-Dateien direkt im Ordner, alphabetisch (nicht rekursiv)."""
+        try:
+            return sorted(
+                entry for entry in folder.iterdir() if entry.is_file() and self._metadata_service.is_audio_file(entry)
+            )
+        except OSError:
+            return []
+
+    def _play_folder(self, folder: Path) -> None:
+        """Scannt einen Ordner und startet danach den ersten Titel."""
+        self._play_after_scan = True
+        self._save_last_path(folder)
+        self._scan_directory(folder)
+
+    def _play_path(self, path: Path) -> None:
+        """Spielt eine Datei ab und aktualisiert die Tabelle auf ihren Ordner."""
+        if not self._metadata_service.is_audio_file(path):
+            return
+        self._scan_directory(path.parent)
+        self._save_last_path(path.parent)
+        self._play_track(self._metadata_service.read_track(path))
+
+    def _toggle_favorite_path(self, path: Path) -> None:
+        """Favoriten-Status eines Pfades umschalten (Kontextmenue)."""
+        track = self._metadata_service.read_track(path)
+        if self._playlist_service.toggle_favorite(path):
+            self.notify(t("notify.favorite_added", name=track.display_name))
+        else:
+            self.notify(t("notify.favorite_removed", name=track.display_name))
+        left_tabs = self.query_one("#left-tabs", TabbedContent)
+        if left_tabs.active == "tab-favorites":
+            self._refresh_favorites_tree()
+        self._update_control_panel()
+
+    def _auto_title_for_path(self, path: Path) -> None:
+        """Auto-Titel fuer genau eine Datei (Kontextmenue)."""
+        self.notify(t("notify.auto_title_scanning"))
+        self._build_title_proposals([self._metadata_service.read_track(path)])
+
+    def _add_paths_to_playlist(self, path: Path, is_dir: bool) -> None:
+        """Playlist-Dialog oeffnen und danach Datei bzw. Ordnerinhalt eintragen."""
+        from .screens.playlist_screen import PlaylistScreen  # Lazy import
+
+        paths = self._folder_audio_files(path) if is_dir else [path]
+        if not paths:
+            self.notify(t("notify.folder_no_audio", name=path.name), severity="warning")
+            return
+        self._pending_playlist_paths = paths
+        title = (
+            t("playlist_screen.folder_title", name=path.name)
+            if is_dir
+            else t("playlist_screen.track_title", name=self._metadata_service.read_track(path).display_name)
+        )
+        self.push_screen(
+            PlaylistScreen(self._playlist_service.list_playlists(), title_text=title),
+            callback=self._on_playlist_target_selected,
+        )
+
+    def _on_playlist_target_selected(self, playlist_name: str | None) -> None:
+        """Callback: gewaehlte Playlist um die vorgemerkten Pfade ergaenzen."""
+        paths = self._pending_playlist_paths
+        self._pending_playlist_paths = []
+        if not playlist_name or not paths:
+            return
+        added = sum(1 for path in paths if self._playlist_service.add_to_playlist(playlist_name, path))
+        if added == 0:
+            self.notify(t("notify.already_in_playlist", playlist=playlist_name), severity="information")
+        elif len(paths) == 1:
+            track_name = self._metadata_service.read_track(paths[0]).display_name
+            self.notify(t("notify.added_to_playlist", track=track_name, playlist=playlist_name))
+        else:
+            self.notify(t("notify.added_to_playlist_count", count=added, playlist=playlist_name))
+
     def _copy_translation(self) -> None:
         """Kopiert die uebersetzten Lyrics in die Zwischenablage."""
         panel = self.query_one("#translation-panel", TranslationPanel)
@@ -1536,24 +1706,7 @@ class RetroAmpApp(CrashGuard, App):
         if folder_browser.has_focus or folder_browser.has_focus_within:
             node = folder_browser.cursor_node
             if node and node.data:
-                target = node.data.path
-                if target == self._tree_root:
-                    self.notify(t("notify.cannot_delete_root"), severity="warning")
-                    return
-                if target.is_dir():
-                    # Dateien im Ordner zaehlen
-                    try:
-                        count = sum(1 for _ in target.rglob("*") if _.is_file())
-                    except PermissionError:
-                        count = 0
-                    msg = t(
-                        "confirm.delete_folder_message",
-                        name=target.name,
-                        count=count,
-                    )
-                else:
-                    msg = t("confirm.delete_file_message", name=target.name)
-                self._delete_with_unload(msg, target)
+                self._delete_target(node.data.path)
                 return
 
         # Fallback: markierte Datei in der Tabelle
@@ -1567,6 +1720,22 @@ class RetroAmpApp(CrashGuard, App):
             t("confirm.delete_file_message", name=track.name),
             track.path,
         )
+
+    def _delete_target(self, target: Path) -> None:
+        """Baut die passende Rueckfrage fuer Datei bzw. Ordner und fragt nach."""
+        if target == self._tree_root:
+            self.notify(t("notify.cannot_delete_root"), severity="warning")
+            return
+        if target.is_dir():
+            # Dateien im Ordner zaehlen
+            try:
+                count = sum(1 for entry in target.rglob("*") if entry.is_file())
+            except OSError:
+                count = 0
+            msg = t("confirm.delete_folder_message", name=target.name, count=count)
+        else:
+            msg = t("confirm.delete_file_message", name=target.name)
+        self._delete_with_unload(msg, target)
 
     def _delete_with_unload(self, msg: str, target: Path) -> None:
         """Player entladen falls noetig, dann Loeschen-Dialog oeffnen."""
@@ -1819,6 +1988,15 @@ class RetroAmpApp(CrashGuard, App):
 
         # Tracklist im Player synchronisieren wenn der aktuelle Track enthalten ist
         self._sync_player_track_list()
+
+        # "Ordner abspielen" aus dem Kontextmenue: der Scan laeuft im Thread,
+        # erst hier steht die Titelliste fest.
+        if self._play_after_scan:
+            self._play_after_scan = False
+            if self._current_tracks:
+                self._play_track(self._current_tracks[0])
+            else:
+                self.notify(t("notify.folder_no_audio", name=directory.name), severity="warning")
 
     def _sync_player_track_list(self, highlight: bool = True) -> None:
         """Uebernimmt die sichtbare Reihenfolge als Abspiel-Reihenfolge.

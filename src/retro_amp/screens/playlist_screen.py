@@ -59,14 +59,32 @@ class PlaylistScreen(ModalScreen[str | None]):
         Binding("escape,q", "close", "ESC"),
     ]
 
-    def __init__(self, playlists: list[str], current_track_name: str = "") -> None:
+    def __init__(
+        self,
+        playlists: list[str],
+        current_track_name: str = "",
+        title_text: str = "",
+    ) -> None:
+        """Erstellt den Playlist-Dialog.
+
+        Args:
+            playlists: Namen der vorhandenen Playlists.
+            current_track_name: Titel des laufenden Tracks - wird als
+                "Track: ..." ueberschrieben.
+            title_text: Fertige Dialog-Ueberschrift. Hat Vorrang vor
+                ``current_track_name`` und erlaubt andere Bezugsobjekte
+                (z.B. "Ordner: ..." aus dem Kontextmenue).
+        """
         super().__init__()
         self._playlists = playlists
         self._current_track_name = current_track_name
+        self._title_text = title_text
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog"):
-            if self._current_track_name:
+            if self._title_text:
+                yield Label(self._title_text, id="dialog-title")
+            elif self._current_track_name:
                 yield Label(
                     t("playlist_screen.track_title", name=self._current_track_name),
                     id="dialog-title",

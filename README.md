@@ -111,7 +111,7 @@ retro-amp --version           # Show version
 
 ## Features
 
-- **Folder browser** — Left panel with directory tree, automatically filters audio files
+- **Folder browser** — Left panel with directory tree, automatically filters audio files. Right-click opens a context menu: for folders play, expand/collapse, **collapse all**, add to playlist, set as music library, rename and delete - for files also favorite and automatic title completion
 - **Quick-jump sidebar** — At the top of the Files tab: Home, Music (= configured library), XDG folders (Downloads, Desktop, Documents, Pictures, Videos) and accessible drives. Clicking an entry switches the tree root *temporarily* — the persistent library stays untouched, the friendly label (e.g. `💾 C:\`, `📁 Downloads`) is also shown as the tree root
 - **Favorites view** — All favorites as a tree, toggle with TAB
 - **Playlist view** — Playlists as a tree, play or remove songs directly
