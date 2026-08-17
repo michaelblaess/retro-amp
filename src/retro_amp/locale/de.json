@@ -165,6 +165,7 @@
   "notify.library_changed": "Bibliothek: {path}",
   "notify.tree_root_changed": "→ {path}",
   "log.folder": "Ordner: {path}",
+  "log.theme_active": "Theme: {name}",
   "log.view_explorer": "Ansicht: Datei-Explorer",
   "log.view_favorites": "Ansicht: Favoriten",
   "log.view_playlists": "Ansicht: Playlists",

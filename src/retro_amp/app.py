@@ -421,6 +421,7 @@ class RetroAmpApp(CrashGuard, App):
         )
         # Theme-Name in Titelleiste (Idle-Anzeige bis ein Track laeuft)
         self.sub_title = self._idle_subtitle()
+        self._log_theme()
 
         # Gespeicherte Splitter-Groessen anwenden (linkes Panel + File-Table)
         self._restore_pane_sizes()
@@ -2678,11 +2679,28 @@ class RetroAmpApp(CrashGuard, App):
         if settings.get("theme") != theme_name:
             settings["theme"] = theme_name
             self._settings_store.save(settings)
+        self._log_theme()
         # Idle-Anzeige aktualisieren wenn kein Track aktiv
         if not hasattr(self, "_player_service"):
             return
         if self._player_service.state.current_track is None:
             self.sub_title = self._idle_subtitle(theme_name)
+
+    def _log_theme(self) -> None:
+        """Schreibt das aktive Theme ins Log.
+
+        Der Name steht zwar auch in der Titelzeile (Idle-Anzeige), aber nur
+        solange kein Track laeuft - im Log bleibt er dauerhaft nachlesbar.
+        Der technische Name steht mit dabei, weil genau der in den
+        Einstellungen und in der Befehlspalette auftaucht.
+        """
+        with contextlib.suppress(Exception):
+            from textual_themes import THEME_DISPLAY_NAMES
+
+            name = self.theme or ""
+            anzeige = THEME_DISPLAY_NAMES.get(name, name)
+            beschriftung = f"{anzeige} ({name})" if anzeige != name else name
+            self._write_log(t("log.theme_active", name=beschriftung))
 
     def watch_sub_title(self, sub_title: str) -> None:
         """Spiegelt den sub_title in den Terminal-Tab-Titel.
