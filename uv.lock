@@ -920,11 +920,10 @@ textual = [
 
 [[package]]
 name = "textual-themes"
-version = "0.10.0"
-source = { git = "https://github.com/michaelblaess/textual-themes.git#17dc600bdeaf0c5d72bf7b0f7089c01563781987" }
+version = "0.14.0"
+source = { git = "https://github.com/michaelblaess/textual-themes.git#8ea46d3294aa2fef60827d805f85e1251f6aa852" }
 dependencies = [
     { name = "textual" },
-    { name = "textual-widgets" },
 ]
 
 [[package]]
