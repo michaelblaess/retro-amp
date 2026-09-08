@@ -23,6 +23,8 @@ from textual_widgets import ContextMenuItem, ContextMenuScreen
 from ..domain.models import VisualizerMode
 from ..i18n import t
 from ..meter import LevelMeter, MeterConfig, PeakTracker
+from ..palette import SurfacePalette
+from ..themes import surface_palette
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
 _BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
@@ -49,9 +51,8 @@ _MAX_LEVEL = _NUM_ROWS * _STEPS_PER_ROW  # 24
 # BLOCKS-Modus: 16 breitere Balken, je 2 Zellen, Farbe pro Zeile
 _BLOCKS_NUM_BARS = 16
 _BLOCKS_BAR_WIDTH = 2
-# Farbe pro Zeile: oben rot, mittig gelb, unten gruen — klassischer VU-Look
-_BLOCKS_ROW_COLORS = ("#ff3333", "#ffcc00", "#00cc44")
-_BLOCKS_PEAK_COLOR = "#ff5555"
+# Farbe pro Zeile: oben laut, mittig mittel, unten leise - die drei Stufen
+# kommen aus dem Theme (vis_high/vis_mid/vis_low), nicht aus dem Malcode.
 
 # SCOPE-Modus: Punkt-Charakter
 _SCOPE_DOT = "●"
@@ -59,18 +60,15 @@ _SCOPE_DOT = "●"
 # MATRIX-Modus: Farbschwellen pro Zeile (oben = hoehere Schwelle als unten)
 _MATRIX_ROW_OFFSET = 0.18  # vorher 0.34 → top-row braucht jetzt weniger Pegel
 _MATRIX_GAIN = 1.5  # Verstaerkung (analog LCD), damit Mitte/Top mehr zeigt
-_MATRIX_DIM_FALLBACK = "#1a1a1a"
 
 # LCD-Modus (Kassettendeck-VU): 2 horizontale Segment-Balken
 # 14 Segmente, je 2 Zellen breit (Full-Block + Space) → klar diskrete LCD-Segmente.
 _LCD_NUM_SEGMENTS = 14
 _LCD_FILLED = "█"
 _LCD_SEPARATOR = " "
-# LCD-typisches Cyan-Blau (statt Gruen) fuer den unteren Pegelbereich
-_LCD_BLUE = "#00aaee"
-_LCD_YELLOW = "#ffcc00"
-_LCD_RED = "#ff3333"
-_LCD_DIM = "#2a2a2a"  # Dunkles "Off"-Segment, wirkt wie inaktive LCD-Zellen
+# Die Farben der Segmente kommen aus dem Theme: der untere Bereich aus
+# lcd_foreground, die beiden oberen aus vis_mid und vis_high, das
+# unbeleuchtete Segment aus lcd_dim.
 # Gain-Faktor: real existierende Musik erreicht selten den vollen Pegelausschlag.
 # 1.6x Verstaerkung sorgt dafuer, dass auch normale Musik gelb/rot triggert.
 _LCD_GAIN = 1.6
@@ -103,47 +101,19 @@ def _spectral_color(band_index: int, num_bands: int) -> str:
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
-def _traffic_light_color(level: int, max_level: int) -> str:
-    """Ampel-Farbe abhaengig von der Pegelhoehe (klassisches VU-Schema)."""
-    t = level / max(max_level, 1)
-    if t < 0.6:
-        return "#00cc44"  # Gruen
-    if t < 0.85:
-        return "#ffcc00"  # Gelb
-    return "#ff3333"  # Rot
+def _lcd_segment_color(seg_idx: int, total: int, palette: SurfacePalette) -> str:
+    """Farbe eines LCD-Segments nach seiner Position im Balken.
 
-
-def _darken_hex(color: str, factor: float = 0.15) -> str:
-    """Erzeugt eine sehr dunkle Variante einer Hex-Farbe.
-
-    Multipliziert die RGB-Komponenten mit factor (Default 0.15 = 15% Helligkeit).
-    Wird fuer den 'aus'-Zustand der Matrix-Zellen verwendet — gibt einen
-    subtilen Theme-Tint im Hintergrund statt einem neutralen Grau.
-    """
-    if not color or not color.startswith("#") or len(color) != 7:
-        return _MATRIX_DIM_FALLBACK
-    try:
-        r = max(0, min(255, int(int(color[1:3], 16) * factor)))
-        g = max(0, min(255, int(int(color[3:5], 16) * factor)))
-        b = max(0, min(255, int(int(color[5:7], 16) * factor)))
-        return f"#{r:02x}{g:02x}{b:02x}"
-    except ValueError:
-        return _MATRIX_DIM_FALLBACK
-
-
-def _lcd_segment_color(seg_idx: int, total: int, safe_color: str) -> str:
-    """Farbe eines LCD-Segments basierend auf seiner Position im Balken.
-
-    safe_color: Farbe fuer den unteren ("Safe Zone") Pegelbereich — kommt vom
-    aktuellen Theme. Yellow/Red bleiben fest, weil sie als Warnfarben
-    semantische Bedeutung haben (Headroom-Warnung, Clipping).
+    Alle drei Zonen kommen aus dem Theme: der untere Bereich aus der
+    beleuchteten LCD-Farbe, die Warnzone aus vis_mid, der Uebersteuerungs-
+    bereich aus vis_high.
     """
     t = seg_idx / max(total - 1, 1)
     if t < _LCD_THRESHOLD_YELLOW:
-        return safe_color
+        return palette.lcd_foreground
     if t < _LCD_THRESHOLD_RED:
-        return _LCD_YELLOW
-    return _LCD_RED
+        return palette.vis_mid
+    return palette.vis_high
 
 
 class Visualizer(Widget):
@@ -192,6 +162,11 @@ class Visualizer(Widget):
 
         self._meter = LevelMeter(self.NUM_BARS, MeterConfig())
         self._clock: Callable[[], float] = time.monotonic
+
+        # Flaechenfarben des aktuellen Themes. Wird beim Zeichnen nachgezogen,
+        # sobald sich der Theme-Name aendert - kein Malcode kennt eine Farbe.
+        self._palette_name = ""
+        self._palette: SurfacePalette = surface_palette("")
 
         # LCD-Modus: getrennte Spitzen fuer Bass- und Treble-Haelfte
         self._lcd_peak_tracker_l = PeakTracker(_LCD_PEAK_DECAY_DB_PER_S, _LCD_PEAK_HOLD_S)
@@ -358,7 +333,10 @@ class Visualizer(Widget):
 
     def render(self) -> Text:
         """Rendert die Multi-Row Equalizer-Balken im aktuellen Modus."""
-        if not self._active:
+        # Die Ruhezeile erst zeigen, wenn wirklich nichts mehr da ist. Beim
+        # Anhalten laeuft der Pegel noch aus - dieser Abfall soll auch zu
+        # sehen sein und nicht hinter dem Platzhalter verschwinden.
+        if not self._active and self._meter.is_idle:
             bar_str = "▁" * self.NUM_BARS
             text = Text()
             text.append("  " + bar_str + "  ", style="dim")
@@ -407,10 +385,11 @@ class Visualizer(Widget):
         return self._join_lines(lines)
 
     def _render_blocks(self) -> Text:
-        """BLOCKS-Modus: Winamp-Look — 16 breite Balken, Farbe PRO ZEILE + Peak-Marker.
+        """BLOCKS-Modus: 16 breite Balken, Farbe PRO ZEILE plus Spitzenmarke.
 
-        Damit jeder aktive Balken ueber gruen-gelb-rot gradiert (statt nur die hoechsten
-        in der Spitze rot zu sein). Peak-Marker oben drueber in rot.
+        Jeder aktive Balken gradiert ueber die drei Pegelstufen des Themes
+        (unten leise, oben laut), statt nur in der Spitze die laute Farbe zu
+        zeigen. Die Spitzenmarke schwebt in vis_peak darueber.
         """
         # 32 Bands auf 16 Balken zusammenfassen (Mittelwert je Paar)
         block_levels: list[int] = []
@@ -424,13 +403,15 @@ class Visualizer(Widget):
             pb = self._peaks[j + 1] if j + 1 < self.NUM_BARS else pa
             block_peaks.append((pa + pb) // 2)
 
+        palette = self.palette()
         lines: list[Text] = []
 
         for row in range(_NUM_ROWS):
             line = Text()
             line.append("  ")
             row_base = (_NUM_ROWS - 1 - row) * _STEPS_PER_ROW
-            row_color = _BLOCKS_ROW_COLORS[row]
+            # Zeile 0 ist oben (lauteste Stufe), Zeile 2 unten.
+            row_color = (palette.vis_high, palette.vis_mid, palette.vis_low)[row]
 
             for idx, level in enumerate(block_levels):
                 in_row = level - row_base
@@ -443,7 +424,7 @@ class Visualizer(Widget):
                     line.append(_BLOCKS[in_row] * _BLOCKS_BAR_WIDTH, style=row_color)
                 elif 0 < peak_in_row <= _STEPS_PER_ROW and peak > level:
                     # Peak-Marker schwebend ueber dem Balken
-                    line.append(_PEAK_CHAR * _BLOCKS_BAR_WIDTH, style=f"bold {_BLOCKS_PEAK_COLOR}")
+                    line.append(_PEAK_CHAR * _BLOCKS_BAR_WIDTH, style=f"bold {palette.vis_peak}")
                 else:
                     line.append(" " * _BLOCKS_BAR_WIDTH)
 
@@ -501,8 +482,7 @@ class Visualizer(Widget):
         no_wrap=True verhindert dass Ueberlauf-Zeichen auf eine neue Zeile
         umbrechen (sonst sieht man verirrte Digits zwischen den Zeilen).
         """
-        safe_color = self._theme_safe_color()
-        dim_color = _darken_hex(safe_color, 0.15)
+        palette = self.palette()
         lines: list[Text] = []
 
         for row in range(_NUM_ROWS):
@@ -519,13 +499,13 @@ class Visualizer(Widget):
                 digit = "1" if random.random() > 0.5 else "0"
 
                 if intensity >= row_threshold + 0.40:
-                    color = "#ff3333"  # Rot — sehr aktiv (Clipping-Warnung)
+                    color = palette.vis_high  # sehr aktiv
                 elif intensity >= row_threshold + 0.20:
-                    color = "#ffcc00"  # Gelb — aktiv (Headroom-Warnung)
+                    color = palette.vis_mid  # aktiv
                 elif intensity >= row_threshold + 0.05:
-                    color = safe_color  # Theme-Accent — leicht aktiv
+                    color = palette.lcd_foreground  # leicht aktiv
                 else:
-                    color = dim_color  # Sehr dunkler Theme-Tint
+                    color = palette.vis_grid  # ruhender Untergrund
 
                 line.append(digit, style=color)
             lines.append(line)
@@ -552,20 +532,20 @@ class Visualizer(Widget):
         peak_l_norm = gained(self._lcd_peak_l)
         peak_r_norm = gained(self._lcd_peak_r)
 
-        safe_color = self._theme_safe_color()
+        palette = self.palette()
 
         def build_bar(level: float, peak: float) -> Text:
             active = int(level * _LCD_NUM_SEGMENTS + 0.5)
             peak_idx = int(peak * _LCD_NUM_SEGMENTS + 0.5) - 1
             line = Text()
             for seg in range(_LCD_NUM_SEGMENTS):
-                seg_color = _lcd_segment_color(seg, _LCD_NUM_SEGMENTS, safe_color)
+                seg_color = _lcd_segment_color(seg, _LCD_NUM_SEGMENTS, palette)
                 if seg < active:
                     line.append(_LCD_FILLED, style=seg_color)
                 elif seg == peak_idx and peak_idx >= active:
                     line.append(_LCD_FILLED, style=f"bold {seg_color}")
                 else:
-                    line.append(_LCD_FILLED, style=_LCD_DIM)
+                    line.append(_LCD_FILLED, style=palette.lcd_dim)
                 # Separator-Zelle als Luecke zwischen den Segmenten
                 line.append(_LCD_SEPARATOR)
             return line
@@ -582,24 +562,21 @@ class Visualizer(Widget):
 
         return self._join_lines([line_top, line_mid, line_bot])
 
-    def _theme_safe_color(self) -> str:
-        """Liest die LCD-Safe-Zone-Farbe aus dem aktuellen Theme.
+    def palette(self) -> SurfacePalette:
+        """Flaechenfarben des aktuell eingestellten Themes.
 
-        Bevorzugte Quelle ist `accent`, dann `primary` als Fallback. Wenn das
-        Theme keine passende Farbe liefert (z.B. waehrend des App-Starts oder
-        bei Tests ohne App), wird der Default-LCD-Blauton verwendet.
+        Wird nach dem Theme-Namen zwischengespeichert, damit die Ableitung
+        nicht bei jedem Bild erneut laeuft. Ohne laufende App - beim Start
+        oder in Tests - liefert `surface_palette` das Standard-Theme.
         """
         try:
-            theme = self.app.current_theme
+            name = str(self.app.theme)
         except Exception:
-            return _LCD_BLUE
-        if theme is None:
-            return _LCD_BLUE
-        for attr in ("accent", "primary"):
-            color = getattr(theme, attr, None)
-            if color:
-                return str(color)
-        return _LCD_BLUE
+            name = ""
+        if name != self._palette_name:
+            self._palette_name = name
+            self._palette = surface_palette(name)
+        return self._palette
 
     @staticmethod
     def _join_lines(lines: list[Text]) -> Text:
