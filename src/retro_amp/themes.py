@@ -13,12 +13,15 @@ beim Laden migriert werden.
 
 from __future__ import annotations
 
+from textual.theme import Theme
 from textual_themes import (
     RETRO_THEME_NAMES,
     RETRO_THEMES,
     THEME_DISPLAY_NAMES,
     register_all,
 )
+
+from retro_amp.palette import BasePalette, SurfacePalette, palette_for
 
 # ── Default-Theme ──────────────────────────────────────────────────────
 DEFAULT_THEME: str = "brotkasten"
@@ -70,12 +73,55 @@ def migrate_theme_name(name: str) -> str:
     return LEGACY_THEME_MAP.get(name, name)
 
 
+# ── Bruecke zur oberflaechenfreien Palette ────────────────────────────
+
+
+def base_palette(theme: Theme) -> BasePalette:
+    """Uebersetzt ein Textual-Theme in die oberflaechenfreie Grundpalette.
+
+    Das ist der einzige Ort, an dem Textual-Typen auf die eigene Palette
+    treffen. `retro_amp.palette` selbst kennt Textual nicht.
+    """
+    return BasePalette(
+        name=theme.name,
+        primary=theme.primary,
+        secondary=theme.secondary or theme.primary,
+        accent=theme.accent or theme.primary,
+        foreground=theme.foreground or "#FFFFFF",
+        background=theme.background or "#000000",
+        surface=theme.surface or theme.background or "#000000",
+        panel=theme.panel or theme.surface or "#000000",
+        boost=theme.boost or theme.accent or theme.primary,
+        warning=theme.warning or theme.primary,
+        error=theme.error or theme.primary,
+        success=theme.success or theme.primary,
+        dark=theme.dark,
+    )
+
+
+def surface_palette(name: str) -> SurfacePalette:
+    """Liefert die Flaechenfarben zu einem Theme-Namen.
+
+    Unbekannte Namen werden ueber `migrate_theme_name` gehoben und fallen
+    sonst auf das Standard-Theme zurueck - eine Oberflaeche darf an einer
+    verirrten Einstellung nicht scheitern.
+    """
+    gehoben = migrate_theme_name(name)
+    theme = _THEMES_BY_NAME.get(gehoben) or _THEMES_BY_NAME[DEFAULT_THEME]
+    return palette_for(base_palette(theme))
+
+
+_THEMES_BY_NAME: dict[str, Theme] = {theme.name: theme for theme in RETRO_THEMES}
+
+
 __all__ = [
     "DEFAULT_THEME",
     "LEGACY_THEME_MAP",
     "RETRO_THEMES",
     "RETRO_THEME_NAMES",
     "THEME_DISPLAY_NAMES",
+    "base_palette",
     "migrate_theme_name",
     "register_all",
+    "surface_palette",
 ]
