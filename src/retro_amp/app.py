@@ -2507,7 +2507,13 @@ class RetroAmpApp(CrashGuard, App):
             vis.start()
         else:
             vis.set_spectrum_source(None)
-            vis.stop()
+            if self._player_service.state.current_track is None:
+                # Kein Titel geladen - da gibt es nichts zum Ausklingen.
+                vis.reset()
+            else:
+                # Pausiert oder angehalten: die Anzeige faellt ab, statt
+                # einzufrieren. Der Takt haelt sich danach selbst an.
+                vis.stop()
 
     @work(exclusive=True, group="spectrum", thread=True)
     def _load_spectrum(self, path: Path) -> None:

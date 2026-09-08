@@ -11,6 +11,7 @@ Mehrere Darstellungs-Modi (siehe VisualizerMode):
 from __future__ import annotations
 
 import random
+import time
 from collections.abc import Callable
 
 from rich.text import Text
@@ -21,6 +22,7 @@ from textual_widgets import ContextMenuItem, ContextMenuScreen
 
 from ..domain.models import VisualizerMode
 from ..i18n import t
+from ..meter import LevelMeter, MeterConfig, PeakTracker
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
 _BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
@@ -28,9 +30,16 @@ _BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
 # Peak-Marker (schwebendes Strichlein ueber dem Balken)
 _PEAK_CHAR = "▔"
 
-# Anzahl Frames die ein Peak oben haelt bevor er faellt
-_PEAK_HOLD_FRAMES = 3
-_PEAK_DECAY = 2  # Stufen pro Tick beim Fallen
+# Zeitverhalten der Anzeige. Die Werte stehen in Dezibel je Sekunde und
+# Sekunden - NICHT in Stufen je Bild. Nur so bleibt das Bild gleich, wenn sich
+# der Takt aendert. Die Vorgaben entsprechen dem frueheren Verhalten bei
+# 12 Bildern je Sekunde (siehe meter.MeterConfig).
+_TICK_SECONDS = 1 / 12
+
+# Die LCD-Anzeige haelt ihre Spitze laenger und laesst sie langsamer fallen
+# als das Balkenspektrum - ein Kassettendeck-Zeiger schwingt traeger.
+_LCD_PEAK_DECAY_DB_PER_S = 30.0
+_LCD_PEAK_HOLD_S = 0.5
 
 # Render-Zeilen
 _NUM_ROWS = 3
@@ -62,7 +71,6 @@ _LCD_BLUE = "#00aaee"
 _LCD_YELLOW = "#ffcc00"
 _LCD_RED = "#ff3333"
 _LCD_DIM = "#2a2a2a"  # Dunkles "Off"-Segment, wirkt wie inaktive LCD-Zellen
-_LCD_PEAK_HOLD_FRAMES = 6  # Peaks halten laenger als bei BARS
 # Gain-Faktor: real existierende Musik erreicht selten den vollen Pegelausschlag.
 # 1.6x Verstaerkung sorgt dafuer, dass auch normale Musik gelb/rot triggert.
 _LCD_GAIN = 1.6
@@ -173,19 +181,24 @@ class Visualizer(Widget):
         **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
+        # Anzeigewerte in Stufen 0.._MAX_LEVEL - nur fuers Zeichnen. Das
+        # Zeitverhalten selbst liegt im oberflaechenfreien LevelMeter.
         self._bars: list[int] = [0] * self.NUM_BARS
         self._peaks: list[int] = [0] * self.NUM_BARS
-        self._peak_hold: list[int] = [0] * self.NUM_BARS
         self._active = False
         self._timer_handle: object | None = None
         self._spectrum_source: Callable[[], list[float]] | None = None
         self._mode = mode
 
-        # LCD-Modus: getrennte Peaks fuer Bass- und Treble-Haelfte
+        self._meter = LevelMeter(self.NUM_BARS, MeterConfig())
+        self._clock: Callable[[], float] = time.monotonic
+
+        # LCD-Modus: getrennte Spitzen fuer Bass- und Treble-Haelfte
+        self._lcd_peak_tracker_l = PeakTracker(_LCD_PEAK_DECAY_DB_PER_S, _LCD_PEAK_HOLD_S)
+        self._lcd_peak_tracker_r = PeakTracker(_LCD_PEAK_DECAY_DB_PER_S, _LCD_PEAK_HOLD_S)
         self._lcd_peak_l: int = 0
         self._lcd_peak_r: int = 0
-        self._lcd_hold_l: int = 0
-        self._lcd_hold_r: int = 0
+        self._lcd_last: float | None = None
 
         # Farben vorberechnen
         self._colors = [_spectral_color(i, self.NUM_BARS) for i in range(self.NUM_BARS)]
@@ -243,65 +256,81 @@ class Visualizer(Widget):
         """Startet die Animation."""
         self._active = True
         if self._timer_handle is None:
-            self._timer_handle = self.set_interval(1 / 12, self._tick)
+            self._timer_handle = self.set_interval(_TICK_SECONDS, self._tick)
 
     def stop(self) -> None:
-        """Stoppt die Animation und setzt Balken zurueck."""
+        """Beendet die Zufuhr - die Anzeige klingt aus, statt einzufrieren.
+
+        Der Zeitgeber laeuft absichtlich weiter, bis alles auf dem Boden liegt
+        (`_tick` haelt ihn dann selbst an). Ein Pegel, der beim Pausieren
+        abrupt auf Null springt, sieht nach Absturz aus statt nach Anhalten.
+        """
         self._active = False
+
+    def reset(self) -> None:
+        """Setzt die Anzeige sofort auf Null - fuer einen Titelwechsel."""
+        self._active = False
+        self._meter.reset()
+        self._lcd_peak_tracker_l.reset()
+        self._lcd_peak_tracker_r.reset()
+        self._lcd_last = None
         self._bars = [0] * self.NUM_BARS
         self._peaks = [0] * self.NUM_BARS
-        self._peak_hold = [0] * self.NUM_BARS
         self._lcd_peak_l = 0
         self._lcd_peak_r = 0
-        self._lcd_hold_l = 0
-        self._lcd_hold_r = 0
+        self._stop_timer()
         self.refresh()
+
+    def _stop_timer(self) -> None:
+        """Haelt den Takt an, sofern einer laeuft."""
+        handle = self._timer_handle
+        self._timer_handle = None
+        if handle is not None and hasattr(handle, "stop"):
+            handle.stop()
 
     def _tick(self) -> None:
-        """Animation-Tick: Balken bewegen sich zu Zielwerten."""
-        if not self._active:
-            return
+        """Ein Bild: neue Werte holen oder ausklingen lassen."""
+        now = self._clock()
 
-        band_values = self._get_band_values()
-
-        for i in range(self.NUM_BARS):
-            target = int(band_values[i] * _MAX_LEVEL)
-
-            # Balken: schnell hoch, mittel runter
-            if target > self._bars[i]:
-                self._bars[i] = min(self._bars[i] + 3, target)
-            else:
-                self._bars[i] = max(self._bars[i] - 2, 0)
-
-            # Peaks: halten, dann langsam fallen
-            if self._bars[i] >= self._peaks[i]:
-                self._peaks[i] = self._bars[i]
-                self._peak_hold[i] = _PEAK_HOLD_FRAMES
-            elif self._peak_hold[i] > 0:
-                self._peak_hold[i] -= 1
-            else:
-                self._peaks[i] = max(self._peaks[i] - _PEAK_DECAY, 0)
-
-        # LCD-Modus: getrennte Peaks fuer Bass-/Treble-Haelfte
-        half = self.NUM_BARS // 2
-        bass = sum(self._bars[:half]) // half if half else 0
-        treble = sum(self._bars[half:]) // (self.NUM_BARS - half) if half < self.NUM_BARS else 0
-        if bass >= self._lcd_peak_l:
-            self._lcd_peak_l = bass
-            self._lcd_hold_l = _LCD_PEAK_HOLD_FRAMES
-        elif self._lcd_hold_l > 0:
-            self._lcd_hold_l -= 1
+        if self._active:
+            self._meter.update(self._get_band_values(), now)
         else:
-            self._lcd_peak_l = max(self._lcd_peak_l - 1, 0)
-        if treble >= self._lcd_peak_r:
-            self._lcd_peak_r = treble
-            self._lcd_hold_r = _LCD_PEAK_HOLD_FRAMES
-        elif self._lcd_hold_r > 0:
-            self._lcd_hold_r -= 1
-        else:
-            self._lcd_peak_r = max(self._lcd_peak_r - 1, 0)
+            self._meter.advance(now)
 
+        self._bars = [round(v * _MAX_LEVEL) for v in self._meter.levels]
+        self._peaks = [round(v * _MAX_LEVEL) for v in self._meter.peaks]
+        self._advance_lcd_peaks(now)
         self.refresh()
+
+        # Erst wenn nichts mehr zu sehen ist, darf der Takt enden. Solange
+        # gespielt wird, laeuft er ohnehin weiter.
+        if not self._active and self._meter.is_idle:
+            self._stop_timer()
+
+    def _advance_lcd_peaks(self, now: float) -> None:
+        """Fuehrt die beiden Spitzen der LCD-Anzeige nach.
+
+        Bass und Treble sind Mittelwerte ueber je eine Haelfte der Baender.
+        Sie bekommen eigene Spitzenverfolger, weil ein Kassettendeck-Zeiger
+        traeger schwingt als ein Balkenspektrum.
+        """
+        vergangen = 0.0 if self._lcd_last is None else max(0.0, now - self._lcd_last)
+        self._lcd_last = now
+
+        pegel = self._meter.levels
+        half = self.NUM_BARS // 2
+        bass = sum(pegel[:half]) / half if half else 0.0
+        treble = sum(pegel[half:]) / (self.NUM_BARS - half) if half < self.NUM_BARS else 0.0
+
+        for verfolger, wert in (
+            (self._lcd_peak_tracker_l, bass),
+            (self._lcd_peak_tracker_r, treble),
+        ):
+            verfolger.advance(now, vergangen)
+            verfolger.bump(wert, now)
+
+        self._lcd_peak_l = round(self._lcd_peak_tracker_l.value * _MAX_LEVEL)
+        self._lcd_peak_r = round(self._lcd_peak_tracker_r.value * _MAX_LEVEL)
 
     def _get_band_values(self) -> list[float]:
         """Holt Band-Werte aus der Datenquelle oder generiert Fake-Werte."""
