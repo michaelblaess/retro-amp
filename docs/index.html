@@ -149,8 +149,8 @@
   <section class="hero">
     <div class="hero-badge"><span class="dot"></span> Terminal Music Player</div>
     <h1>retro<span class="accent">-amp</span></h1>
-    <p class="hero-description">Ein Terminal-Musikplayer mit Retro-Charme — 6 Themes, echter FFT-Visualizer, Lyrics, Playlists. Gebaut mit Python und Textual.</p>
-    <p class="hero-description">Ich wollte einen eigenen Musik-Player programmieren, der auf allen Betriebssystemen laeuft, schnell ist und direkt mit Verzeichnissen und Dateien arbeiten kann. Das Ganze ist Work in Progress und ein Hobbyprojekt — aber es macht Spass, damit Musik zu hoeren.</p>
+    <p class="hero-description">Ein Terminal-Musikplayer mit Retro-Charme — 38 Vintage-Themes, echter FFT-Visualizer, Lyrics, Playlists. Gebaut mit Python und Textual.</p>
+    <p class="hero-description">Ich wollte einen eigenen Musik-Player programmieren, der auf allen Betriebssystemen läuft, schnell ist und direkt mit Verzeichnissen und Dateien arbeiten kann. Das Ganze ist Work in Progress und ein Hobbyprojekt — aber es macht Spaß, damit Musik zu hören.</p>
 
     <div class="hero-actions">
       <a href="https://github.com/michaelblaess/retro-amp" class="btn btn-primary">
@@ -171,7 +171,7 @@
   <section class="section" id="screenshots">
     <div class="section-label">Screenshots</div>
     <h2 class="section-title">retro-amp in Aktion</h2>
-    <p class="section-description">6 charmante Themes — von C64 ueber Amiga bis BeOS. Jeder Bildschirm ein Stueck Computergeschichte.</p>
+    <p class="section-description">38 Vintage-Themes — vom 8-Bit-Heimcomputer über Phosphor-Terminals bis zur Unix-Workstation. Jeder Bildschirm ein Stück Computergeschichte.</p>
 
     <div class="screenshot-grid">
       <!-- Hero: Pixel-perfect cover rendering via TGP / Sixel -->
@@ -182,15 +182,15 @@
 
       <!-- Main: BeOS theme, full view -->
       <div class="screenshot-card">
-        <img src="screenshots/01-main.png" alt="retro-amp mit BeOS Theme — Lyrics-Ansicht" loading="lazy">
-        <div class="caption">BeOS Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer</div>
+        <img src="screenshots/01-main.png" alt="retro-amp mit BeBox Theme — Lyrics-Ansicht" loading="lazy">
+        <div class="caption">BeBox Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer</div>
       </div>
 
       <!-- IBM + Amiga side by side -->
       <div class="screenshot-pair">
         <div class="screenshot-card">
           <img src="screenshots/02-ibm-theme.png" alt="Classic Terminal Theme — green phosphor" loading="lazy">
-          <div class="caption">Classic Terminal — Phosphor-Gruen, deutsche Lyrics</div>
+          <div class="caption">Classic Terminal — Phosphor-Grün, deutsche Lyrics</div>
         </div>
         <div class="screenshot-card">
           <img src="screenshots/09-amiga-theme.png" alt="Boing Theme" loading="lazy">
@@ -212,7 +212,7 @@
         </div>
         <div class="screenshot-card">
           <img src="screenshots/03-lyrics-german.png" alt="German lyrics translation" loading="lazy">
-          <div class="caption">Lyrics — Deutsche Ubersetzung</div>
+          <div class="caption">Lyrics — Deutsche Übersetzung</div>
         </div>
       </div>
 
@@ -246,38 +246,44 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#127912;</div>
-        <h3>6 Retro-Themes</h3>
-        <p>C64, Amiga Workbench, Atari ST GEM, IBM Terminal, NeXTSTEP, BeOS — mit einem Tastendruck wechseln.</p>
+        <h3>38 Retro-Themes</h3>
+        <p>Brotkasten, Boing, Gemstone, Classic Terminal, Next, BeBox und 32 weitere — mit einem Tastendruck wechseln.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#128200;</div>
         <h3>Spektral-Visualizer</h3>
-        <p>Echte FFT-Analyse, 32 Frequenzbaender, Spektralfarben mit Peak-Hold. Kein numpy noetig.</p>
+        <p>Echte FFT-Analyse, 32 Frequenzbänder, 5 Darstellungsarten. Die Farben kommen aus dem eingestellten Theme, der Pegel fällt in Dezibel je Sekunde. Kein numpy nötig.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127917;</div>
+        <h3>Studio-Optik</h3>
+        <p>Jede selbst gezeichnete Fläche leitet ihre Farben aus dem Theme ab: Pegel, LCD,
+        Transporttasten, Positionsleiste, Trennlinien. Kein Windows-Grau.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#127926;</div>
-        <h3>Lyrics + Ubersetzung</h3>
-        <p>Songtexte automatisch laden — mit deutscher Ubersetzung auf Knopfdruck.</p>
+        <h3>Lyrics + Übersetzung</h3>
+        <p>Songtexte automatisch laden — mit deutscher Übersetzung auf Knopfdruck.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#128214;</div>
         <h3>Artist-Info</h3>
-        <p>Wikipedia-Artikel zum Kuenstler direkt im Player. Automatisch gecached.</p>
+        <p>Wikipedia-Artikel zum Künstler direkt im Player. Automatisch gecached.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#128253;</div>
         <h3>YouTube-Links</h3>
-        <p>Direkte YouTube-Suche zum aktuellen Song — Video, Live, Artist. Ein Klick oeffnet den Browser.</p>
+        <p>Direkte YouTube-Suche zum aktuellen Song — Video, Live, Artist. Ein Klick öffnet den Browser.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#128203;</div>
         <h3>Playlists</h3>
-        <p>Als Markdown gespeichert, menschenlesbar. Favoriten mit einer Taste.</p>
+        <p>In der SQLite-Datenbank gespeichert, Playlists älterer Versionen werden beim Start übernommen. Favoriten mit einer Taste.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#128736;</div>
         <h3>Dateiverwaltung</h3>
-        <p>Umbenennen und Loeschen direkt aus dem Player. Ordner-Browser mit Baumansicht.</p>
+        <p>Umbenennen und Löschen direkt aus dem Player. Ordner-Browser mit Baumansicht.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#127991;</div>
@@ -302,7 +308,7 @@
       <div class="feature-card">
         <div class="feature-icon">&#128221;</div>
         <h3>Debug-Log</h3>
-        <p>Ausfuehrliches Log mit Artist/Titel, Pfaden und Player-Events. Kopierbar in die Zwischenablage.</p>
+        <p>Ausführliches Log mit Artist/Titel, Pfaden und Player-Events. Kopierbar in die Zwischenablage.</p>
       </div>
     </div>
   </section>
@@ -313,37 +319,37 @@
   <section class="section" id="themes">
     <div class="section-label">Themes</div>
     <h2 class="section-title">Computergeschichte im Terminal</h2>
-    <p class="section-description">Mit <code>T</code> durch die Themes wechseln. Jedes Theme basiert auf einem legendaeren System.</p>
+    <p class="section-description">Mit <code>T</code> durch die Themes wechseln. Jedes Theme basiert auf einem legendären System.</p>
 
     <div class="theme-grid">
       <div class="theme-chip">
         <span class="theme-dot" style="background: #6c6cfe"></span>
-        C64
+        Brotkasten
         <span class="theme-year">1982</span>
       </div>
       <div class="theme-chip">
         <span class="theme-dot" style="background: #ff8800"></span>
-        Amiga
+        Boing
         <span class="theme-year">1987</span>
       </div>
       <div class="theme-chip">
         <span class="theme-dot" style="background: #00aa00"></span>
-        Atari ST
+        Gemstone
         <span class="theme-year">1985</span>
       </div>
       <div class="theme-chip">
         <span class="theme-dot" style="background: #33ff33"></span>
-        IBM Terminal
+        Classic Terminal
         <span class="theme-year">1970s</span>
       </div>
       <div class="theme-chip">
         <span class="theme-dot" style="background: #aa88ff"></span>
-        NeXTSTEP
+        Next
         <span class="theme-year">1989</span>
       </div>
       <div class="theme-chip">
         <span class="theme-dot" style="background: #ffcc00"></span>
-        BeOS
+        BeBox
         <span class="theme-year">1995</span>
       </div>
     </div>
@@ -355,7 +361,7 @@
   <section class="section" id="keys">
     <div class="section-label">Keybindings</div>
     <h2 class="section-title">Tastenbelegung</h2>
-    <p class="section-description">Alles per Tastatur — keine Maus noetig.</p>
+    <p class="section-description">Alles per Tastatur — keine Maus nötig.</p>
 
     <table class="keybinding-table">
       <thead>
@@ -363,15 +369,15 @@
       </thead>
       <tbody>
         <tr><td>Space</td><td>Play / Pause</td></tr>
-        <tr><td>+ &minus;</td><td>Lautstaerke</td></tr>
+        <tr><td>+ &minus;</td><td>Lautstärke</td></tr>
         <tr><td>TAB</td><td>Ansicht: Dateien &#8594; Favoriten &#8594; Playlists &#8594; Verlauf</td></tr>
         <tr><td>&#8593; &#8595;</td><td>Navigation in der Liste</td></tr>
-        <tr><td>Enter</td><td>Song abspielen / Ordner oeffnen</td></tr>
-        <tr><td>F</td><td>Favorit hinzufuegen/entfernen</td></tr>
-        <tr><td>P</td><td>Playlist-Menue</td></tr>
+        <tr><td>Enter</td><td>Song abspielen / Ordner öffnen</td></tr>
+        <tr><td>F</td><td>Favorit hinzufügen/entfernen</td></tr>
+        <tr><td>P</td><td>Playlist-Menü</td></tr>
         <tr><td>U</td><td>Datei umbenennen</td></tr>
         <tr><td>G</td><td>Auto-Titel (fehlende Titel ergänzen)</td></tr>
-        <tr><td>DEL</td><td>Datei loeschen</td></tr>
+        <tr><td>DEL</td><td>Datei löschen</td></tr>
         <tr><td>T</td><td>Theme wechseln</td></tr>
         <tr><td>S</td><td>Einstellungen</td></tr>
         <tr><td>I</td><td>Info / About</td></tr>
@@ -382,7 +388,7 @@
         <tr><td>Q</td><td>Beenden</td></tr>
       </tbody>
     </table>
-    <p class="section-description" style="margin-top: 1rem;">Naechster/Vorheriger Track, Seek (5 s) und Globale Suche sind ueber die Steuerleiste und die Suchleiste per Maus erreichbar.</p>
+    <p class="section-description" style="margin-top: 1rem;">Nächster/Vorheriger Track, Seek (5 s) und Globale Suche sind über die Steuerleiste und die Suchleiste per Maus erreichbar.</p>
   </section>
 
   <div class="divider"><div class="divider-line"></div></div>
@@ -443,8 +449,8 @@
     <div class="section-label">Credits</div>
     <h2 class="section-title">Dank an</h2>
     <p class="section-description">
-      Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel wird ermoeglicht durch
-      die grossartige <a href="https://github.com/lnqs/textual-image" target="_blank" rel="noopener">textual-image</a>
+      Pixelgenaues Cover-Rendering via TGP (Kitty-Protokoll) und Sixel wird ermöglicht durch
+      die großartige <a href="https://github.com/lnqs/textual-image" target="_blank" rel="noopener">textual-image</a>
       von <a href="https://github.com/lnqs" target="_blank" rel="noopener">@lnqs</a>.
       Herzlichen Dank!
     </p>
@@ -461,18 +467,18 @@
   <section class="section" id="install">
     <div class="section-label">Installation</div>
     <h2 class="section-title">Schnellstart</h2>
-    <p class="section-description">Waehle deine bevorzugte Installationsmethode.</p>
+    <p class="section-description">Wähle deine bevorzugte Installationsmethode.</p>
 
     <div class="install-grid">
       <div class="install-card">
         <h4>Linux / macOS (One-Click)</h4>
         <div class="install-cmd">curl -fsSL .../install.sh | bash</div>
-        <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0.5rem 0 0;">Keine Abhaengigkeiten noetig</p>
+        <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0.5rem 0 0;">Keine Abhängigkeiten nötig</p>
       </div>
       <div class="install-card">
         <h4>Windows (PowerShell)</h4>
         <div class="install-cmd">irm .../install.ps1 | iex</div>
-        <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0.5rem 0 0;">Kein Python, kein Git noetig</p>
+        <p style="font-size:0.75rem;color:var(--text-tertiary);margin:0.5rem 0 0;">Kein Python, kein Git nötig</p>
       </div>
       <div class="install-card">
         <h4>pip (Python &ge; 3.12)</h4>

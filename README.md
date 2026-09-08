@@ -118,12 +118,13 @@ retro-amp --version           # Show version
 - **Playlist view** — Playlists as a tree, play or remove songs directly
 - **File table** — Right panel with name, format, bitrate, duration, date and size (via mutagen). Clicking a column header sorts by that column, a second click reverses the direction. The ▲/▼ arrow marks the active sort, and the playback order follows the visible sort order.
 - **Audio playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
-- **Spectral visualizer** — Real FFT analysis, 5 display modes (Bars, Blocks, Scope, Matrix, LCD VU meter in cassette-deck style), theme-aware colors. Switch mode by right-clicking the visualizer or configure it in the "Visualizer" settings tab.
+- **Spectral visualizer** — Real FFT analysis, 5 display modes (Bars, Blocks, Scope, Matrix, LCD VU meter in cassette-deck style). Every mode takes its colors from the current theme; the old fixed rainbow is still available as a setting. Switch mode by right-clicking the visualizer or configure it in the "Visualizer" settings tab.
+- **Studio look** — All surfaces drawn by retro-amp itself derive their colors from the theme: level meter, LCD display, transport keys, position and volume bars, separators. Level behavior follows a real peak meter — decay in dB per second (independent of frame rate), peak hold, ring-out on stop instead of a frozen picture.
 - **Synced lyrics** — Time-stamped lyrics from [lrclib.net](https://lrclib.net), color-synced (played/current/upcoming), click-to-seek on any line, auto-scroll with a 3s timeout after manual scrolling
 - **Liner notes** — Wikipedia info on the current artist (key I), cached automatically
 - **Album cover art** — Embedded covers from audio tags (ID3, FLAC, MP4) or image files in the folder (cover.jpg, folder.jpg, etc.), rendered as Unicode half-blocks via [Pillow](https://pillow.readthedocs.io/)
 - **Global search with history** — Search files across the whole library; clicking the search field shows the last 20 queries, typing filters matching entries and highlights hits (persisted in SQLite). Hits appear in the "Search" tab on the left as a tree, grouped by parent directory — when several hits share the same album folder, the path is shown only once.
-- **Playlists** — Stored as Markdown files, default playlist "Favorites"
+- **Playlists** — Stored in the SQLite database, default playlist "Favorites". Markdown playlists from older versions are imported once at startup.
 - **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
 - **38 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Settings dialog** — tabbed settings (key S): library default directory, cover renderer, visualizer mode, database journal mode, history, auto-title (MusicBrainz / AcoustID API key), language, plus a storage tab that opens the data folders (settings.json, database, caches)
@@ -210,21 +211,25 @@ retro-amp registers all themes from the
 - Real FFT-based analysis (stdlib `cmath`, no numpy)
 - 2048-point FFT with Hann window
 - 32 log-scaled frequency bands (20 Hz – 18 kHz)
-- Spectral colors: red (bass) → yellow → green → cyan → blue (treble)
-- Peak-hold with a falling effect
+- Colors from the theme: the bands run as a gradient across the theme's three
+  level colors, so an amber monitor gets an amber meter. The fixed rainbow
+  (red → yellow → green → cyan → blue) remains available for Bars and Scope
+  via the "Rainbow" checkbox in the Visualizer settings tab.
+- Peak meter behavior: bars fall at a fixed rate in **dB per second**, so the
+  picture stays the same regardless of frame rate. A peak is held for at least
+  one analysis window and then falls more slowly than the bar, which keeps the
+  marker visible above it.
+- On stop the display rings out instead of freezing
 - 3-row multi-row display (24 height levels)
 - PCM loading in a background thread
 
 ## Playlists
 
-Playlists are stored as Markdown files in `~/.retro-amp/playlists/`:
+Playlists live in the SQLite database at `~/.retro-amp/retro-amp.db`.
 
-```markdown
-# Favoriten
-
-- D:\Dropbox\MUSIK\Kraftwerk\autobahn.mp3
-- D:\Dropbox\MUSIK\C64\last_ninja.sid
-```
+Earlier versions kept them as Markdown files in `~/.retro-amp/playlists/`.
+Those are imported once at startup and removed afterwards — nothing to do by
+hand.
 
 - `F` — Add/remove a song to favorites
 - `P` — Playlist menu: create a new one, load an existing one, add a song
@@ -276,7 +281,8 @@ src/retro_amp/
 │   ├── audio_player.py    # PygameAudioPlayer
 │   ├── spectrum.py        # SpectrumAnalyzer (FFT)
 │   ├── metadata_reader.py # MutagenMetadataReader + cover-art extraction
-│   ├── playlist_store.py  # MarkdownPlaylistStore
+│   ├── sqlite_playlist_repository.py  # SqlitePlaylistRepository
+│   ├── playlist_migration.py          # one-time import of old .md playlists
 │   ├── settings.py        # JsonSettingsStore
 │   ├── session.py         # Crash recovery (session.json)
 │   └── single_instance.py # Single-instance lock + play request

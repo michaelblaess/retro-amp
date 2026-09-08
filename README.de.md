@@ -118,12 +118,13 @@ retro-amp --version           # Zeigt die Version
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
 - **Datei-Tabelle** — Rechtes Panel mit Name, Format, Bitrate, Dauer, Datum und Größe (via mutagen). Ein Klick auf den Spaltenkopf sortiert nach dieser Spalte, ein zweiter kehrt die Richtung um. Der Pfeil ▲/▼ zeigt die aktive Sortierung, und die Abspiel-Reihenfolge folgt der sichtbaren Sortierung.
 - **Audio-Playback** — MP3, M4A/AAC, OGG/Opus, FLAC, WAV, MOD/XM/S3M, SID (via pygame.mixer + pyogg + ffmpeg)
-- **Spektral-Visualizer** — Echte FFT-Analyse, 5 Darstellungs-Modi (Bars, Blocks, Scope, Matrix, LCD VU-Meter im Kassettendeck-Style), Theme-bewusste Farben. Modus per Right-Click auf den Visualizer wechseln oder im Settings-Tab "Visualizer" konfigurieren.
+- **Spektral-Visualizer** — Echte FFT-Analyse, 5 Darstellungs-Modi (Bars, Blocks, Scope, Matrix, LCD VU-Meter im Kassettendeck-Style). Jeder Modus nimmt seine Farben aus dem eingestellten Theme, der frühere feste Regenbogen bleibt als Einstellung erreichbar. Modus per Rechtsklick auf den Visualizer wechseln oder im Settings-Tab "Visualizer" konfigurieren.
+- **Studio-Optik** — Alle Flächen, die retro-amp selbst zeichnet, leiten ihre Farben aus dem Theme ab: Pegelanzeige, LCD, Transporttasten, Positions- und Lautstärkeleiste, Trennlinien. Das Pegelverhalten folgt einer echten Spitzenanzeige — Abfall in Dezibel je Sekunde (unabhängig von der Bildrate), Haltezeit für die Spitze, Ausklingen beim Anhalten statt eines eingefrorenen Bildes.
 - **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
 - **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Einträge gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach übergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal.
-- **Playlists** — Als Markdown-Dateien gespeichert, Standard-Playlist "Favoriten"
+- **Playlists** — In der SQLite-Datenbank gespeichert, Standard-Playlist "Favoriten". Markdown-Playlists älterer Versionen werden beim Start einmalig übernommen.
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **38 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Einstellungs-Dialog** — Einstellungen in Tabs (Taste S): Default-Musik-Verzeichnis (Bibliothek), Cover-Renderer, Visualizer-Modus, Datenbank-Journal-Modus, Verlauf, Auto-Titel (MusicBrainz / AcoustID-API-Key), Sprache, plus ein Speicherort-Tab, der die Datenordner öffnet (settings.json, Datenbank, Caches)
@@ -210,21 +211,26 @@ retro-amp registriert alle Themes aus dem
 - Echte FFT-basierte Analyse (stdlib `cmath`, kein numpy)
 - 2048-Punkt-FFT mit Hann-Fenster
 - 32 log-skalierte Frequenzbänder (20 Hz – 18 kHz)
-- Spektralfarben: Rot (Bass) → Gelb → Grün → Cyan → Blau (Höhen)
-- Peak-Hold mit fallendem Effekt
+- Farben aus dem Theme: die Bänder verlaufen zwischen den drei Pegelfarben des
+  Themes, ein Bernstein-Monitor bekommt also einen Bernstein-Pegel. Der feste
+  Regenbogen (Rot → Gelb → Grün → Cyan → Blau) bleibt für Bars und Scope über
+  das Häkchen "Regenbogen" im Visualizer-Tab der Einstellungen erreichbar.
+- Verhalten einer echten Spitzenanzeige: die Balken fallen mit einer festen
+  Rate in **Dezibel je Sekunde**, das Bild bleibt damit unabhängig von der
+  Bildrate gleich. Eine Spitze wird mindestens ein Analysefenster lang
+  gehalten und fällt danach langsamer als der Balken, sodass die Marke
+  sichtbar darüber steht.
+- Beim Anhalten klingt die Anzeige aus, statt einzufrieren
 - 3-zeilige Multi-Row-Darstellung (24 Höhenstufen)
 - PCM-Laden im Hintergrund-Thread
 
 ## Playlists
 
-Playlists werden als Markdown-Dateien in `~/.retro-amp/playlists/` gespeichert:
+Playlists liegen in der SQLite-Datenbank unter `~/.retro-amp/retro-amp.db`.
 
-```markdown
-# Favoriten
-
-- D:\Dropbox\MUSIK\Kraftwerk\autobahn.mp3
-- D:\Dropbox\MUSIK\C64\last_ninja.sid
-```
+Frühere Versionen haben sie als Markdown-Dateien in `~/.retro-amp/playlists/`
+abgelegt. Die werden beim Start einmalig übernommen und danach entfernt - von
+Hand ist nichts zu tun.
 
 - `F` — Song zu Favoriten hinzufügen/entfernen
 - `P` — Playlist-Menü: neue erstellen, bestehende laden, Song hinzufügen
@@ -280,7 +286,8 @@ src/retro_amp/
 │   ├── audio_player.py    # PygameAudioPlayer
 │   ├── spectrum.py        # SpectrumAnalyzer (FFT)
 │   ├── metadata_reader.py # MutagenMetadataReader + Cover-Art-Extraktion
-│   ├── playlist_store.py  # MarkdownPlaylistStore
+│   ├── sqlite_playlist_repository.py  # SqlitePlaylistRepository
+│   ├── playlist_migration.py          # einmalige Übernahme alter .md-Playlists
 │   ├── settings.py        # JsonSettingsStore
 │   ├── session.py         # Crash-Recovery (session.json)
 │   └── single_instance.py # Single-Instance Lock + Play-Request
