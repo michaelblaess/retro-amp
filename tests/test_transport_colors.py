@@ -27,7 +27,7 @@ from retro_amp.palette import COLOR_FIELDS, PaletteOverride, SurfacePalette
 from retro_amp.themes import RETRO_THEMES, surface_palette
 from retro_amp.widgets.control_panel import ControlPanel
 from retro_amp.widgets.file_table import FileTable
-from retro_amp.widgets.transport_bar import TransportBar
+from retro_amp.widgets.transport_bar import BLOCK, HANDLE, SHADE, TransportBar
 
 # Auszeichnungen ohne eigene Farbe. `dim` ist bewusst erlaubt: es daempft die
 # Vordergrundfarbe des Themes, bringt also keine eigene mit.
@@ -98,6 +98,58 @@ def _bedienfeld(palette: SurfacePalette, **zustand: object) -> Text:
     ergebnis = widget.render()
     assert isinstance(ergebnis, Text)
     return ergebnis
+
+
+class TestGriff:
+    """Der Griff markiert die Abspielstelle - ohne die Leiste zu verbreitern.
+
+    Die Breite ist keine Kosmetik: `on_click` rechnet eine x-Position ueber
+    `_bar_width` in eine Abspielposition um. Waere der Griff ein zusaetzliches
+    Zeichen, zeigte jeder Klick auf die falsche Stelle.
+    """
+
+    BREITE = 30
+
+    def _leiste(self, fortschritt: float) -> tuple[str, set[str]]:
+        """Zeichnet die Leiste und gibt (Balkenzeichen, benutzte Farben)."""
+        palette = surface_palette("brotkasten")
+        widget = TransportBar()
+        _mit_palette(widget, palette)
+        titel = _titel()
+        widget.update_state(
+            PlayerState(
+                state=PlaybackState.PLAYING,
+                current_track=titel,
+                position_seconds=fortschritt * titel.duration_seconds,
+            )
+        )
+        ergebnis = widget.render()
+        zeile = ergebnis.plain.split("\n")[1]
+        # NICHT auf 30 Zeichen abschneiden: dann waere die Laengenzusicherung
+        # immer erfuellt, auch wenn der Balken in Wahrheit 31 Zeichen breit
+        # ist. Stattdessen den tatsaechlichen Lauf aus Balkenzeichen messen.
+        laenge = 0
+        while laenge < len(zeile) and zeile[laenge] in {BLOCK, SHADE, HANDLE}:
+            laenge += 1
+        return zeile[:laenge], _stil_farben(ergebnis)
+
+    @pytest.mark.parametrize("fortschritt", [0.0, 0.01, 0.5, 0.99, 1.0])
+    def test_breite_bleibt_gleich(self, fortschritt: float) -> None:
+        balken, _ = self._leiste(fortschritt)
+        assert len(balken) == self.BREITE, f"Balken ist {len(balken)} Zeichen breit statt {self.BREITE}"
+
+    def test_griff_steht_an_der_abspielstelle(self) -> None:
+        balken, farben = self._leiste(0.5)
+        palette = surface_palette("brotkasten")
+        assert balken.count(HANDLE) == 1, "es gibt nicht genau einen Griff"
+        assert balken.index(HANDLE) == self.BREITE // 2, "der Griff sitzt nicht an der halben Strecke"
+        assert palette.progress_handle.lower() in farben, "der Griff hat nicht seine eigene Farbe"
+
+    @pytest.mark.parametrize("fortschritt", [0.0, 1.0])
+    def test_an_den_enden_gibt_es_keinen_griff(self, fortschritt: float) -> None:
+        # Am Anfang und am Ende ist keine Grenze zu zeigen.
+        balken, _ = self._leiste(fortschritt)
+        assert HANDLE not in balken
 
 
 class TestTransportleiste:

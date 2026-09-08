@@ -21,7 +21,7 @@ from textual_themes import (
     register_all,
 )
 
-from retro_amp.palette import BasePalette, SurfacePalette, palette_for
+from retro_amp.palette import COLOR_FIELDS, OPACITY_FIELDS, BasePalette, SurfacePalette, palette_for
 
 # ── Default-Theme ──────────────────────────────────────────────────────
 DEFAULT_THEME: str = "brotkasten"
@@ -113,6 +113,31 @@ def surface_palette(name: str) -> SurfacePalette:
 
 _THEMES_BY_NAME: dict[str, Theme] = {theme.name: theme for theme in RETRO_THEMES}
 
+# ── Bruecke in Textuals Stylesheets ───────────────────────────────────
+
+# Praefix aller eigenen CSS-Variablen. Textuals eigene heissen $accent,
+# $panel, $text-muted und so weiter - das Praefix haelt die abgeleiteten
+# Werte davon getrennt und macht im Stylesheet sofort sichtbar, woher eine
+# Farbe kommt.
+CSS_PRAEFIX = "ra-"
+
+
+def css_variables(palette: SurfacePalette) -> dict[str, str]:
+    """Alle Felder der Flaechenpalette als CSS-Variablen.
+
+    Die Namen entstehen mechanisch aus den Feldnamen (`vis_low` wird zu
+    `ra-vis-low`), damit kein Feld beim Ergaenzen vergessen werden kann.
+    Deckkraftwerte kommen als Prozentangabe heraus, weil Textual sie in
+    dieser Form hinter einer Farbe erwartet (`background: $ra-selection 75%`).
+    """
+    werte: dict[str, str] = {}
+    for feld in COLOR_FIELDS:
+        werte[CSS_PRAEFIX + feld.replace("_", "-")] = str(getattr(palette, feld))
+    for feld in OPACITY_FIELDS:
+        anteil = float(getattr(palette, feld))
+        werte[CSS_PRAEFIX + feld.replace("_", "-")] = f"{round(anteil * 100)}%"
+    return werte
+
 
 __all__ = [
     "DEFAULT_THEME",
@@ -120,7 +145,9 @@ __all__ = [
     "RETRO_THEMES",
     "RETRO_THEME_NAMES",
     "THEME_DISPLAY_NAMES",
+    "CSS_PRAEFIX",
     "base_palette",
+    "css_variables",
     "migrate_theme_name",
     "register_all",
     "surface_palette",

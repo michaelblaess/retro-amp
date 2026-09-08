@@ -9,7 +9,14 @@ from textual.widget import Widget
 
 from ..domain.models import PlayerState
 from ..i18n import t
+from ..palette import SurfacePalette
 from .palette_source import PaletteSource
+
+# Zeichen der Leisten. Alle einfach breit, damit das Spaltenraster und die
+# Klick-Zuordnung stimmen.
+BLOCK = chr(0x2588)  # gefuellt
+SHADE = chr(0x2591)  # Laufschiene
+HANDLE = chr(0x2590)  # Griff an der Abspielstelle
 
 _VOL_BAR_WIDTH = 10
 _PADDING_LEFT = 2
@@ -109,8 +116,7 @@ class TransportBar(PaletteSource, Widget):
             self._bar_col = 0
             self._bar_width = 30
             filled = int(state.progress * self._bar_width)
-            text.append("\u2588" * filled, style=colors.progress_played)
-            text.append("\u2591" * (self._bar_width - filled), style=colors.progress_trough)
+            self._append_bar(text, filled, self._bar_width, colors)
 
             time_str = f"  {state.position_display} / {track.duration_display}"
             text.append(time_str, style="dim")
@@ -123,8 +129,7 @@ class TransportBar(PaletteSource, Widget):
 
             vol_pct = int(state.volume * 100)
             vol_bars = int(state.volume * _VOL_BAR_WIDTH)
-            text.append("\u2588" * vol_bars, style=colors.progress_played)
-            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style=colors.progress_trough)
+            self._append_bar(text, vol_bars, _VOL_BAR_WIDTH, colors)
             text.append(f" {vol_pct}%", style="dim")
         else:
             text.append(t("transport.no_track"), style="dim")
@@ -138,11 +143,30 @@ class TransportBar(PaletteSource, Widget):
 
             vol_pct = int(state.volume * 100)
             vol_bars = int(state.volume * _VOL_BAR_WIDTH)
-            text.append("\u2588" * vol_bars, style=colors.progress_played)
-            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style=colors.progress_trough)
+            self._append_bar(text, vol_bars, _VOL_BAR_WIDTH, colors)
             text.append(f" {vol_pct}%", style="dim")
 
         return text
+
+    def _append_bar(self, text: Text, filled: int, width: int, colors: SurfacePalette) -> None:
+        """Haengt eine Leiste aus gespieltem Teil, Griff und Laufschiene an.
+
+        Der Griff ist das erste ungespielte Zeichen: ein schmaler Strich in
+        eigener Farbe an der Abspielstelle, wie die Marke auf einem Regler.
+        Er ersetzt eine Zelle der Schiene und verbreitert die Leiste NICHT -
+        die Zuordnung von Mausklick auf Position rechnet mit `width`.
+
+        Am Anfang (nichts gespielt) und am Ende (alles gespielt) gibt es
+        keinen Griff, weil dort keine Grenze zu zeigen ist.
+        """
+        rest = width - filled
+        text.append(BLOCK * filled, style=colors.progress_played)
+        if rest <= 0:
+            return
+        if filled > 0:
+            text.append(HANDLE, style=colors.progress_handle)
+            rest -= 1
+        text.append(SHADE * rest, style=colors.progress_trough)
 
     def on_click(self, event: Click) -> None:
         """Mausklick auf Volume-Bar oder Fortschrittsbalken verarbeiten."""

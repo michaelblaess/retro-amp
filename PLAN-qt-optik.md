@@ -140,6 +140,30 @@ Der Zugriff liegt einmal in `widgets/palette_source.py` (Mischklasse
 Themewechsel von allein bis in die Leiste durchschlägt - die zeichnet, anders
 als der Visualizer, nur auf Anlass.
 
+**Nachtrag: der Satz steht auch in Textuals Stylesheets.** Selbstgezeichnete
+Flächen holen ihre Farben aus dem Malcode, alles andere beschreibt CSS - und das
+kannte nur die elf Grundfarben. `RetroAmpApp.get_css_variables` ergänzt die
+abgeleiteten Werte, jedes Feld als `$ra-...`, die Namen mechanisch aus den
+Feldnamen gebildet. Damit ist `SurfacePalette` die einzige Stelle, an der eine
+Farbe entsteht, egal ob sie später gezeichnet oder beschrieben wird.
+
+Die Widgets behalten in ihrem `DEFAULT_CSS` Textuals Grundfarben, damit sie ohne
+diese Anwendung lauffähig bleiben. Übersteuert wird in `app.tcss` - dort stehen
+die Trennlinien (`$ra-divider` statt voller Akzentfarbe), die Titelzeile der
+Dateiliste (`$ra-header` statt eines hellen Akzentbalkens) und die Auswahl der
+Schnellwahl (`$ra-selection`).
+
+Zwei Punkte aus Abschnitt 1.4 sind damit ebenfalls erledigt:
+
+- Die **Spitzenmarke** fällt mit 16 dB/s statt im Gleichlauf mit dem Balken.
+  Erst dadurch steht sie sichtbar über dem Pegel, statt nur während der
+  Haltezeit aufzutauchen. Der Takt läuft nach dem Anhalten entsprechend länger
+  nach, sichtbar ist in dieser Zeit nur noch die fallende Marke.
+- Die Positions- und die Lautstärkeleiste haben einen **Griff** an der
+  Abspielstelle (`$ra-progress-handle`), gezeichnet als schmaler Strich, der
+  eine Zelle der Laufschiene ersetzt. Die Leiste wird dadurch nicht breiter -
+  ein Test hält das fest, weil `on_click` aus der Breite die Position rechnet.
+
 ### Schritt 2: den Satz aus Textual lösen (ebenfalls textual-themes)
 
 Solange die Themedaten `textual.theme.Theme`-Objekte **sind**, kann eine

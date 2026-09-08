@@ -44,8 +44,8 @@ Screen {
 #transport-row {
     height: 5;
     layout: horizontal;
-    border-top: solid $accent;
-    border-bottom: solid $accent;
+    border-top: solid $ra-divider;
+    border-bottom: solid $ra-divider;
 }
 
 #left-tabs {
@@ -83,7 +83,7 @@ Screen {
     height: 1fr;
     min-height: 5;
     max-height: 30;
-    border-top: solid $accent;
+    border-top: solid $ra-divider;
     background: $surface;
     padding: 0 1;
     display: none;
@@ -97,4 +97,34 @@ Screen {
    die Titelzeile (Splitter) bleibt als schmale Leiste sichtbar. */
 #app-log.visible.collapsed {
     display: none;
+}
+
+/* ── Abgeleitete Flaechenfarben ($ra-*) ──────────────────────────────
+   Die Widgets bringen in ihrem DEFAULT_CSS Textuals Grundfarben mit, damit
+   sie auch ausserhalb dieser Anwendung laufen (die Tests bauen sie in eine
+   nackte App). Hier werden sie ueberschrieben - das App-Stylesheet sticht
+   das DEFAULT_CSS eines Widgets.
+
+   Warum ueberhaupt: eine Trennlinie in voller Akzentfarbe ist der
+   Bueroschreibtisch-Eindruck, von dem die Optik wegsoll. `$ra-divider` ist
+   dieselbe Linie als ruhige Rille - sichtbar, aber leiser als die Schrift,
+   und ein Test haelt genau das fest. */
+
+ControlPanel {
+    border-right: solid $ra-divider;
+}
+
+Visualizer {
+    border-right: solid $ra-divider;
+}
+
+/* Die Titelzeile der Dateiliste war ein voller Akzentbalken. Als Flaeche in
+   Panel-Ton traegt sie dieselbe Angabe, ohne den Blick zu ziehen. */
+FileTable #file-info {
+    background: $ra-header;
+    color: $text;
+}
+
+QuickJumpItem:hover {
+    background: $ra-selection;
 }

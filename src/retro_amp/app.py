@@ -76,7 +76,9 @@ from .themes import (
     RETRO_THEME_NAMES,
     RETRO_THEMES,
     THEME_DISPLAY_NAMES,
+    css_variables,
     migrate_theme_name,
+    surface_palette,
 )
 from .widgets.control_panel import ControlPanel
 from .widgets.cover_art_panel import CoverArtPanel
@@ -2687,6 +2689,26 @@ class RetroAmpApp(CrashGuard, App):
         settings = self._settings_store.load()
         settings["volume"] = self._player_service.state.volume
         self._settings_store.save(settings)
+
+    def get_css_variables(self) -> dict[str, str]:
+        """Ergaenzt die abgeleiteten Flaechenfarben um Textuals CSS-Variablen.
+
+        Textual stellt die elf Grundfarben des Themes bereit ($accent, $panel,
+        $text-muted und so weiter). Alles, was daraus abgeleitet ist, kannte
+        bisher nur der Malcode der selbstgezeichneten Widgets. Hier kommt es
+        zusaetzlich in die Stylesheets - unter dem Praefix `ra-`, damit die
+        Herkunft im Stylesheet ablesbar bleibt und nichts mit Textuals eigenen
+        Namen kollidiert.
+
+        Textual ruft diese Methode bei jedem Themewechsel erneut auf, die
+        Werte ziehen also von selbst nach.
+        """
+        variablen = super().get_css_variables()
+        try:
+            flaechen = surface_palette(str(self.theme))
+        except Exception:
+            return variablen
+        return {**variablen, **css_variables(flaechen)}
 
     def watch_theme(self, theme_name: str) -> None:
         """Persistiert jede Theme-Aenderung und aktualisiert die Titelzeile.

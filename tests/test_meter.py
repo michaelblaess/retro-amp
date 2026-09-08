@@ -117,6 +117,18 @@ class TestSpitzen:
         meter.advance(jetzt + 0.04)
         assert meter.peaks[0] == pytest.approx(oben)
 
+    def test_spitze_steht_sichtbar_ueber_dem_balken(self) -> None:
+        # Der Sinn der langsameren Spitzenrate: wenn der Balken schon unten
+        # ist, steht die Marke noch. Mit Gleichlauf (dem frueheren Wert) waeren
+        # beide zugleich am Boden, und die Marke waere nur waehrend der
+        # Haltezeit ueberhaupt zu sehen.
+        meter = LevelMeter(1)
+        jetzt = _voll(meter)
+        # 60 dB/s Balkenabfall heisst: nach einer Sekunde ist er auf Null.
+        meter.advance(jetzt + 1.2)
+        assert meter.levels[0] == 0.0, "der Balken haengt noch - Messpunkt taugt nicht"
+        assert meter.peaks[0] > 0.3, f"die Marke ist mitgefallen ({meter.peaks[0]:.3f})"
+
     def test_spitze_liegt_nie_unter_dem_balken(self) -> None:
         meter = LevelMeter(8)
         jetzt = 0.0

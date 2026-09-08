@@ -155,7 +155,9 @@ class TestAusklingenIstSichtbar:
             widget._tick()
 
         widget.stop()
-        for _ in range(40):
+        # Bilderzahl aus der Ausklingdauer, nicht geraten - sie haengt an der
+        # langsamsten Abfallrate und aendert sich mit ihr.
+        for _ in range(int(widget._meter.ring_out_seconds * 12) + 2):
             jetzt["t"] += 1 / 12
             widget._tick()
 

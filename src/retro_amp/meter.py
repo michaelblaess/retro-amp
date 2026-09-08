@@ -60,11 +60,16 @@ class MeterConfig:
 
     attack_db_per_s: float = 90.0
     bar_decay_db_per_s: float = 60.0
-    # Gleich schnell wie der Balken - das ist der Bestandswert. Eine echte
-    # Spitzenanzeige faellt ueblicherweise deutlich langsamer (12 bis 20 dB/s),
-    # dann steht die Marke sichtbar ueber dem Balken statt nur waehrend der
-    # Haltezeit. Das ist eine Geschmacksentscheidung, keine Fehlerbehebung.
-    peak_decay_db_per_s: float = 60.0
+    # Deutlich langsamer als der Balken, wie bei einer echten Spitzenanzeige
+    # (ueblich sind 12 bis 20 dB/s). Damit steht die Marke sichtbar ueber dem
+    # Balken, statt mit ihm zu fallen und nur waehrend der Haltezeit
+    # aufzutauchen. Der Bestandswert waren 60 dB/s, also Gleichlauf.
+    #
+    # Folge fuers Ausklingen: `ring_out_seconds` richtet sich nach der
+    # langsameren der beiden Raten, der Takt laeuft nach dem Anhalten also
+    # laenger weiter (rund vier statt gut einer Sekunde). Sichtbar ist in
+    # dieser Zeit nur noch die fallende Marke.
+    peak_decay_db_per_s: float = 16.0
     peak_hold_s: float = 0.25
     window_s: float = DEFAULT_WINDOW_S
 

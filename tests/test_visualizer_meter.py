@@ -90,7 +90,9 @@ class TestAusklingen:
         stand = Pruefstand()
         stand.bilder(20)
         stand.widget.stop()
-        stand.bilder(40)
+        # Die Bilderzahl aus der Ausklingdauer ableiten statt sie zu raten:
+        # die haengt an der langsamsten Abfallrate, und die aendert sich.
+        stand.bilder(int(stand.widget._meter.ring_out_seconds * 12) + 2)
 
         assert stand.hoechster_balken == 0
         assert stand.hoechste_spitze == 0
