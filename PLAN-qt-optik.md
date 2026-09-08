@@ -112,6 +112,34 @@ Dazu die drei Deckkraftwerte aus Abschnitt 1.2 statt eigener Zustandsfarben.
 tragen exakt denselben Schlüsselsatz. Fehlt einem Theme ein Schlüssel, ist der
 Test rot. Die heutige Lage - 6 von 40 - wäre damit sofort sichtbar.
 
+**Stand 08.09.2026 - umgesetzt, aber in retro-amp statt in textual-themes.**
+Der Grund steht in Abschnitt 4: Audacitys 92-Schlüssel-Dateien liegen in der
+Anwendung, nicht im Rahmenwerk. Der Satz ist `SurfacePalette` in
+`src/retro_amp/palette.py` - 22 Werte, aus den elf Grundfarben abgeleitet,
+Vollständigkeit über den Typ statt über eine Prüfung zur Laufzeit.
+
+Er wird inzwischen überall dort gezogen, wo vorher feste Farben im Malcode
+standen:
+
+| Fläche | vorher | jetzt |
+| --- | --- | --- |
+| Visualizer, alle fünf Modi | fester Regenbogen, Ampelfarben | Bandverlauf aus dem Theme |
+| Positions- und Lautstärkeleiste | `green` auf `dim` | `progress_played` auf `progress_trough` |
+| Statusanzeige läuft/angehalten | `green` / `yellow` | `accent_on` / `accent_hold` |
+| Tastenkappen, eingeschaltet | `green`/`cyan`/`magenta`/`red` | `accent_on`, `transport_active`, `accent_hot` |
+| Tastenkappen, Rahmen und Hover | `dim` und eine eigene Rechnung | `divider` und `transport_hover` |
+| Wiedergabemarke in der Dateiliste | `bold green` | `bold accent_on` |
+
+Drei Felder kamen dabei hinzu, die beim Entwurf noch fehlten: `accent_on`,
+`accent_hold` und `accent_hot` für Glyphen und Marken. Sie sind bewusst nicht
+dieselben Felder wie die Pegelfarben des Visualizers - eine Ausnahme am
+Visualizer soll die Transportleiste nicht mitziehen.
+
+Der Zugriff liegt einmal in `widgets/palette_source.py` (Mischklasse
+`PaletteSource`) statt in jedem Widget erneut. Ein Test hält fest, dass ein
+Themewechsel von allein bis in die Leiste durchschlägt - die zeichnet, anders
+als der Visualizer, nur auf Anlass.
+
 ### Schritt 2: den Satz aus Textual lösen (ebenfalls textual-themes)
 
 Solange die Themedaten `textual.theme.Theme`-Objekte **sind**, kann eine

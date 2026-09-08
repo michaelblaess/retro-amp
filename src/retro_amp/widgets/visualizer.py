@@ -27,7 +27,7 @@ from ..domain.models import VisualizerMode
 from ..i18n import t
 from ..meter import LevelMeter, MeterConfig, PeakTracker
 from ..palette import SurfacePalette, gradient
-from ..themes import surface_palette
+from .palette_source import PaletteSource
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
 _BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
@@ -119,7 +119,7 @@ def _lcd_segment_color(seg_idx: int, total: int, palette: SurfacePalette) -> str
     return palette.vis_high
 
 
-class Visualizer(Widget):
+class Visualizer(PaletteSource, Widget):
     """Equalizer-Visualizer mit konfigurierbarem Darstellungs-Modus.
 
     Nutzt entweder echte FFT-Daten (via spectrum_source Callback)
@@ -166,11 +166,6 @@ class Visualizer(Widget):
 
         self._meter = LevelMeter(self.NUM_BARS, MeterConfig())
         self._clock: Callable[[], float] = time.monotonic
-
-        # Flaechenfarben des aktuellen Themes. Wird beim Zeichnen nachgezogen,
-        # sobald sich der Theme-Name aendert - kein Malcode kennt eine Farbe.
-        self._palette_name = ""
-        self._palette: SurfacePalette = surface_palette("")
 
         # Farbe je Band fuer BARS und SCOPE. Standard ist ein Verlauf aus den
         # drei Pegelstufen des Themes. Der Regenbogen ist die frueher fest
@@ -573,22 +568,9 @@ class Visualizer(Widget):
 
         return self._join_lines([line_top, line_mid, line_bot])
 
-    def palette(self) -> SurfacePalette:
-        """Flaechenfarben des aktuell eingestellten Themes.
-
-        Wird nach dem Theme-Namen zwischengespeichert, damit die Ableitung
-        nicht bei jedem Bild erneut laeuft. Ohne laufende App - beim Start
-        oder in Tests - liefert `surface_palette` das Standard-Theme.
-        """
-        try:
-            name = str(self.app.theme)
-        except Exception:
-            name = ""
-        if name != self._palette_name:
-            self._palette_name = name
-            self._palette = surface_palette(name)
-            self._rebuild_band_colors()
-        return self._palette
+    def _palette_changed(self) -> None:
+        """Neues Theme - der Bandverlauf wird neu aufgespannt."""
+        self._rebuild_band_colors()
 
     def band_colors(self) -> list[str]:
         """Farbe je Band. Zieht dabei einen Theme-Wechsel nach."""

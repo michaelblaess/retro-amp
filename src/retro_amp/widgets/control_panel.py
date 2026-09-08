@@ -22,12 +22,13 @@ from __future__ import annotations
 
 from rich.text import Text
 from textual.app import RenderResult
-from textual.color import Color
 from textual.events import Click, Leave, MouseMove
 from textual.message import Message
 from textual.widget import Widget
 
 from ..domain.models import RepeatMode
+from ..palette import SurfacePalette
+from .palette_source import PaletteSource
 
 # Linker Innenabstand (CSS padding: 0 2) — muss beim Klick-Mapping abgezogen
 # werden, weil ``event.offset.x`` das Padding mitzaehlt.
@@ -36,14 +37,11 @@ _PAD_LEFT = 2
 # Luecke (Spalten) zwischen Transport- und Mode-Gruppe.
 _GAP = 1
 
-# Stil der Tastenkappen-Rahmen (Box-Drawing) — dezent, damit die Glyphen tragen.
-_FRAME = "dim"
-
 # Grundstil der nicht-leuchtenden Glyphen.
 _BASE = ""
 
 
-class ControlPanel(Widget):
+class ControlPanel(PaletteSource, Widget):
     """Keycap-Deck mit Transport- und Mode-Tasten.
 
     Layout (3 Zeilen hoch), jede Taste eine eigene, direkt anschliessende Box::
@@ -52,9 +50,10 @@ class ControlPanel(Widget):
         │|◄ ││◄◄ ││ ▶ ││►► ││►| ││ ■ │ │SHUF ││ RPT ││  ♥  │
         └───┘└───┘└───┘└───┘└───┘└───┘ └─────┘└─────┘└─────┘
 
-    Aktive Tasten faerben ihr Glyph farbig (laufende Wiedergabe gelb, Shuffle/
-    Repeat/Favorit gruen/cyan/magenta/rot). Beim Hover wird die GANZE Kachel
-    dezent getoent (Rahmen + Hintergrund).
+    Aktive Tasten faerben ihr Glyph mit einer Farbe des eingestellten Themes
+    (Handlung anhalten/weiter, eingeschalteter Umschalter, gesetzter Favorit).
+    Beim Hover wird die GANZE Kachel dezent getoent (Rahmen + Hintergrund).
+    Keine Farbe steht in diesem Modul - alle kommen aus `SurfacePalette`.
     """
 
     DEFAULT_CSS = """
@@ -126,10 +125,12 @@ class ControlPanel(Widget):
         bot = Text(no_wrap=True)
         regions: list[tuple[int, int, str]] = []
 
-        hover_bg = self._hover_bg()
+        colors = self.palette()
+        hover_bg = colors.transport_hover
+        frame = colors.divider
 
         x = 0
-        x = self._emit_group(top, mid, bot, regions, self._transport_keys(), hover_bg, x)
+        x = self._emit_group(top, mid, bot, regions, self._transport_keys(colors), hover_bg, frame, x)
 
         gap = " " * _GAP
         top.append(gap)
@@ -137,7 +138,7 @@ class ControlPanel(Widget):
         bot.append(gap)
         x += _GAP
 
-        self._emit_group(top, mid, bot, regions, self._mode_keys(), hover_bg, x)
+        self._emit_group(top, mid, bot, regions, self._mode_keys(colors), hover_bg, frame, x)
         self._regions = regions
 
         result = Text(no_wrap=True)
@@ -156,6 +157,7 @@ class ControlPanel(Widget):
         regions: list[tuple[int, int, str]],
         keys: list[tuple[str, str, str, str]],
         hover_bg: str,
+        frame: str,
         start_x: int,
     ) -> int:
         """Haengt eine Tastengruppe als getrennte Boxen an die drei Zeilen an.
@@ -172,7 +174,7 @@ class ControlPanel(Widget):
         for action, interior, mode, color in keys:
             width = len(interior)
             box_width = width + 2
-            border_style, glyph_style = self._styles_for(action, mode, color, hover_bg)
+            border_style, glyph_style = self._styles_for(action, mode, color, hover_bg, frame)
 
             top.append("┌" + "─" * width + "┐", style=border_style)
             mid.append("│", style=border_style)
@@ -184,7 +186,7 @@ class ControlPanel(Widget):
             x += box_width
         return x
 
-    def _styles_for(self, action: str, mode: str, color: str, hover_bg: str) -> tuple[str, str]:
+    def _styles_for(self, action: str, mode: str, color: str, hover_bg: str, frame: str) -> tuple[str, str]:
         """Liefert (Rahmen-Stil, Glyph-Stil) je nach Zustand und Hover.
 
         - Hover: ganze Kachel dezent getoent (Rahmen + Inneres), Glyph fett.
@@ -199,12 +201,12 @@ class ControlPanel(Widget):
             glyph = f"bold {glyph_color} {tint}".replace("  ", " ").strip()
             return tint, glyph
         if mode == "active":
-            return _FRAME, f"bold {color}"
+            return frame, f"bold {color}"
         if mode == "muted":
-            return _FRAME, "dim"
-        return _FRAME, _BASE
+            return frame, "dim"
+        return frame, _BASE
 
-    def _transport_keys(self) -> list[tuple[str, str, str, str]]:
+    def _transport_keys(self, colors: SurfacePalette) -> list[tuple[str, str, str, str]]:
         """Transport-Tasten (Innenbreite 3): (action, interior, mode, color).
 
         ``mode`` ist "active" (farbiges Glyph), "muted" (gedimmt) oder "normal".
@@ -212,10 +214,10 @@ class ControlPanel(Widget):
         if self._is_playing:
             # Laeuft → Pause-Symbol (zwei zentrierte Vollbalken mit Luecke),
             # gelb. Kein Voll-Kasten mehr — nur das Glyph faerbt sich.
-            play_pause = ("play_pause", "┃ ┃", "active", "yellow")
+            play_pause = ("play_pause", "┃ ┃", "active", colors.accent_hold)
         elif self._is_paused:
             # Pausiert → Play-Symbol, gruen.
-            play_pause = ("play_pause", " ▶ ", "active", "green")
+            play_pause = ("play_pause", " ▶ ", "active", colors.accent_on)
         else:
             play_pause = ("play_pause", " ▶ ", "normal", "")
 
@@ -230,45 +232,35 @@ class ControlPanel(Widget):
             ("stop", " ■ ", stop_mode, ""),
         ]
 
-    def _mode_keys(self) -> list[tuple[str, str, str, str]]:
-        """Mode-Tasten (Innenbreite 5): aktiv = farbiges Glyph, aus = dim-Label."""
+    def _mode_keys(self, colors: SurfacePalette) -> list[tuple[str, str, str, str]]:
+        """Mode-Tasten (Innenbreite 5): aktiv = farbiges Glyph, aus = dim-Label.
+
+        Eingeschaltete Umschalter tragen dieselbe Akzentfarbe des Themes -
+        was sie unterscheidet, steht als Beschriftung darin (SHUF, RPT, RPT1).
+        Frueher waren es feste Farben der Terminal-Palette, in jedem Theme
+        dieselben.
+        """
         shuffle = (
-            ("shuffle", "SHUF".center(5), "active", "green")
+            ("shuffle", "SHUF".center(5), "active", colors.accent_on)
             if self._shuffle_on
             else ("shuffle", "SHUF".center(5), "muted", "")
         )
 
         if self._repeat_mode == RepeatMode.ALL:
-            repeat = ("repeat", "RPT".center(5), "active", "cyan")
+            repeat = ("repeat", "RPT".center(5), "active", colors.transport_active)
         elif self._repeat_mode == RepeatMode.ONE:
             # "RPT1" signalisiert Repeat-One (vs. Repeat-All).
-            repeat = ("repeat", "RPT1".center(5), "active", "magenta")
+            repeat = ("repeat", "RPT1".center(5), "active", colors.transport_active)
         else:
             repeat = ("repeat", "RPT".center(5), "muted", "")
 
         favorite = (
-            ("favorite", "♥".center(5), "active", "red")
+            ("favorite", "♥".center(5), "active", colors.accent_hot)
             if self._is_favorite
             else ("favorite", "♥".center(5), "muted", "")
         )
 
         return [shuffle, repeat, favorite]
-
-    # --- Hover ---
-
-    def _hover_bg(self) -> str:
-        """Theme-aware Hover-Hintergrund: $primary zu ~30% in den Panel-Ton geblendet.
-
-        Liefert einen Hex-String fuer Rich-Style. Faellt bei Problemen auf einen
-        dezenten Grauton zurueck, damit das Rendern nie scheitert.
-        """
-        try:
-            theme = self.app.current_theme
-            primary = Color.parse(theme.primary)
-            base = Color.parse(theme.panel or theme.surface or theme.background or "#000000")
-            return base.blend(primary, 0.3).hex
-        except Exception:
-            return "grey30"
 
     # --- Interaktion ---
 

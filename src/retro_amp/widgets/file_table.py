@@ -17,6 +17,7 @@ from textual.widgets.data_table import ColumnKey
 
 from ..domain.models import AudioTrack
 from ..i18n import t
+from .palette_source import PaletteSource
 
 
 class FileDataTable(DataTable[Any]):
@@ -106,7 +107,7 @@ def _format_size(total_bytes: int) -> str:
     return f"{total_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 
-class FileTable(Widget):
+class FileTable(PaletteSource, Widget):
     """Tabelle mit Audio-Dateien: Name, Format, Bitrate, Dauer, Datum, Groesse."""
 
     DEFAULT_CSS = """
@@ -314,7 +315,7 @@ class FileTable(Widget):
         if path and self._name_col_key is not None:
             for track in self._filtered_tracks:
                 if track.path == path:
-                    styled = Text(f"\u25b6 {track.display_name}", style="bold green")
+                    styled = Text(f"\u25b6 {track.display_name}", style=f"bold {self.palette().accent_on}")
                     with contextlib.suppress(Exception):
                         table.update_cell(
                             str(path),
@@ -370,5 +371,5 @@ class FileTable(Widget):
     def _format_name(self, track: AudioTrack) -> str | Text:
         """Formatiert den Namen — mit Pfeil wenn gerade gespielt wird."""
         if self._playing_path and track.path == self._playing_path:
-            return Text(f"\u25b6 {track.display_name}", style="bold green")
+            return Text(f"\u25b6 {track.display_name}", style=f"bold {self.palette().accent_on}")
         return track.display_name

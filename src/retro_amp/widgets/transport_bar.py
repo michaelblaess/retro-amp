@@ -9,12 +9,13 @@ from textual.widget import Widget
 
 from ..domain.models import PlayerState
 from ..i18n import t
+from .palette_source import PaletteSource
 
 _VOL_BAR_WIDTH = 10
 _PADDING_LEFT = 2
 
 
-class TransportBar(Widget):
+class TransportBar(PaletteSource, Widget):
     """Zeigt den aktuellen Player-Status mit Fortschrittsbalken."""
 
     DEFAULT_CSS = """
@@ -65,14 +66,15 @@ class TransportBar(Widget):
         # die Breite leicht ueberschiesst (z.B. wegen Wide-Chars im Titel).
         text = Text(no_wrap=True, overflow="ellipsis")
         state = self._state
+        colors = self.palette()
 
         # Zeile 1: Status-Icon + Track-Info
         if state.is_playing:
             icon = "▶ "
-            icon_style = "bold green"
+            icon_style = f"bold {colors.accent_on}"
         elif state.is_paused:
             icon = "▐▐"
-            icon_style = "bold yellow"
+            icon_style = f"bold {colors.accent_hold}"
         else:
             icon = "■ "
             icon_style = "dim"
@@ -107,8 +109,8 @@ class TransportBar(Widget):
             self._bar_col = 0
             self._bar_width = 30
             filled = int(state.progress * self._bar_width)
-            text.append("\u2588" * filled, style="green")
-            text.append("\u2591" * (self._bar_width - filled), style="dim")
+            text.append("\u2588" * filled, style=colors.progress_played)
+            text.append("\u2591" * (self._bar_width - filled), style=colors.progress_trough)
 
             time_str = f"  {state.position_display} / {track.duration_display}"
             text.append(time_str, style="dim")
@@ -121,8 +123,8 @@ class TransportBar(Widget):
 
             vol_pct = int(state.volume * 100)
             vol_bars = int(state.volume * _VOL_BAR_WIDTH)
-            text.append("\u2588" * vol_bars, style="green")
-            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style="dim")
+            text.append("\u2588" * vol_bars, style=colors.progress_played)
+            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style=colors.progress_trough)
             text.append(f" {vol_pct}%", style="dim")
         else:
             text.append(t("transport.no_track"), style="dim")
@@ -136,8 +138,8 @@ class TransportBar(Widget):
 
             vol_pct = int(state.volume * 100)
             vol_bars = int(state.volume * _VOL_BAR_WIDTH)
-            text.append("\u2588" * vol_bars, style="green")
-            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style="dim")
+            text.append("\u2588" * vol_bars, style=colors.progress_played)
+            text.append("\u2591" * (_VOL_BAR_WIDTH - vol_bars), style=colors.progress_trough)
             text.append(f" {vol_pct}%", style="dim")
 
         return text

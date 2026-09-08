@@ -150,6 +150,10 @@ class TestKontrast:
     LCD_MINDESTKONTRAST = 3.0
     # Der Griff muss sich von seiner Rinne abheben, sonst sieht man ihn nicht.
     GRIFF_MINDESTKONTRAST = 1.6
+    # Farbige Glyphen (Transporttasten, Wiedergabemarke) auf dem Grund.
+    GLYPH_MINDESTKONTRAST = 3.0
+    # Der gefuellte Teil der Positions- und Lautstaerkeleiste.
+    BALKEN_MINDESTKONTRAST = 2.0
 
     def test_lcd_ist_lesbar(self) -> None:
         schwach = [
@@ -168,6 +172,43 @@ class TestKontrast:
             if contrast_ratio(p.progress_handle, p.progress_trough) < self.GRIFF_MINDESTKONTRAST
         ]
         assert not schwach, f"Griff unter {self.GRIFF_MINDESTKONTRAST}:1 gegen die Rinne:\n" + "\n".join(schwach)
+
+    def test_zustandsfarben_sind_auf_dem_grund_lesbar(self) -> None:
+        # Transporttasten und Wiedergabemarke zeichnen ohne eigene Flaeche,
+        # also auf dem Grund des Bildschirms. 3.0:1 ist die WCAG-Schwelle fuer
+        # grosse Schrift und grafische Elemente.
+        schwach: list[str] = []
+        for name, palette in ALLE_PALETTEN:
+            theme = next(t for t in RETRO_THEMES if t.name == name)
+            grund = base_palette(theme).background
+            for feld in ("accent_on", "accent_hold", "accent_hot"):
+                wert = contrast_ratio(getattr(palette, feld), grund)
+                if wert < self.GLYPH_MINDESTKONTRAST:
+                    schwach.append(f"{name}.{feld}: {wert:.2f}:1")
+        assert not schwach, f"Zustandsfarbe unter {self.GLYPH_MINDESTKONTRAST}:1 gegen den Grund:\n" + "\n".join(
+            schwach
+        )
+
+    def test_gefuellter_balken_ist_auf_dem_grund_sichtbar(self) -> None:
+        schwach: list[str] = []
+        for name, palette in ALLE_PALETTEN:
+            theme = next(t for t in RETRO_THEMES if t.name == name)
+            grund = base_palette(theme).background
+            wert = contrast_ratio(palette.progress_played, grund)
+            if wert < self.BALKEN_MINDESTKONTRAST:
+                schwach.append(f"{name}: {wert:.2f}:1")
+        assert not schwach, f"Balken unter {self.BALKEN_MINDESTKONTRAST}:1 gegen den Grund:\n" + "\n".join(schwach)
+
+    def test_laufschiene_ist_sichtbar_aber_leiser_als_der_balken(self) -> None:
+        # Die Laufschiene wird als Schraffur gezeichnet: man muss sie sehen,
+        # aber sie darf dem gefuellten Teil nicht die Schau stehlen.
+        for name, palette in ALLE_PALETTEN:
+            theme = next(t for t in RETRO_THEMES if t.name == name)
+            grund = base_palette(theme).background
+            schiene = contrast_ratio(palette.progress_trough, grund)
+            balken = contrast_ratio(palette.progress_played, grund)
+            assert schiene > 1.05, f"{name}: Laufschiene unsichtbar ({schiene:.2f}:1)"
+            assert schiene < balken, f"{name}: Laufschiene lauter als der Balken"
 
     def test_trennlinie_ist_sichtbar_aber_nicht_laut(self) -> None:
         # Eine Trennlinie soll man sehen und nicht lesen: genug Abstand zum

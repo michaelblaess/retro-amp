@@ -161,6 +161,13 @@ class SurfacePalette:
     transport_hover: str
     transport_active: str
 
+    # Zustaende von Glyphen und Marken: eingeschaltet, angehalten, markiert.
+    # Bewusst eigene Felder und nicht die Pegelfarben mitbenutzt - eine
+    # Ausnahme am Visualizer darf die Transportleiste nicht mitziehen.
+    accent_on: str
+    accent_hold: str
+    accent_hot: str
+
     # Positions- und Fortschrittsleiste
     progress_trough: str
     progress_played: str
@@ -189,6 +196,19 @@ OPACITY_FIELDS: tuple[str, ...] = tuple(f.name for f in fields(SurfacePalette) i
 # die WCAG-Schwelle fuer Fliesstext.
 LCD_ZIELKONTRAST = 4.5
 
+# Zielkontrast farbiger Glyphen (Transporttasten, Wiedergabemarke) gegen den
+# Grund, auf dem sie stehen. Bezugsgrund ist `background`: die Transportleiste
+# und die Dateitabelle zeichnen ohne eigene Flaeche, also auf dem Grund des
+# Bildschirms.
+GLYPH_ZIELKONTRAST = 4.5
+
+# Zielkontrast des gefuellten Balkens gegen den Grund und des Griffs gegen
+# seine Rinne. Der Balken ist ein grafisches Element, kein Fliesstext - fuer
+# die traegt WCAG 3.0:1. Der Griff sitzt auf der Rinne und muss sich nur
+# absetzen, nicht lesbar sein.
+BALKEN_ZIELKONTRAST = 3.0
+GRIFF_ZIELKONTRAST = 2.0
+
 
 def derive(base: BasePalette) -> SurfacePalette:
     """Leitet die Flaechenfarben aus den elf Grundfarben ab.
@@ -211,6 +231,11 @@ def derive(base: BasePalette) -> SurfacePalette:
     # unabhaengige Pruefung und nicht die Wiederholung dieser Konstante.
     lcd_foreground = ensure_contrast(base.primary, lcd_background, LCD_ZIELKONTRAST)
 
+    # Die Laufschiene ist eine Vordergrundfarbe, kein Flaechenton: im Terminal
+    # wird sie als Schraffur gezeichnet, nicht als Rechteck. Der Griff bezieht
+    # seinen Kontrast auf sie und wird deshalb vorher gebraucht.
+    progress_trough = blend(base.background, base.foreground, 0.28)
+
     return SurfacePalette(
         vis_low=base.success,
         vis_mid=base.warning,
@@ -224,11 +249,18 @@ def derive(base: BasePalette) -> SurfacePalette:
         # nicht eine eigene Farbe - so verhaelt sich ein echtes Display.
         lcd_dim=blend(lcd_background, lcd_foreground, 0.30),
         transport_normal=base.surface,
-        transport_hover=blend(base.surface, base.foreground, 0.12),
+        # Getoent statt vergraut: ein neutraler Grauschleier ist genau der
+        # Bueroschreibtisch-Eindruck, von dem die Optik wegsoll.
+        transport_hover=blend(base.surface, base.primary, 0.30),
         transport_active=base.accent,
-        progress_trough=blend(base.panel, base.foreground, 0.10),
-        progress_played=base.accent,
-        progress_handle=base.boost,
+        accent_on=ensure_contrast(base.success, base.background, GLYPH_ZIELKONTRAST),
+        accent_hold=ensure_contrast(base.warning, base.background, GLYPH_ZIELKONTRAST),
+        accent_hot=ensure_contrast(base.error, base.background, GLYPH_ZIELKONTRAST),
+        progress_trough=progress_trough,
+        # Der gefuellte Teil muss auf dem Grund stehen, auf dem er gezeichnet
+        # wird - ein dunkler Akzent auf dunklem Grund waere kein Balken.
+        progress_played=ensure_contrast(base.accent, base.background, BALKEN_ZIELKONTRAST),
+        progress_handle=ensure_contrast(base.boost, progress_trough, GRIFF_ZIELKONTRAST),
         divider=blend(base.background, base.foreground, 0.20),
         header=base.panel,
         selection=blend(base.background, base.primary, 0.30),
@@ -267,6 +299,9 @@ class PaletteOverride(TypedDict, total=False):
     transport_normal: str
     transport_hover: str
     transport_active: str
+    accent_on: str
+    accent_hold: str
+    accent_hot: str
     progress_trough: str
     progress_played: str
     progress_handle: str
