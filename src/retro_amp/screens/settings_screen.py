@@ -81,6 +81,7 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             )
         except ValueError:
             self._visualizer_mode = VisualizerMode.BARS
+        self._visualizer_rainbow = bool(merged.get("visualizer_rainbow", False))
         self._journal_mode = str(merged.get("db_journal_mode", "DELETE")).upper()
         if self._journal_mode not in _JOURNAL_MODES:
             self._journal_mode = "DELETE"
@@ -133,6 +134,7 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         except ValueError:
             visualizer_mode = VisualizerMode.BARS.value
         settings["visualizer_mode"] = visualizer_mode
+        settings["visualizer_rainbow"] = self._get_checkbox("check-visualizer-rainbow")
 
         journal_mode = self._get_select_value("select-journal-mode", self._journal_mode)
         if journal_mode not in _JOURNAL_MODES:
@@ -209,6 +211,14 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
                 id="select-visualizer-mode",
             )
         yield Static(t("settings.visualizer_mode_hint"), classes="settings-hint")
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.visualizer_rainbow_label"))
+            yield Checkbox(
+                t("settings.visualizer_rainbow_checkbox"),
+                value=self._visualizer_rainbow,
+                id="check-visualizer-rainbow",
+            )
+        yield Static(t("settings.visualizer_rainbow_hint"), classes="settings-hint")
 
     def _database_fields(self) -> ComposeResult:
         """Felder fuer den Datenbank-Tab."""

@@ -26,6 +26,7 @@ from retro_amp.palette import (
     SurfacePalette,
     blend,
     contrast_ratio,
+    gradient,
     palette_for,
     relative_luminance,
 )
@@ -62,6 +63,34 @@ class TestFarbrechnung:
         # Schwarz auf Weiss ist der Hoechstwert 21:1, gleiche Farbe ergibt 1:1.
         assert contrast_ratio("#000000", "#FFFFFF") == pytest.approx(21.0, abs=1e-6)
         assert contrast_ratio("#123456", "#123456") == pytest.approx(1.0)
+
+
+class TestVerlauf:
+    def test_endpunkte_sind_die_stuetzstellen(self) -> None:
+        werte = gradient(("#000000", "#808080", "#FFFFFF"), 5)
+        assert werte[0] == "#000000"
+        assert werte[-1] == "#FFFFFF"
+        assert werte[2] == "#808080"
+
+    def test_laenge_stimmt(self) -> None:
+        for anzahl in (1, 2, 3, 32, 33):
+            assert len(gradient(("#000000", "#FFFFFF"), anzahl)) == anzahl
+
+    def test_verlauf_ist_monoton(self) -> None:
+        # Von Schwarz nach Weiss muss die Helligkeit durchgehend steigen.
+        werte = gradient(("#000000", "#FFFFFF"), 16)
+        helligkeiten = [relative_luminance(w) for w in werte]
+        assert helligkeiten == sorted(helligkeiten)
+
+    def test_eine_stuetzstelle_wiederholt_sich(self) -> None:
+        assert gradient(("#123456",), 3) == ["#123456"] * 3
+
+    def test_leere_anforderung_ist_leer(self) -> None:
+        assert gradient(("#000000", "#FFFFFF"), 0) == []
+
+    def test_ohne_stuetzstelle_faellt_es_auf(self) -> None:
+        with pytest.raises(ValueError, match="Stuetzstelle"):
+            gradient((), 4)
 
 
 class TestVollstaendigkeit:

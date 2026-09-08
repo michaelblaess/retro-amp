@@ -1,8 +1,11 @@
 """Equalizer-Visualizer Widget — Spektralanalyse mit Retro-Charme.
 
+Alle Farben kommen aus der Palette des eingestellten Themes. Einzige Ausnahme
+ist der abschaltbare Regenbogen fuer BARS und SCOPE.
+
 Mehrere Darstellungs-Modi (siehe VisualizerMode):
-- BARS:   32-Band-Spektrum mit Regenbogenfarben + Peak-Hold (Default)
-- BLOCKS: 16 breite Balken im Winamp-Stil — Farbe pro Zeile (gruen/gelb/rot) + Peaks
+- BARS:   32-Band-Spektrum, Farbverlauf ueber die Baender + Peak-Hold (Default)
+- BLOCKS: 16 breite Balken im Winamp-Stil - Pegelfarbe pro Zeile + Peaks
 - SCOPE:  Punkt pro Band an der Pegel-Position (geglaettet)
 - MATRIX: Binaer-Digits, Farbe nach Band-Intensitaet (cliamp-inspiriert)
 - LCD:    2 horizontale Segment-VU-Meter im Kassettendeck-Look (Bass + Treble)
@@ -23,7 +26,7 @@ from textual_widgets import ContextMenuItem, ContextMenuScreen
 from ..domain.models import VisualizerMode
 from ..i18n import t
 from ..meter import LevelMeter, MeterConfig, PeakTracker
-from ..palette import SurfacePalette
+from ..palette import SurfacePalette, gradient
 from ..themes import surface_palette
 
 # Unicode-Blockzeichen fuer verschiedene Fuellhoehen (0=leer, 8=voll)
@@ -148,6 +151,7 @@ class Visualizer(Widget):
     def __init__(
         self,
         mode: VisualizerMode = VisualizerMode.BARS,
+        rainbow: bool = False,
         **kwargs: object,
     ) -> None:
         super().__init__(**kwargs)
@@ -168,15 +172,19 @@ class Visualizer(Widget):
         self._palette_name = ""
         self._palette: SurfacePalette = surface_palette("")
 
+        # Farbe je Band fuer BARS und SCOPE. Standard ist ein Verlauf aus den
+        # drei Pegelstufen des Themes. Der Regenbogen ist die frueher fest
+        # verdrahtete Variante und bleibt als Einstellung erreichbar.
+        self._rainbow = rainbow
+        self._colors: list[str] = []
+        self._rebuild_band_colors()
+
         # LCD-Modus: getrennte Spitzen fuer Bass- und Treble-Haelfte
         self._lcd_peak_tracker_l = PeakTracker(_LCD_PEAK_DECAY_DB_PER_S, _LCD_PEAK_HOLD_S)
         self._lcd_peak_tracker_r = PeakTracker(_LCD_PEAK_DECAY_DB_PER_S, _LCD_PEAK_HOLD_S)
         self._lcd_peak_l: int = 0
         self._lcd_peak_r: int = 0
         self._lcd_last: float | None = None
-
-        # Farben vorberechnen
-        self._colors = [_spectral_color(i, self.NUM_BARS) for i in range(self.NUM_BARS)]
 
     @property
     def mode(self) -> VisualizerMode:
@@ -353,7 +361,8 @@ class Visualizer(Widget):
         return self._render_bars()
 
     def _render_bars(self) -> Text:
-        """BARS-Modus: 32-Band Regenbogen mit Peak-Markern."""
+        """BARS-Modus: 32 Baender mit Spitzenmarken, Farbe je Band."""
+        colors = self.band_colors()
         lines: list[Text] = []
 
         for row in range(_NUM_ROWS):
@@ -365,7 +374,7 @@ class Visualizer(Widget):
             for i in range(self.NUM_BARS):
                 bar_val = self._bars[i]
                 peak_val = self._peaks[i]
-                color = self._colors[i]
+                color = colors[i]
 
                 bar_in_row = bar_val - row_base
                 peak_in_row = peak_val - row_base
@@ -438,6 +447,8 @@ class Visualizer(Widget):
 
         Spatiales Smoothing zwischen Nachbarbaendern fuer fluessigeren Kurvenverlauf.
         """
+        colors = self.band_colors()
+
         # Smoothing: Mittelwert ueber 3-Nachbarn-Fenster
         smoothed: list[float] = []
         for i in range(self.NUM_BARS):
@@ -464,7 +475,7 @@ class Visualizer(Widget):
             line.append("  ")
             for i in range(self.NUM_BARS):
                 if dot_rows[i] == row:
-                    line.append(_SCOPE_DOT, style=self._colors[i])
+                    line.append(_SCOPE_DOT, style=colors[i])
                 else:
                     line.append(" ")
             line.append("  ")
@@ -576,7 +587,33 @@ class Visualizer(Widget):
         if name != self._palette_name:
             self._palette_name = name
             self._palette = surface_palette(name)
+            self._rebuild_band_colors()
         return self._palette
+
+    def band_colors(self) -> list[str]:
+        """Farbe je Band. Zieht dabei einen Theme-Wechsel nach."""
+        self.palette()
+        return self._colors
+
+    def set_rainbow(self, rainbow: bool) -> None:
+        """Schaltet zwischen Theme-Verlauf und Regenbogen ueber die Baender."""
+        if rainbow == self._rainbow:
+            return
+        self._rainbow = rainbow
+        self._rebuild_band_colors()
+        self.refresh()
+
+    def _rebuild_band_colors(self) -> None:
+        """Berechnet die Farbe je Band neu.
+
+        Der Verlauf laeuft von der leisen zur lauten Stufe ueber die Baender -
+        dieselbe Bewegung wie der frueher feste Regenbogen, nur aus dem Theme.
+        """
+        if self._rainbow:
+            self._colors = [_spectral_color(i, self.NUM_BARS) for i in range(self.NUM_BARS)]
+            return
+        p = self._palette
+        self._colors = gradient((p.vis_low, p.vis_mid, p.vis_high), self.NUM_BARS)
 
     @staticmethod
     def _join_lines(lines: list[Text]) -> Text:

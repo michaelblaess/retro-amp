@@ -1,14 +1,15 @@
 """Tests dafuer, dass der Visualizer seine Farben aus dem Theme bezieht.
 
-Die tragende Zusicherung: **im Bild darf keine Farbe auftauchen, die nicht in
-der Palette des eingestellten Themes steht.** Vor der Umstellung waren
+Die tragende Zusicherung: **im Bild darf keine Farbe auftauchen, die sich
+nicht aus der Palette des eingestellten Themes ableiten laesst.** Das sind die
+Palettenfelder selbst plus der Verlauf, den BARS und SCOPE zwischen den drei
+Pegelstufen aufspannen. Vor der Umstellung waren
 Ampelrot, Warngelb und das unbeleuchtete LCD-Segment fest im Malcode - dann
 sahen alle 40 Themes an diesen Stellen gleich aus, und dieser Test wird rot.
 
-Ausgenommen sind die Modi BARS und SCOPE: sie faerben absichtlich mit einem
-Regenbogen ueber die Baender, unabhaengig vom Theme. Das ist eine
-Gestaltungsentscheidung und keine Nachlaessigkeit - deshalb steht sie hier
-ausdruecklich als Ausnahme und nicht als stillschweigende Luecke.
+BARS und SCOPE koennen wahlweise einen Regenbogen ueber die Baender legen.
+Das ist die einzige Ausnahme, sie ist abschaltbar und steht in den
+Einstellungen - `TestRegenbogen` haelt beide Seiten fest.
 """
 
 from __future__ import annotations
@@ -20,12 +21,15 @@ import pytest
 from rich.text import Text
 
 from retro_amp.domain.models import VisualizerMode
-from retro_amp.palette import COLOR_FIELDS, PaletteOverride, SurfacePalette
+from retro_amp.palette import COLOR_FIELDS, PaletteOverride, SurfacePalette, gradient
 from retro_amp.themes import surface_palette
 from retro_amp.widgets.visualizer import Visualizer
 
-# Nur diese Modi versprechen, ausschliesslich Theme-Farben zu verwenden.
-THEMEN_TREUE_MODI = (VisualizerMode.BLOCKS, VisualizerMode.MATRIX, VisualizerMode.LCD)
+# Mit ausgeschaltetem Regenbogen versprechen ALLE Modi, ausschliesslich
+# Theme-Farben zu verwenden.
+THEMEN_TREUE_MODI = tuple(VisualizerMode)
+# Nur diese beiden kennen ueberhaupt einen Regenbogen.
+REGENBOGEN_MODI = (VisualizerMode.BARS, VisualizerMode.SCOPE)
 
 
 def _farben(text: Text) -> set[str]:
@@ -39,12 +43,32 @@ def _farben(text: Text) -> set[str]:
 
 
 def _palettenfarben(palette: SurfacePalette) -> set[str]:
+    """Die Felder der Palette selbst."""
     return {str(getattr(palette, feld)).lower() for feld in COLOR_FIELDS}
 
 
-def _gefuellt(mode: VisualizerMode, palette: SurfacePalette, pegel: float = 0.85) -> Text:
+def _erlaubte_farben(palette: SurfacePalette) -> set[str]:
+    """Alle Farben, die aus dieser Palette ableitbar sind.
+
+    Das sind die Palettenfelder plus der Bandverlauf, den BARS und SCOPE
+    zwischen den drei Pegelstufen aufspannen. Die Zwischenwerte des Verlaufs
+    stehen in keinem Feld, stammen aber ausschliesslich aus der Palette -
+    eine fest verdrahtete Farbe faellt trotzdem auf.
+    """
+    verlauf = gradient((palette.vis_low, palette.vis_mid, palette.vis_high), Visualizer.NUM_BARS)
+    return _palettenfarben(palette) | {farbe.lower() for farbe in verlauf}
+
+
+def _gefuellt(
+    mode: VisualizerMode,
+    palette: SurfacePalette,
+    pegel: float = 0.85,
+    rainbow: bool = False,
+) -> Text:
     """Baut einen Visualizer mit fester Palette und faehrt ihn hoch."""
-    widget = Visualizer(mode=mode)
+    widget = Visualizer(mode=mode, rainbow=rainbow)
+    widget._palette = palette
+    widget._rebuild_band_colors()
     widget.palette = lambda: palette  # type: ignore[method-assign]
     widget.set_spectrum_source(lambda: [pegel] * Visualizer.NUM_BARS)
 
@@ -61,7 +85,7 @@ class TestFarbenKommenAusDemTheme:
     @pytest.mark.parametrize("mode", THEMEN_TREUE_MODI)
     def test_keine_fremde_farbe_im_bild(self, mode: VisualizerMode) -> None:
         palette = surface_palette("brotkasten")
-        erlaubt = _palettenfarben(palette)
+        erlaubt = _erlaubte_farben(palette)
         benutzt = _farben(_gefuellt(mode, palette))
 
         assert benutzt, f"{mode.value} zeichnet gar keine Farbe"
@@ -87,7 +111,7 @@ class TestFarbenKommenAusDemTheme:
             {feld: f"#{index * 7 + 16:02x}00{index * 11 + 32:02x}" for index, feld in enumerate(COLOR_FIELDS)},
         )
         erfunden = dataclasses.replace(echte, **ersatz)
-        erlaubt = _palettenfarben(erfunden)
+        erlaubt = _erlaubte_farben(erfunden)
         for mode in THEMEN_TREUE_MODI:
             benutzt = _farben(_gefuellt(mode, erfunden))
             assert benutzt <= erlaubt, f"{mode.value} bringt eigene Farben mit: {sorted(benutzt - erlaubt)}"
@@ -136,3 +160,44 @@ class TestAusklingenIstSichtbar:
             widget._tick()
 
         assert not _farben(widget.render()), "die Ruhezeile bleibt aus, obwohl alles leer ist"
+
+
+class TestRegenbogen:
+    """Die einzige Ausnahme von der Theme-Treue - und sie ist abschaltbar."""
+
+    @pytest.mark.parametrize("mode", REGENBOGEN_MODI)
+    def test_eingeschaltet_bringt_fremde_farben(self, mode: VisualizerMode) -> None:
+        palette = surface_palette("hercules")
+        erlaubt = _erlaubte_farben(palette)
+        benutzt = _farben(_gefuellt(mode, palette, rainbow=True))
+        assert benutzt - erlaubt, (
+            f"{mode.value} zeigt mit eingeschaltetem Regenbogen nur Theme-Farben - dann greift der Schalter nicht"
+        )
+
+    @pytest.mark.parametrize("mode", REGENBOGEN_MODI)
+    def test_ausgeschaltet_bleibt_beim_theme(self, mode: VisualizerMode) -> None:
+        palette = surface_palette("hercules")
+        erlaubt = _erlaubte_farben(palette)
+        benutzt = _farben(_gefuellt(mode, palette, rainbow=False))
+        assert benutzt <= erlaubt, f"fremde Farben: {sorted(benutzt - erlaubt)}"
+
+    def test_schalter_wirkt_zur_laufzeit(self) -> None:
+        widget = Visualizer(mode=VisualizerMode.BARS)
+        widget._palette = surface_palette("hercules")
+        widget._rebuild_band_colors()
+        theme_farben = list(widget._colors)
+
+        widget.set_rainbow(True)
+        assert widget._colors != theme_farben
+
+        widget.set_rainbow(False)
+        assert widget._colors == theme_farben
+
+    def test_ohne_regenbogen_verlaufen_die_baender(self) -> None:
+        # Erstes und letztes Band sind die beiden aeusseren Pegelfarben.
+        palette = surface_palette("hercules")
+        widget = Visualizer(mode=VisualizerMode.BARS)
+        widget._palette = palette
+        widget._rebuild_band_colors()
+        assert widget._colors[0].lower() == palette.vis_low.lower()
+        assert widget._colors[-1].lower() == palette.vis_high.lower()

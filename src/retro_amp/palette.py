@@ -15,6 +15,7 @@ Test haelt die Freiheit fest (`tests/test_palette.py`).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, fields, replace
 from typing import TypedDict
 
@@ -41,6 +42,28 @@ def blend(base: str, other: str, amount: float) -> str:
     a = _to_rgb(base)
     b = _to_rgb(other)
     return _to_hex(tuple(a[i] + (b[i] - a[i]) * weight for i in range(3)))  # type: ignore[arg-type]
+
+
+def gradient(stops: Sequence[str], count: int) -> list[str]:
+    """Verteilt `count` Farben gleichmaessig entlang der Stuetzstellen.
+
+    Die erste und die letzte Farbe sind immer genau eine Stuetzstelle, dazwischen
+    wird linear gemischt. Fuer einen Balkenverlauf ueber die Baender also
+    `gradient((p.vis_low, p.vis_mid, p.vis_high), 32)`.
+    """
+    if count <= 0:
+        return []
+    if not stops:
+        raise ValueError("Mindestens eine Stuetzstelle noetig")
+    if len(stops) == 1 or count == 1:
+        return [stops[0]] * count
+
+    ergebnis: list[str] = []
+    for i in range(count):
+        stelle = i / (count - 1) * (len(stops) - 1)
+        unten = min(int(stelle), len(stops) - 2)
+        ergebnis.append(blend(stops[unten], stops[unten + 1], stelle - unten))
+    return ergebnis
 
 
 def relative_luminance(hex_color: str) -> float:

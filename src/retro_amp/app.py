@@ -395,7 +395,11 @@ class RetroAmpApp(CrashGuard, App):
                     with TabPane(t("tab.details"), id="tab-details"):
                         yield DetailsPanel(id="details-panel")
         with Horizontal(id="transport-row"):
-            yield Visualizer(mode=self._load_visualizer_mode(), id="visualizer")
+            yield Visualizer(
+                mode=self._load_visualizer_mode(),
+                rainbow=self._load_visualizer_rainbow(),
+                id="visualizer",
+            )
             yield ControlPanel(id="control-panel")
             yield TransportBar(id="transport")
         yield HorizontalSplitter(
@@ -812,6 +816,9 @@ class RetroAmpApp(CrashGuard, App):
         current = self._settings_store.load()
         changed_renderer = current.get("cover_renderer") != new_settings.get("cover_renderer")
         changed_visualizer = current.get("visualizer_mode") != new_settings.get("visualizer_mode")
+        changed_rainbow = bool(current.get("visualizer_rainbow", False)) != bool(
+            new_settings.get("visualizer_rainbow", False)
+        )
         old_lang = str(current.get("language", current_language()))
         new_lang = str(new_settings.get("language", old_lang))
         changed_language = old_lang != new_lang
@@ -838,13 +845,18 @@ class RetroAmpApp(CrashGuard, App):
                 self._scan_directory(chosen)
                 self._write_log(t("log.library_changed", path=chosen))
 
-        # Visualizer-Modus live anwenden (kein Neustart noetig)
+        # Visualizer-Modus und Farbwahl live anwenden (kein Neustart noetig)
         if changed_visualizer:
             try:
                 new_mode = VisualizerMode(str(new_settings.get("visualizer_mode")))
                 self.query_one("#visualizer", Visualizer).set_mode(new_mode)
             except (ValueError, Exception):
                 pass
+        if changed_rainbow:
+            with contextlib.suppress(Exception):
+                self.query_one("#visualizer", Visualizer).set_rainbow(
+                    bool(new_settings.get("visualizer_rainbow", False))
+                )
 
         # DB-Settings persistieren — journal_mode greift erst nach Neustart
         old_journal = self._database.get_setting("db_journal_mode", "DELETE")
@@ -2394,6 +2406,10 @@ class RetroAmpApp(CrashGuard, App):
                     position_seconds=state.position_seconds,
                     volume=state.volume,
                 )
+
+    def _load_visualizer_rainbow(self) -> bool:
+        """Liest, ob BARS und SCOPE den Regenbogen statt der Theme-Farben nutzen."""
+        return bool(self._settings_store.load().get("visualizer_rainbow", False))
 
     def _load_visualizer_mode(self) -> VisualizerMode:
         """Liest den gespeicherten Visualizer-Modus aus den Settings."""
