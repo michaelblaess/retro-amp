@@ -18,6 +18,11 @@ _DEFAULTS: dict[str, object] = {
     "last_path": "",
     "music_library": "",
     "cover_renderer": "halfblock",  # halfblock | graphics (TGP/Sixel)
+    # Tastenbelegung. Leer heisst "noch nicht entschieden" - dann entscheidet
+    # die Plattform (siehe keymap.style_from_settings).
+    "keymap_style": "",  # "" | classic | function_keys
+    "keymap_vim": False,
+    "keymap_custom": {},  # Aktion -> Tastenliste, vom Anwender in der Datei
 }
 
 

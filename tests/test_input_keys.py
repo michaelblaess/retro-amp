@@ -17,7 +17,6 @@ wenn spaeter eine neue Taste dazukommt, die dasselbe Problem hat.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -26,41 +25,7 @@ from textual.widgets import Input
 
 from retro_amp import app as app_modul
 from retro_amp.app import INPUT_EIGENE_TASTEN, RetroAmpApp
-from retro_amp.infrastructure import playlist_store as playlist_modul
-from retro_amp.infrastructure import session as session_modul
 from retro_amp.infrastructure import settings as settings_modul
-from retro_amp.infrastructure import single_instance as lock_modul
-
-
-@pytest.fixture
-def isolierte_ablage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """Legt ``~/.retro-amp`` fuer die Dauer eines Tests in ein Temp-Verzeichnis.
-
-    Vier Module berechnen ihren Pfad schon beim Import, die Datenbank fragt
-    `Path.home()` erst beim Erzeugen - deshalb beides. Ohne das schriebe der
-    Test in die echte Ablage des Anwenders.
-    """
-
-    heim = tmp_path / "heim"
-    ablage = heim / ".retro-amp"
-    ablage.mkdir(parents=True)
-    musik = tmp_path / "Musik"
-    musik.mkdir()
-    (ablage / "settings.json").write_text(
-        json.dumps({"music_library": str(musik), "last_path": str(musik)}),
-        encoding="utf-8",
-    )
-
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: heim))
-    monkeypatch.setattr(settings_modul, "_SETTINGS_DIR", ablage)
-    monkeypatch.setattr(settings_modul, "_SETTINGS_FILE", ablage / "settings.json")
-    monkeypatch.setattr(session_modul, "_SESSION_DIR", ablage)
-    monkeypatch.setattr(session_modul, "_SESSION_FILE", ablage / "session.json")
-    monkeypatch.setattr(lock_modul, "_LOCK_DIR", ablage)
-    monkeypatch.setattr(lock_modul, "_LOCK_FILE", ablage / "instance.lock")
-    monkeypatch.setattr(lock_modul, "_PLAY_REQUEST", ablage / "play_request")
-    monkeypatch.setattr(playlist_modul, "_PLAYLISTS_DIR", ablage / "playlists")
-    yield heim
 
 
 class TestIsolation:

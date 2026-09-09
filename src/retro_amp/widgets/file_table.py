@@ -18,9 +18,10 @@ from textual.widgets.data_table import ColumnKey
 from ..domain.models import AudioTrack
 from ..i18n import t
 from .palette_source import PaletteSource
+from .vim_navigation import VimTableNavigation
 
 
-class FileDataTable(DataTable[Any]):
+class FileDataTable(VimTableNavigation, DataTable[Any]):
     """DataTable, die den Rechtsklick meldet statt die Zeile auszuwaehlen.
 
     Textuals ``DataTable._on_click`` prueft die Maustaste nicht — ein

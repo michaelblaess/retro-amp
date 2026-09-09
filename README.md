@@ -144,6 +144,16 @@ retro-amp --version           # Show version
 
 ## Keybindings
 
+The key map is **switchable** (Settings -> Keyboard). There are two styles, and
+vim navigation can be added to either. Press `?` at any time to see what is
+currently bound.
+
+Without an explicit choice the operating system decides: the classic style on
+macOS, because the system claims several function keys, function keys everywhere
+else.
+
+### Classic (letters only)
+
 | Key | Action |
 |-----|--------|
 | `Space` | Play / Pause |
@@ -167,8 +177,51 @@ retro-amp --version           # Show version
 | `X` | Toggle shuffle |
 | `R` | Repeat: Off → All → One |
 | `Q` | Quit |
+| `?` | Key binding overview |
 
 The transport keys `Z` `V` `B` follow Winamp. They are not listed in the footer because the control bar offers the same functions as buttons - clicking still works.
+
+### With function keys
+
+The function key is added **next to** the letter, it does not replace it. So
+everything above still applies, with two exceptions: `L` and `G` move out of the
+way because vim navigation needs those letters.
+
+| Key | Action |
+|-----|--------|
+| `F1` | Info / About |
+| `F2` | Settings |
+| `F3` | Global search |
+| `F4` or `Alt+L` | Toggle debug log (no longer `L`) |
+| `F7` | Playlist menu |
+| `F8` | Rename file |
+| `F9` or `Alt+G` | Auto-title (no longer `G`) |
+| `F10` | Toggle favorite |
+
+`F5` and `F6` stay free. The sibling applications put refresh and details there,
+and retro-amp has neither.
+
+### Vim navigation
+
+Optional, active in the file list and all trees while one of them has focus:
+`j` and `k` move the cursor, `g` and `G` jump to start and end, `Ctrl+D` and
+`Ctrl+U` page through. In a tree `l` expands and `h` goes to the parent, in the
+file list `h` and `l` change the column.
+
+In the classic style this takes the keys `L` and `G` away from the application.
+That is reported in the debug log, and the function key style has already moved
+both.
+
+### Custom bindings
+
+In `settings.json` under `keymap_custom`, mapping an action to a list of keys:
+
+```json
+"keymap_custom": { "cycle_theme": ["alt+t"], "toggle_log": ["f4"] }
+```
+
+Anything that goes wrong - an unknown action name, a key that takes the last one
+away from another action - is reported in the debug log.
 
 ## File Association
 

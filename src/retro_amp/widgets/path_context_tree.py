@@ -10,10 +10,12 @@ from textual.message import Message
 from textual.widgets import Tree
 from textual.widgets._tree import TreeNode
 
+from .vim_navigation import VimTreeNavigation
+
 TreeDataType = TypeVar("TreeDataType")
 
 
-class PathContextTree(Tree[TreeDataType]):
+class PathContextTree(VimTreeNavigation, Tree[TreeDataType]):
     """``Tree`` mit Rechtsklick-Kontextmenue fuer Path-Blaetter.
 
     Gemeinsame Basis fuer Favoriten-, Verlaufs-, Such- und Playlist-Baum.

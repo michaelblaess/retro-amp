@@ -13,9 +13,10 @@ from textual.widgets._directory_tree import DirEntry
 from textual.widgets._tree import TreeNode
 
 from ..domain.models import AudioFormat
+from .vim_navigation import VimTreeNavigation
 
 
-class FolderBrowser(DirectoryTree):
+class FolderBrowser(VimTreeNavigation, DirectoryTree):
     """Verzeichnisbaum der nur Ordner und Audio-Dateien zeigt."""
 
     DEFAULT_CSS = """

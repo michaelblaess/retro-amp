@@ -37,8 +37,9 @@ from textual_widgets import (
     VerticalSplitter,
     set_terminal_title,
 )
+from textual_widgets.keymap import KeyBinding, KeymapProblem
 
-from . import __version__
+from . import __version__, keymap
 from .domain.models import (
     AudioFormat,
     AudioTrack,
@@ -132,46 +133,10 @@ class RetroAmpApp(CrashGuard, App):
         # Crash-Guard: Fehlerdialog statt Total-Absturz, Sprache aus i18n
         self.crash_guard_lang = current_language()
 
-        # Bindings im Footer (sichtbar)
-        self._bindings.bind("tab", "cycle_view", t("binding.cycle_view"), key_display="TAB", priority=True)
-        self._bindings.bind("q", "quit", t("binding.quit"))
-        self._bindings.bind("space", "toggle_pause", t("binding.play_pause"), key_display="SPC", priority=True)
-        self._bindings.bind("plus,equal", "volume_up", "Vol+", key_display="+", priority=True)
-        self._bindings.bind("minus", "volume_down", "Vol-", key_display="-", priority=True)
-        self._bindings.bind("f", "toggle_favorite", t("binding.favorite"), priority=True)
-        self._bindings.bind("p", "show_playlists", t("binding.playlists"), priority=True)
-        self._bindings.bind("u", "rename_file", t("binding.rename"), priority=True)
-        self._bindings.bind("g", "auto_title", t("binding.auto_title"), priority=True)
-        self._bindings.bind("delete", "delete_file", t("binding.delete"), key_display="DEL", priority=True)
-        self._bindings.bind("t", "cycle_theme", t("binding.theme"), priority=True)
-        self._bindings.bind("s", "show_settings", t("binding.settings"), priority=True)
-        self._bindings.bind("i", "show_about", t("binding.info"), priority=True)
-        self._bindings.bind("l", "toggle_log", t("binding.log"), priority=True)
-        # Versteckte Bindings (nur Tastatur, nicht im Footer)
-        self._bindings.bind("c", "copy_log", t("binding.copy_log"), show=False, priority=True)
-        self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), show=False, priority=True)
-        self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), show=False, priority=True)
-        # Transport per Tastatur. Die Reihe Z V B folgt Winamp (zurueck, Stop,
-        # vor); dessen X und C liegen hier schon auf Shuffle und Log-kopieren.
-        # Nicht im Footer, weil das Bedienfeld dieselben Funktionen als
-        # anklickbare Schaltflaechen zeigt - der Footer hat bereits 14 Eintraege.
-        self._bindings.bind("z", "previous_track", t("binding.previous"), show=False, priority=True)
-        self._bindings.bind("v", "stop", t("binding.stop"), show=False, priority=True)
-        self._bindings.bind("b", "next_track", t("binding.next"), show=False, priority=True)
-        # Sprung im laufenden Titel auf < und >, damit die Buchstaben dem
-        # Titelwechsel gehoeren. Die Pfeiltasten scheiden aus - sie steuern die
-        # Dateitabelle und die Baeume.
-        seek_back = t("binding.seek_back")
-        seek_fwd = t("binding.seek_fwd")
-        self._bindings.bind("comma", "seek_backward", seek_back, key_display="<", show=False, priority=True)
-        self._bindings.bind("full_stop", "seek_forward", seek_fwd, key_display=">", show=False, priority=True)
-        # Suchfeld. Ohne den Schutz in check_action() faengt die App das Zeichen
-        # ab, bevor ein fokussiertes Eingabefeld es sieht.
-        self._bindings.bind("slash", "focus_search", t("binding.search"), key_display="/", show=False, priority=True)
-
-        # Footer-Tooltips fuer alle Bindings setzen (Pflicht). BindingsMap.bind()
-        # kennt keinen tooltip-Parameter, darum nachtraeglich per replace.
-        self._apply_binding_tooltips()
+        # Die Tastenbelegung braucht die Einstellungen und wird deshalb erst
+        # weiter unten gebunden, sobald der Einstellungsspeicher steht.
+        self._keymap: dict[str, KeyBinding] = {}
+        self._keymap_problems: tuple[KeymapProblem, ...] = ()
 
         # Retro-Themes registrieren
         for retro_theme in RETRO_THEMES:
@@ -231,6 +196,10 @@ class RetroAmpApp(CrashGuard, App):
         # Settings laden
         settings = self._settings_store.load()
         self._player_service.set_volume(float(settings.get("volume", 0.8)))
+
+        # Tastenbelegung binden. Erst hier, weil Stil, Vim-Schalter und eigene
+        # Belegungen aus den Einstellungen kommen.
+        self._apply_keymap(settings)
 
         # Gespeichertes Theme anwenden — alte Slugs migrieren
         # (textual-themes 0.5 hat die meisten Themes umbenannt).
@@ -348,46 +317,74 @@ class RetroAmpApp(CrashGuard, App):
         # gespielt wird erst wenn das Ergebnis da ist.
         self._play_after_scan: bool = False
 
+    @property
+    def vim_navigation(self) -> bool:
+        """Ob die Vim-Ebene der navigierbaren Widgets aktiv ist.
+
+        Die Widgets fragen das in ihrem `_on_mount`, weil die Ebene an ihnen
+        haengt und nicht an der App - sie soll nur gelten, solange das Widget
+        den Fokus hat.
+
+        Returns:
+            True, wenn der Anwender die Vim-Navigation eingeschaltet hat.
+        """
+
+        return bool(self._settings_store.load().get("keymap_vim", False))
+
+    def _apply_keymap(self, settings: dict[str, object]) -> None:
+        """Bindet die Tasten der aktiven Belegung.
+
+        Ein `BINDINGS` auf Klassenebene scheidet aus zwei Gruenden aus: Es kann
+        kein `t()` benutzen, und welcher Stil gilt, steht erst fest, wenn die
+        Einstellungen gelesen sind. Welche Taste welche Aktion ausloest, steht
+        in `retro_amp.keymap`, die Mechanik dahinter in
+        `textual_widgets.keymap`.
+
+        Args:
+            settings: Die geladenen Einstellungen.
+        """
+
+        aufgeloest = keymap.resolve(settings)
+        self._keymap_problems = aufgeloest.problems
+        self._keymap = dict(aufgeloest.bindings)
+
+        for action, binding in aufgeloest.bindings.items():
+            self._bindings.bind(
+                ",".join(binding.keys),
+                action,
+                t(keymap.LABEL_KEYS.get(action, action)),
+                key_display=keymap.key_display(binding.keys[0]),
+                show=binding.show,
+                priority=binding.priority,
+            )
+        self._apply_binding_tooltips()
+
+    def _log_keymap_problems(self) -> None:
+        """Meldet, was beim Zusammenbau der Tastenbelegung auffiel.
+
+        Typische Faelle: eine eigene Belegung nennt eine Aktion, die es nicht
+        gibt, oder die Vim-Ebene verdeckt eine Aktion der Anwendung. Beides
+        waere sonst unsichtbar - die Taste tut dann einfach nichts.
+        """
+
+        for problem in self._keymap_problems:
+            self._write_log(f"[!] {problem.message}")
+
     def _apply_binding_tooltips(self) -> None:
         """Setzt fuer jedes App-Binding einen erklaerenden Footer-Tooltip.
 
         Der Footer zeigt den Tooltip beim Maus-Hover ueber der Taste. Da
         `BindingsMap.bind()` keinen tooltip-Parameter kennt und `Binding`
         frozen ist, wird der Tooltip nach dem Binden per `dataclasses.replace`
-        gesetzt. Schluessel-Schema: ``tooltip.<action>`` in den Sprachdateien.
+        gesetzt. Welche Aktion welchen Text bekommt, steht in
+        `keymap.TOOLTIP_KEYS`.
         """
-        actions_with_tooltip = {
-            "cycle_view",
-            "quit",
-            "toggle_pause",
-            "volume_up",
-            "volume_down",
-            "toggle_favorite",
-            "show_playlists",
-            "rename_file",
-            "auto_title",
-            "delete_file",
-            "cycle_theme",
-            "show_settings",
-            "show_about",
-            "toggle_log",
-            "copy_log",
-            "toggle_shuffle",
-            "cycle_repeat",
-            "previous_track",
-            "stop",
-            "next_track",
-            "seek_backward",
-            "seek_forward",
-            "focus_search",
-        }
+        tooltips = {action: t(schluessel) for action, schluessel in keymap.TOOLTIP_KEYS.items()}
         for key, bindings in self._bindings.key_to_bindings.items():
             for i, binding in enumerate(bindings):
-                if binding.action in actions_with_tooltip:
-                    self._bindings.key_to_bindings[key][i] = dataclasses.replace(
-                        binding,
-                        tooltip=t(f"tooltip.{binding.action}"),
-                    )
+                tooltip = tooltips.get(binding.action)
+                if tooltip:
+                    self._bindings.key_to_bindings[key][i] = dataclasses.replace(binding, tooltip=tooltip)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -466,6 +463,7 @@ class RetroAmpApp(CrashGuard, App):
         # Theme-Name in Titelleiste (Idle-Anzeige bis ein Track laeuft)
         self.sub_title = self._idle_subtitle()
         self._log_theme()
+        self._log_keymap_problems()
 
         # Gespeicherte Splitter-Groessen anwenden (linkes Panel + File-Table)
         self._restore_pane_sizes()
@@ -780,6 +778,25 @@ class RetroAmpApp(CrashGuard, App):
         self.theme = next_theme
         display = THEME_DISPLAY_NAMES.get(next_theme, next_theme)
         self.notify(t("notify.theme", name=display))
+
+    def action_keymap_overview(self) -> None:
+        """Zeigt die Uebersicht der geltenden Tastenbelegung.
+
+        Sie wird bei jedem Aufruf frisch aufgeloest und nicht aus `self._keymap`
+        gelesen: so stimmt sie auch dann, wenn der Anwender den Stil in den
+        Einstellungen gerade umgestellt hat.
+        """
+
+        from .screens.keymap_screen import KeymapScreen
+
+        settings = self._settings_store.load()
+        self.push_screen(
+            KeymapScreen(
+                keymap.resolve(settings),
+                keymap.style_from_settings(settings),
+                bool(settings.get("keymap_vim", False)),
+            )
+        )
 
     def action_show_about(self) -> None:
         """About-Dialog anzeigen (standardisierter AboutScreen aus textual-widgets)."""

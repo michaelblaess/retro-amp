@@ -17,12 +17,16 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Checkbox, Input, Label, Select, Static, TabPane
 from textual_widgets import BaseSettingsScreen
+from textual_widgets.keymap import KeymapStyle
 
 from ..domain.models import VisualizerMode
 from ..i18n import t
 from .library_picker_screen import LibraryPickerScreen
 
 _JOURNAL_MODES: tuple[str, ...] = ("DELETE", "WAL", "TRUNCATE", "PERSIST", "MEMORY", "OFF")
+
+# Der leere Wert heisst "nach Betriebssystem" - siehe keymap.style_from_settings.
+_KEYMAP_STYLES: tuple[str, ...] = ("", KeymapStyle.CLASSIC.value, KeymapStyle.FUNCTION_KEYS.value)
 _VISUALIZER_MODES: tuple[VisualizerMode, ...] = (
     VisualizerMode.BARS,
     VisualizerMode.BLOCKS,
@@ -97,6 +101,14 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         # werden. Aenderungen landen beim Save in result["music_library"].
         self._music_library = str(merged.get("music_library", "") or "")
 
+        # Tastenbelegung: Stil, Vim-Ebene. Die eigenen Belegungen bleiben der
+        # Datei vorbehalten - eine Tastenfang-Oberflaeche waere ein eigenes
+        # Vorhaben, und der Hinweis nennt den Ort.
+        self._keymap_style = str(merged.get("keymap_style", "") or "")
+        if self._keymap_style not in _KEYMAP_STYLES:
+            self._keymap_style = ""
+        self._keymap_vim = bool(merged.get("keymap_vim", False))
+
         # Auto-Titel (Titel ergaenzen): Quellen + AcoustID-API-Key.
         self._auto_title_musicbrainz = bool(merged.get("auto_title_musicbrainz", True))
         self._auto_title_from_filename = bool(merged.get("auto_title_from_filename", True))
@@ -119,6 +131,8 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             yield from self._history_fields()
         with TabPane(t("settings.tab_autotitle"), id="tab-autotitle"), VerticalScroll():
             yield from self._autotitle_fields()
+        with TabPane(t("settings.tab_keymap"), id="tab-keymap"), VerticalScroll():
+            yield from self._keymap_fields()
 
     def collect_app_settings(self, settings: dict[str, object]) -> None:
         """Sammelt die Werte der App-Tabs ins Ergebnis-Dict."""
@@ -159,6 +173,10 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
             self._auto_title_acoustid_key,
         )
 
+        stil = self._get_select_value("select-keymap-style", self._keymap_style)
+        settings["keymap_style"] = stil if stil in _KEYMAP_STYLES else ""
+        settings["keymap_vim"] = self._get_checkbox("check-keymap-vim")
+
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Speicherorte fuer den Speicherort-Tab."""
         return [
@@ -169,6 +187,32 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
         ]
 
     # --- Feld-Builder ---
+
+    def _keymap_fields(self) -> ComposeResult:
+        """Felder fuer den Tastatur-Tab."""
+        optionen: list[tuple[str, str]] = [
+            (t("settings.keymap_style_auto"), ""),
+            (t("settings.keymap_style_classic"), KeymapStyle.CLASSIC.value),
+            (t("settings.keymap_style_function_keys"), KeymapStyle.FUNCTION_KEYS.value),
+        ]
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.keymap_style"))
+            yield Select[str](
+                options=optionen,
+                value=self._keymap_style,
+                allow_blank=False,
+                id="select-keymap-style",
+            )
+        yield Static(t("settings.keymap_style_hint"), classes="settings-hint")
+        with Horizontal(classes="settings-row"):
+            yield Label(t("settings.keymap_vim"))
+            yield Checkbox(
+                t("settings.keymap_vim_checkbox"),
+                value=self._keymap_vim,
+                id="check-keymap-vim",
+            )
+        yield Static(t("settings.keymap_vim_hint"), classes="settings-hint")
+        yield Static(t("settings.keymap_custom_hint"), classes="settings-hint")
 
     def _library_fields(self) -> ComposeResult:
         """Felder fuer den Bibliothek-Tab."""

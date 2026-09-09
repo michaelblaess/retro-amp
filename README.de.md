@@ -144,6 +144,15 @@ retro-amp --version           # Zeigt die Version
 
 ## Tastenbelegung
 
+Die Belegung ist **umschaltbar** (Einstellungen -> Tastatur). Es gibt zwei Stile,
+und die Vim-Navigation lässt sich zu beiden dazuschalten. Welche Tasten gerade
+gelten, zeigt `?` jederzeit an.
+
+Ohne eigene Wahl entscheidet das Betriebssystem: auf macOS der klassische Stil,
+weil das System mehrere F-Tasten selbst belegt, überall sonst die F-Tasten.
+
+### Klassisch (nur Buchstaben)
+
 | Taste | Aktion |
 |-------|--------|
 | `Space` | Play / Pause |
@@ -167,8 +176,51 @@ retro-amp --version           # Zeigt die Version
 | `X` | Shuffle ein/aus |
 | `R` | Repeat: Off → All → One |
 | `Q` | Beenden |
+| `?` | Übersicht der Tastenbelegung |
 
 Die Transport-Tasten `Z` `V` `B` folgen Winamp. Sie stehen nicht in der Fußzeile, weil die Steuerleiste dieselben Funktionen als Schaltflächen zeigt - anklicken geht also weiterhin.
+
+### Mit F-Tasten
+
+Die F-Taste tritt **neben** den Buchstaben, sie ersetzt ihn nicht. Alles oben gilt
+also weiter, mit zwei Ausnahmen: `L` und `G` weichen aus, weil die Vim-Navigation
+diese Buchstaben braucht.
+
+| Taste | Aktion |
+|-------|--------|
+| `F1` | Info / About |
+| `F2` | Einstellungen |
+| `F3` | Globale Suche |
+| `F4` oder `Alt+L` | Debug-Log ein-/ausblenden (nicht mehr `L`) |
+| `F7` | Playlist-Menü |
+| `F8` | Datei umbenennen |
+| `F9` oder `Alt+G` | Auto-Titel (nicht mehr `G`) |
+| `F10` | Favorit hinzufügen/entfernen |
+
+`F5` und `F6` bleiben frei. In den Schwesteranwendungen liegen dort Aktualisieren
+und Details, und beides hat retro-amp nicht.
+
+### Vim-Navigation
+
+Optional, gilt in der Dateiliste und in allen Bäumen, solange eines davon den
+Fokus hat: `j` und `k` bewegen den Zeiger, `g` und `G` springen an Anfang und
+Ende, `Strg+D` und `Strg+U` blättern seitenweise. Im Baum klappt `l` auf und `h`
+geht zum Elternknoten, in der Dateiliste wechseln `h` und `l` die Spalte.
+
+Im klassischen Stil nimmt das der Anwendung die Tasten `L` und `G` weg. Das steht
+dann als Hinweis im Debug-Log, und der F-Tasten-Stil hat die beiden ohnehin schon
+verlegt.
+
+### Eigene Belegung
+
+In `settings.json` unter `keymap_custom`, als Zuordnung von Aktion auf Tastenliste:
+
+```json
+"keymap_custom": { "cycle_theme": ["alt+t"], "toggle_log": ["f4"] }
+```
+
+Was dabei schiefgeht - ein unbekannter Aktionsname, eine Taste, die einer anderen
+Aktion die letzte wegnimmt - steht als Hinweis im Debug-Log.
 
 ## Dateiverknüpfung
 
