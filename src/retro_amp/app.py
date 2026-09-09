@@ -105,6 +105,21 @@ def _sanitize_filename(name: str) -> str:
     return safe[:120]
 
 
+# Aktionen, deren Taste ein fokussiertes Eingabefeld selbst braucht. Eine
+# priority-Bindung der App faengt die Taste sonst ab, bevor das Feld sie sieht.
+# Gemessen an Textual 8.2.6 (tests/test_input_keys.py): betroffen sind "-", "+"
+# und "/" - Buchstaben, Komma, Punkt und Leerzeichen reicht Textual von sich aus
+# an das Feld durch, dort ist der Schutz also nicht noetig.
+INPUT_EIGENE_TASTEN: frozenset[str] = frozenset(
+    {
+        "delete_file",
+        "volume_up",
+        "volume_down",
+        "focus_search",
+    }
+)
+
+
 class RetroAmpApp(CrashGuard, App):
     """retro-amp — Terminal-Musikplayer mit Retro-Charme."""
 
@@ -136,6 +151,23 @@ class RetroAmpApp(CrashGuard, App):
         self._bindings.bind("c", "copy_log", t("binding.copy_log"), show=False, priority=True)
         self._bindings.bind("x", "toggle_shuffle", t("binding.shuffle"), show=False, priority=True)
         self._bindings.bind("r", "cycle_repeat", t("binding.repeat"), show=False, priority=True)
+        # Transport per Tastatur. Die Reihe Z V B folgt Winamp (zurueck, Stop,
+        # vor); dessen X und C liegen hier schon auf Shuffle und Log-kopieren.
+        # Nicht im Footer, weil das Bedienfeld dieselben Funktionen als
+        # anklickbare Schaltflaechen zeigt - der Footer hat bereits 14 Eintraege.
+        self._bindings.bind("z", "previous_track", t("binding.previous"), show=False, priority=True)
+        self._bindings.bind("v", "stop", t("binding.stop"), show=False, priority=True)
+        self._bindings.bind("b", "next_track", t("binding.next"), show=False, priority=True)
+        # Sprung im laufenden Titel auf < und >, damit die Buchstaben dem
+        # Titelwechsel gehoeren. Die Pfeiltasten scheiden aus - sie steuern die
+        # Dateitabelle und die Baeume.
+        seek_back = t("binding.seek_back")
+        seek_fwd = t("binding.seek_fwd")
+        self._bindings.bind("comma", "seek_backward", seek_back, key_display="<", show=False, priority=True)
+        self._bindings.bind("full_stop", "seek_forward", seek_fwd, key_display=">", show=False, priority=True)
+        # Suchfeld. Ohne den Schutz in check_action() faengt die App das Zeichen
+        # ab, bevor ein fokussiertes Eingabefeld es sieht.
+        self._bindings.bind("slash", "focus_search", t("binding.search"), key_display="/", show=False, priority=True)
 
         # Footer-Tooltips fuer alle Bindings setzen (Pflicht). BindingsMap.bind()
         # kennt keinen tooltip-Parameter, darum nachtraeglich per replace.
@@ -342,6 +374,12 @@ class RetroAmpApp(CrashGuard, App):
             "copy_log",
             "toggle_shuffle",
             "cycle_repeat",
+            "previous_track",
+            "stop",
+            "next_track",
+            "seek_backward",
+            "seek_forward",
+            "focus_search",
         }
         for key, bindings in self._bindings.key_to_bindings.items():
             for i, binding in enumerate(bindings):
@@ -2136,9 +2174,12 @@ class RetroAmpApp(CrashGuard, App):
         if len(self.screen_stack) > 1:
             return None
 
-        # Input-Widget fokussiert → Delete deaktivieren
-        if isinstance(self.focused, Input) and action == "delete_file":
-            return None
+        # Input-Widget fokussiert → Tasten freigeben, die das Feld selbst braucht.
+        # False statt None: der Eintrag bleibt im Footer stehen und wird nur
+        # ausgegraut. Mit None verschwaende er, und der Footer springt, sobald
+        # man ins Suchfeld klickt.
+        if isinstance(self.focused, Input) and action in INPUT_EIGENE_TASTEN:
+            return False
 
         state = self._player_service.state
         has_track = state.current_track is not None

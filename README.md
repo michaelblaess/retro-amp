@@ -148,6 +148,9 @@ retro-amp --version           # Show version
 |-----|--------|
 | `Space` | Play / Pause |
 | `+` `-` | Volume |
+| `Z` `V` `B` | Previous track / Stop / Next track |
+| `<` `>` | Seek 5 seconds back / forward |
+| `/` | Global search |
 | `TAB` | Cycle view: Files → Favorites → Playlists → History |
 | `↑` `↓` | Navigate list |
 | `Enter` | Play track / Open folder |
@@ -165,7 +168,7 @@ retro-amp --version           # Show version
 | `R` | Repeat: Off → All → One |
 | `Q` | Quit |
 
-Next/previous track, seeking (5 s) and global search are available via the control bar and search field (mouse).
+The transport keys `Z` `V` `B` follow Winamp. They are not listed in the footer because the control bar offers the same functions as buttons - clicking still works.
 
 ## File Association
 

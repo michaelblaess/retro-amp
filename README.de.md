@@ -148,6 +148,9 @@ retro-amp --version           # Zeigt die Version
 |-------|--------|
 | `Space` | Play / Pause |
 | `+` `-` | Lautstärke |
+| `Z` `V` `B` | Vorheriger Titel / Stop / Nächster Titel |
+| `<` `>` | 5 Sekunden zurück / vor |
+| `/` | Globale Suche |
 | `TAB` | Ansicht wechseln: Dateien → Favoriten → Playlists → Verlauf |
 | `↑` `↓` | Navigation in der Liste |
 | `Enter` | Song abspielen / Ordner öffnen |
@@ -165,7 +168,7 @@ retro-amp --version           # Zeigt die Version
 | `R` | Repeat: Off → All → One |
 | `Q` | Beenden |
 
-Nächster/Vorheriger Track, Seek (5 s) und Globale Suche sind über die Steuerleiste und die Suchleiste per Maus erreichbar.
+Die Transport-Tasten `Z` `V` `B` folgen Winamp. Sie stehen nicht in der Fußzeile, weil die Steuerleiste dieselben Funktionen als Schaltflächen zeigt - anklicken geht also weiterhin.
 
 ## Dateiverknüpfung
 
