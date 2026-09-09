@@ -12,6 +12,7 @@ import contextlib
 from collections.abc import Callable
 from pathlib import Path
 
+from rich.table import Table
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -211,8 +212,43 @@ class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
                 value=self._keymap_vim,
                 id="check-keymap-vim",
             )
+        yield Static(self._vim_tabelle(), classes="settings-hint")
         yield Static(t("settings.keymap_vim_hint"), classes="settings-hint")
         yield Static(t("settings.keymap_custom_hint"), classes="settings-hint")
+
+    def _vim_tabelle(self) -> Table:
+        """Baut die Tastentabelle der Vim-Ebene.
+
+        Als Absatz ist die Aufzaehlung schwer zu lesen - vier Zeilen mit
+        ausgerichteten Spalten sind auf einen Blick zu erfassen. Ohne Rahmen,
+        damit sie neben den anderen Hinweisen nicht wie ein eigener Kasten
+        wirkt.
+
+        Returns:
+            Die Tabelle, fertig zum Anzeigen in einem `Static`.
+        """
+
+        # Nur die Zeile mit der Steuerungstaste braucht Uebersetzung, die
+        # Buchstaben heissen in jeder Sprache gleich. Dateiliste und Baum
+        # stehen als eigene Spalten da: nur h und l unterscheiden sich, und
+        # genau das sieht man so auf einen Blick.
+        zeilen: tuple[tuple[str, str, str], ...] = (
+            ("j / k", t("settings.keymap_vim_line"), t("settings.keymap_vim_line")),
+            (
+                t("settings.keymap_vim_key_page"),
+                t("settings.keymap_vim_page"),
+                t("settings.keymap_vim_page"),
+            ),
+            ("g / G", t("settings.keymap_vim_ends"), t("settings.keymap_vim_ends")),
+            ("h / l", t("settings.keymap_vim_column"), t("settings.keymap_vim_node")),
+        )
+        tabelle = Table(box=None, pad_edge=False, padding=(0, 2, 0, 0), show_edge=False)
+        tabelle.add_column(t("settings.keymap_vim_col_key"), style="bold")
+        tabelle.add_column(t("settings.keymap_vim_col_table"))
+        tabelle.add_column(t("settings.keymap_vim_col_tree"))
+        for taste, tabellenwirkung, baumwirkung in zeilen:
+            tabelle.add_row(taste, tabellenwirkung, baumwirkung)
+        return tabelle
 
     def _library_fields(self) -> ComposeResult:
         """Felder fuer den Bibliothek-Tab."""

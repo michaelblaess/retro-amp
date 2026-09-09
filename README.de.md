@@ -203,9 +203,14 @@ und Details, und beides hat retro-amp nicht.
 ### Vim-Navigation
 
 Optional, gilt in der Dateiliste und in allen Bäumen, solange eines davon den
-Fokus hat: `j` und `k` bewegen den Zeiger, `g` und `G` springen an Anfang und
-Ende, `Strg+D` und `Strg+U` blättern seitenweise. Im Baum klappt `l` auf und `h`
-geht zum Elternknoten, in der Dateiliste wechseln `h` und `l` die Spalte.
+Fokus hat.
+
+| Taste | Dateiliste | Baum |
+|-------|------------|------|
+| `j` `k` | Zeile auf und ab | Zeile auf und ab |
+| `Strg+U` `Strg+D` | Seite auf und ab | Seite auf und ab |
+| `g` `G` | an Anfang und Ende | an Anfang und Ende |
+| `h` `l` | Spalte zurück und vor | Elternknoten, aufklappen |
 
 Im klassischen Stil nimmt das der Anwendung die Tasten `L` und `G` weg. Das steht
 dann als Hinweis im Debug-Log, und der F-Tasten-Stil hat die beiden ohnehin schon

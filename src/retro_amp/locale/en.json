@@ -365,7 +365,7 @@
   "settings.keymap_style_hint": "Takes effect after a restart. On macOS the classic style is the default because the operating system claims several function keys.",
   "settings.keymap_vim": "Vim navigation",
   "settings.keymap_vim_checkbox": "in file list and trees",
-  "settings.keymap_vim_hint": "j and k move the cursor, g and G jump to start and end, Ctrl+D and Ctrl+U page through. In a tree l expands and h goes to the parent, in the table h and l change the column. Only while one of these widgets has focus - and it takes the keys l and g away from the application for that time.",
+  "settings.keymap_vim_hint": "Only while the file list or one of the trees has focus. The application loses the keys L and G for that time - in the function key style both have already moved to Alt+L and Alt+G.",
   "settings.keymap_custom_hint": "Custom bindings: settings.json, section keymap_custom.",
   "keymap.title": "Key bindings",
   "keymap.style_classic": "Classic",
@@ -375,5 +375,14 @@
   "keymap.column_keys": "Key",
   "keymap.column_action": "Action",
   "keymap.hidden": "not in the footer",
-  "keymap.close": "Close"
+  "keymap.close": "Close",
+  "settings.keymap_vim_col_key": "Key",
+  "settings.keymap_vim_key_page": "Ctrl+U / Ctrl+D",
+  "settings.keymap_vim_col_table": "File list",
+  "settings.keymap_vim_col_tree": "Tree",
+  "settings.keymap_vim_line": "line up and down",
+  "settings.keymap_vim_page": "page up and down",
+  "settings.keymap_vim_ends": "to start and end",
+  "settings.keymap_vim_column": "column back and forth",
+  "settings.keymap_vim_node": "parent node, expand"
 }

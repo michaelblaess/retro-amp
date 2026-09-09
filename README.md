@@ -203,10 +203,14 @@ and retro-amp has neither.
 
 ### Vim navigation
 
-Optional, active in the file list and all trees while one of them has focus:
-`j` and `k` move the cursor, `g` and `G` jump to start and end, `Ctrl+D` and
-`Ctrl+U` page through. In a tree `l` expands and `h` goes to the parent, in the
-file list `h` and `l` change the column.
+Optional, active in the file list and all trees while one of them has focus.
+
+| Key | File list | Tree |
+|-----|-----------|------|
+| `j` `k` | line up and down | line up and down |
+| `Ctrl+U` `Ctrl+D` | page up and down | page up and down |
+| `g` `G` | to start and end | to start and end |
+| `h` `l` | column back and forth | parent node, expand |
 
 In the classic style this takes the keys `L` and `G` away from the application.
 That is reported in the debug log, and the function key style has already moved

@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from retro_amp.app import RetroAmpApp
+from retro_amp.i18n import t
 from retro_amp.screens.keymap_screen import KeymapScreen
 from retro_amp.widgets.file_table import FileDataTable
 from retro_amp.widgets.folder_browser import FolderBrowser
@@ -222,3 +223,57 @@ class TestEinstellungsdialog:
             await pilot.pause()
         gespeichert = json.loads((isolierte_ablage / ".retro-amp" / "settings.json").read_text(encoding="utf-8"))
         assert gespeichert["keymap_style"] == "function_keys"
+
+
+class TestVimHinweis:
+    """Die Tastentabelle im Einstellungsdialog."""
+
+    async def test_tabelle_hat_vier_zeilen_und_drei_spalten(self, isolierte_ablage: Path) -> None:
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            anwendung.action_show_settings()
+            await pilot.pause()
+            tabelle = anwendung.screen._vim_tabelle()  # type: ignore[attr-defined]
+        assert tabelle.row_count == 4
+        # Ueber die Spaltenzahl allein laesst sich das nicht pruefen: Rich legt
+        # eine fehlende Spalte beim add_row() stillschweigend selbst an, nur
+        # eben ohne Ueberschrift. Also die Ueberschriften pruefen.
+        ueberschriften = [str(spalte.header) for spalte in tabelle.columns]
+        assert ueberschriften == [
+            t("settings.keymap_vim_col_key"),
+            t("settings.keymap_vim_col_table"),
+            t("settings.keymap_vim_col_tree"),
+        ]
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_texte_in_beiden_sprachen(self, sprache: str) -> None:
+        """Ein fehlender Schluessel wuerde als leere Zelle durchgehen."""
+
+        from retro_amp import app as modul
+
+        pfad = Path(modul.__file__).parent / "locale" / f"{sprache}.json"
+        texte = json.loads(pfad.read_text(encoding="utf-8"))
+        for schluessel in (
+            "settings.keymap_vim_col_key",
+            "settings.keymap_vim_col_table",
+            "settings.keymap_vim_col_tree",
+            "settings.keymap_vim_key_page",
+            "settings.keymap_vim_line",
+            "settings.keymap_vim_page",
+            "settings.keymap_vim_ends",
+            "settings.keymap_vim_column",
+            "settings.keymap_vim_node",
+            "settings.keymap_vim_hint",
+        ):
+            assert texte.get(schluessel), f"{schluessel} fehlt in {sprache}.json"
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_footer_beschriftungen_sind_uebersetzt(self, sprache: str) -> None:
+        """Im deutschen Paket stand "Settings" statt "Einstellungen"."""
+
+        from retro_amp import app as modul
+
+        pfad = Path(modul.__file__).parent / "locale" / f"{sprache}.json"
+        texte = json.loads(pfad.read_text(encoding="utf-8"))
+        erwartet = {"de": "Einstellungen", "en": "Settings"}[sprache]
+        assert texte["binding.settings"] == erwartet

@@ -11,7 +11,7 @@
   "binding.theme": "Theme",
   "binding.info": "Info",
   "binding.search": "Suche",
-  "binding.settings": "Settings",
+  "binding.settings": "Einstellungen",
   "binding.library": "Bibliothek",
   "binding.log": "Log",
   "binding.copy_log": "Log kopieren",
@@ -365,7 +365,7 @@
   "settings.keymap_style_hint": "Wirkt nach einem Neustart. Auf dem Mac ist Klassisch die Vorgabe, weil das Betriebssystem mehrere F-Tasten selbst belegt.",
   "settings.keymap_vim": "Vim-Navigation",
   "settings.keymap_vim_checkbox": "in Dateiliste und Bäumen",
-  "settings.keymap_vim_hint": "j und k bewegen den Zeiger, g und G springen an Anfang und Ende, Strg+D und Strg+U blättern seitenweise. Im Baum klappt l auf und h geht zum Elternknoten, in der Tabelle wechseln h und l die Spalte. Gilt nur, solange eines dieser Widgets den Fokus hat - und nimmt der Anwendung solange die Tasten l und g weg.",
+  "settings.keymap_vim_hint": "Gilt nur, solange die Dateiliste oder einer der Bäume den Fokus hat. Die Anwendung verliert dabei die Tasten L und G - im F-Tasten-Stil liegen die beiden ohnehin schon auf Alt+L und Alt+G.",
   "settings.keymap_custom_hint": "Eigene Belegungen: settings.json, Abschnitt keymap_custom.",
   "keymap.title": "Tastenbelegung",
   "keymap.style_classic": "Klassisch",
@@ -375,5 +375,14 @@
   "keymap.column_keys": "Taste",
   "keymap.column_action": "Aktion",
   "keymap.hidden": "nicht in der Fußzeile",
-  "keymap.close": "Schließen"
+  "keymap.close": "Schließen",
+  "settings.keymap_vim_col_key": "Taste",
+  "settings.keymap_vim_key_page": "Strg+U / Strg+D",
+  "settings.keymap_vim_col_table": "Dateiliste",
+  "settings.keymap_vim_col_tree": "Baum",
+  "settings.keymap_vim_line": "Zeile auf und ab",
+  "settings.keymap_vim_page": "Seite auf und ab",
+  "settings.keymap_vim_ends": "an Anfang und Ende",
+  "settings.keymap_vim_column": "Spalte zurück und vor",
+  "settings.keymap_vim_node": "Elternknoten, aufklappen"
 }
