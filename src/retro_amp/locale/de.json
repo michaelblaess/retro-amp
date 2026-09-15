@@ -221,6 +221,7 @@
   "log.stop": "■ Wiedergabe gestoppt",
   "log.library_changed": "Bibliothek gewechselt: {path}",
   "log.tree_root_changed": "Verzeichniswechsel: {path}",
+  "log.spectrum_failed": "[!] Kein Spektrum für {name} - der Visualizer zeigt solange Zufallswerte.",
   "transport.no_track": "Kein Track geladen",
   "favorites.title": "★ Favoriten",
   "favorites.title_count": "★ Favoriten ({count})",

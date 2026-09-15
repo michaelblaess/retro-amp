@@ -221,6 +221,7 @@
   "log.stop": "■ Playback stopped",
   "log.library_changed": "Library changed: {path}",
   "log.tree_root_changed": "Directory changed: {path}",
+  "log.spectrum_failed": "[!] No spectrum for {name} - the visualizer shows random values instead.",
   "transport.no_track": "No track loaded",
   "favorites.title": "★ Favorites",
   "favorites.title_count": "★ Favorites ({count})",

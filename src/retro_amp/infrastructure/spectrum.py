@@ -20,6 +20,11 @@ MIN_FREQ = 20.0
 MAX_FREQ = 18000.0
 DB_FLOOR = -60.0  # Untergrenze in dB
 
+# Formate, fuer die es absichtlich kein Spektrum gibt: Tracker-Module haben
+# keine feste PCM-Laenge, pygame.mixer.Sound blockiert darauf endlos. Ein
+# fehlendes Spektrum ist hier also kein Fehler und gehoert nicht ins Log.
+NO_SPECTRUM_EXTENSIONS = frozenset({".mod", ".s3m", ".xm"})
+
 
 def _fft(x: list[complex]) -> list[complex]:
     """Iterative Cooley-Tukey Radix-2 FFT (stdlib only)."""
@@ -92,11 +97,17 @@ class SpectrumAnalyzer:
                 hi_bin = lo_bin
             self._band_bins.append((lo_bin, hi_bin))
 
-    def load(self, path: Path) -> None:
+    def load(self, path: Path) -> bool:
         """Laedt PCM-Daten einer Audio-Datei (blocking, in Worker aufrufen).
 
         Nutzt einen separaten Dekodierungspfad (nicht pygame.mixer.Sound),
         um Konflikte mit dem laufenden Music-Stream zu vermeiden.
+
+        Returns:
+            True, wenn danach Bandwerte geliefert werden koennen. Der Aufrufer
+            soll ein False sichtbar machen - schlaegt das Laden fehl, zeigt der
+            Visualizer Zufallswerte, und das sieht aus wie eine Anzeige, die der
+            Musik hinterherhinkt.
         """
         self._ready = False
         self._pcm = None
@@ -104,7 +115,7 @@ class SpectrumAnalyzer:
         try:
             raw, sample_rate, channels = self._decode_to_pcm(path)
             if raw is None:
-                return
+                return False
 
             self._sample_rate = sample_rate
             self._channels = channels
@@ -129,6 +140,8 @@ class SpectrumAnalyzer:
             self._pcm = None
             self._ready = False
 
+        return self._ready
+
     def _decode_to_pcm(self, path: Path) -> tuple[bytes | None, int, int]:
         """Dekodiert Audio zu PCM ohne pygame.mixer.Sound zu verwenden.
 
@@ -150,8 +163,8 @@ class SpectrumAnalyzer:
             return self._decode_via_miniaudio(path)
 
         # Tracker (MOD/S3M/XM): pygame.mixer.Sound blockiert endlos,
-        # da Module keine feste PCM-Laenge haben — kein Spectrum moeglich
-        if ext in {".mod", ".s3m", ".xm"}:
+        # da Module keine feste PCM-Laenge haben - kein Spectrum moeglich
+        if ext in NO_SPECTRUM_EXTENSIONS:
             return None, 0, 0
 
         return self._decode_via_pygame(path)
@@ -206,17 +219,31 @@ class SpectrumAnalyzer:
             return None, 0, 0
 
     def _decode_via_miniaudio(self, path: Path) -> tuple[bytes | None, int, int]:
-        """Dekodiert MP3/FLAC per miniaudio (kein Konflikt mit pygame Music-Stream)."""
+        """Dekodiert MP3/FLAC per miniaudio (kein Konflikt mit pygame Music-Stream).
+
+        Zwei Punkte, die hier bewusst anders sind als der naheliegende Weg:
+
+        `decode_file()` reicht den Dateinamen an die C-Bibliothek durch und
+        scheitert unter Windows an jedem Zeichen ausserhalb von ASCII - ein
+        Album wie "Oggi Le Canto Cosi" mit Akzent im Ordnernamen liefert
+        `DecodeError(-7)`, obwohl dieselbe Datei unter ASCII-Namen einwandfrei
+        dekodiert. Deshalb lesen wir die Bytes selbst und geben sie an
+        `decode()` - damit sieht die Bibliothek nie einen Pfad.
+
+        Und `nchannels=1` laesst den Downmix in C geschehen. Die frueher
+        nachgelagerte Python-Schleife ueber alle Samples kostete bei einem
+        Titel von vier Minuten rund 1,4 Sekunden und hielt dabei die GIL.
+        """
         try:
             import miniaudio
 
-            decoded = miniaudio.decode_file(
-                str(path),
+            decoded = miniaudio.decode(
+                path.read_bytes(),
                 output_format=miniaudio.SampleFormat.SIGNED16,
-                nchannels=2,
+                nchannels=1,
                 sample_rate=44100,
             )
-            # decoded.samples ist ein array von interleaved int16
+            # decoded.samples ist ein array von int16, hier bereits Mono
             raw = bytes(decoded.samples)
             return raw, decoded.sample_rate, decoded.nchannels
         except Exception:

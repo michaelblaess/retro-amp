@@ -58,7 +58,7 @@ from .infrastructure.playlist_migration import migrate_markdown_playlists
 from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.settings import JsonSettingsStore
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
-from .infrastructure.spectrum import SpectrumAnalyzer
+from .infrastructure.spectrum import NO_SPECTRUM_EXTENSIONS, SpectrumAnalyzer
 from .infrastructure.sqlite_history_repository import SqliteHistoryRepository
 from .infrastructure.sqlite_playlist_repository import SqlitePlaylistRepository
 from .infrastructure.sqlite_search_history_repository import SqliteSearchHistoryRepository
@@ -2593,8 +2593,17 @@ class RetroAmpApp(CrashGuard, App):
 
     @work(exclusive=True, group="spectrum", thread=True)
     def _load_spectrum(self, path: Path) -> None:
-        """Laedt Spektrum-Daten im Hintergrund-Thread."""
-        self._spectrum_analyzer.load(path)
+        """Laedt Spektrum-Daten im Hintergrund-Thread.
+
+        Scheitert das Laden, faellt der Visualizer auf Zufallswerte zurueck.
+        Das sieht aus wie eine Anzeige, die der Musik hinterherhinkt, und war
+        vorher nirgends zu sehen - also ab ins Log.
+        """
+        if self._spectrum_analyzer.load(path):
+            return
+        if path.suffix.lower() in NO_SPECTRUM_EXTENSIONS:
+            return
+        self.call_from_thread(self._write_log, t("log.spectrum_failed", name=path.name))
 
     def _update_transport(self) -> None:
         """Transport-Leiste und Control-Panel mit aktuellem State aktualisieren."""
