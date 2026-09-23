@@ -23,6 +23,9 @@ from pathlib import Path
 import pygame
 import pygame.mixer
 
+from ..i18n import t
+from .cloud_files import is_cloud_placeholder
+
 logger = logging.getLogger(__name__)
 
 # Unterstuetzte Formate fuer pygame.mixer (nativ)
@@ -261,7 +264,11 @@ class PygameAudioPlayer:
             pygame.mixer.music.play()
             self._current_path = path
             self._seek_offset = 0.0
-        except RuntimeError:
+        except RuntimeError as error:
+            # pygame.error ist ein RuntimeError. Bei einem Cloud-Platzhalter ist die
+            # Meldung "corrupt mp3" falsch - die Datei ist heil, nur nicht lokal da.
+            if is_cloud_placeholder(path):
+                raise RuntimeError(t("error.cloud_only", name=path.name)) from error
             raise
         except Exception:
             logger.exception("Fehler beim Abspielen von %s", path)

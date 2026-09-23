@@ -207,6 +207,7 @@
   "log.playlist_track_removed": "Aus Playlist \"{playlist}\" entfernt: {name}",
   "log.volume": "Lautstärke: {pct}%",
   "log.directory": "Verzeichnis: {path} ({count} Tracks)",
+  "error.cloud_only": "\"{name}\" liegt nur in der Cloud und konnte nicht geladen werden. Läuft Dropbox bzw. OneDrive? Sonst den Ordner dort auf \"Offline verfügbar\" stellen.",
   "log.play": "▶ {name}",
   "log.track_finished": "Track beendet: {name}",
   "log.track_finished_unknown": "Track beendet",

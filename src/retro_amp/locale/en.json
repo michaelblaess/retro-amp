@@ -207,6 +207,7 @@
   "log.playlist_track_removed": "Removed from playlist \"{playlist}\": {name}",
   "log.volume": "Volume: {pct}%",
   "log.directory": "Directory: {path} ({count} tracks)",
+  "error.cloud_only": "\"{name}\" is only stored in the cloud and could not be loaded. Is Dropbox or OneDrive running? Otherwise mark the folder as \"available offline\" there.",
   "log.play": "▶ {name}",
   "log.track_finished": "Track finished: {name}",
   "log.track_finished_unknown": "Track finished",

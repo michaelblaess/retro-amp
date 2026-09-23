@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 import contextlib
 
+from rich.errors import MarkupError
+from rich.markup import escape
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -2449,6 +2452,11 @@ class RetroAmpApp(CrashGuard, App):
         self._sync_visualizer()
         self._update_transport()
         self._highlight_current_track()
+        state = self._player_service.state
+        if state.state != PlaybackState.PLAYING or state.current_track != track:
+            # Start gescheitert - der Fehler steht schon im Log. Kein "▶" und keine
+            # Lyrics-Suche fuer einen Titel, der gar nicht laeuft.
+            return
         self.sub_title = track.display_name
         log_name = f"{track.artist} – {track.title}" if track.artist and track.title else track.display_name
         self._write_log(t("log.play", name=f"{log_name} ({track.path.parent})"))
@@ -2650,7 +2658,7 @@ class RetroAmpApp(CrashGuard, App):
 
     def _on_playback_error(self, error: str) -> None:
         """Callback bei Playback-Fehlern."""
-        self._write_log(f"[bold red]{error}[/bold red]")
+        self._write_log(f"[bold red]{escape(error)}[/bold red]")
         self.notify(error, severity="warning", timeout=8)
 
     def _on_track_started(self, track: AudioTrack) -> None:
@@ -3057,6 +3065,9 @@ class RetroAmpApp(CrashGuard, App):
         try:
             log_widget = self.query_one("#app-log", RichLog)
             log_widget.write(f"[dim]{timestamp}[/dim] {message}")
+            # Kopieren und Speichern sollen Klartext liefern, kein "[bold red]".
+            with contextlib.suppress(MarkupError):
+                message = Text.from_markup(message).plain
             self._log_lines.append(f"{timestamp} {message}")
         except Exception:
             pass
