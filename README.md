@@ -112,7 +112,7 @@ retro-amp --version           # Show version
 ## Features
 
 - **Folder browser** — Left panel with directory tree, automatically filters audio files. Right-click opens a context menu: for folders play, expand/collapse, **collapse all**, add to playlist, set as music library, rename and delete - for files also favorite and automatic title completion
-- **Quick-jump sidebar** — At the top of the Files tab: Home, Music (= configured library), XDG folders (Downloads, Desktop, Documents, Pictures, Videos) and accessible drives. Clicking an entry switches the tree root *temporarily* — the persistent library stays untouched, the friendly label (e.g. `💾 C:\`, `📁 Downloads`) is also shown as the tree root
+- **Quick-jump sidebar** — At the top of the Files tab: Home, Music (= configured library), XDG folders (Downloads, Desktop, Documents, Pictures, Videos) and accessible drives. Clicking an entry switches the tree root *temporarily* — the persistent library stays untouched, the friendly label (e.g. `💾 C:\`, `📁 Downloads`) is also shown as the tree root. The sidebar starts collapsed as a single `▸ Quick access` line - click it or press `O` to expand it; the state is remembered
 - **Favorites view** — All favorites as a tree, toggle with TAB
 - **Context menus everywhere** — Right-click an entry in favorites, history, search, playlists or the file table: play, add or remove favorite, add to playlist and "show in folder tree" (switches to the files tab and marks the file there). The file table also offers rename, delete and automatic title completion, the playlist tree "play playlist" and "remove from playlist". On group nodes expand/collapse and **collapse all**. Entries whose file has disappeared are greyed out
 - **Playlist view** — Playlists as a tree, play or remove songs directly
@@ -123,7 +123,8 @@ retro-amp --version           # Show version
 - **Synced lyrics** — Time-stamped lyrics from [lrclib.net](https://lrclib.net), color-synced (played/current/upcoming), click-to-seek on any line, auto-scroll with a 3s timeout after manual scrolling
 - **Liner notes** — Wikipedia info on the current artist (key I), cached automatically
 - **Album cover art** — Embedded covers from audio tags (ID3, FLAC, MP4) or image files in the folder (cover.jpg, folder.jpg, etc.), rendered as Unicode half-blocks via [Pillow](https://pillow.readthedocs.io/)
-- **Global search with history** — Search files across the whole library; clicking the search field shows the last 20 queries, typing filters matching entries and highlights hits (persisted in SQLite). Hits appear in the "Search" tab on the left as a tree, grouped by parent directory — when several hits share the same album folder, the path is shown only once.
+- **Global search with history** — Search files across the whole library; clicking the search field shows the last 20 queries, typing filters matching entries and highlights hits (persisted in SQLite). Hits appear in the "Search" tab on the left as a tree, grouped by parent directory — when several hits share the same album folder, the path is shown only once. The search ignores accents and special characters: `eternita` finds `Eternità`, `gruen` and `grun` find `Grün`, `dont stop` finds `Don't Stop`, `ac dc` finds `AC/DC`
+- **Cloud files** - If a file is only stored online (Dropbox or OneDrive "online only") and cannot be fetched, retro-amp says so instead of reporting a misleading "corrupt mp3 file"
 - **Playlists** — Stored in the SQLite database, default playlist "Favorites". Markdown playlists from older versions are imported once at startup.
 - **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
 - **38 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
@@ -161,6 +162,7 @@ else.
 | `Z` `V` `B` | Previous track / Stop / Next track |
 | `<` `>` | Seek 5 seconds back / forward |
 | `/` | Global search |
+| `O` | Expand / collapse quick access |
 | `TAB` | Cycle view: Files → Favorites → Playlists → History |
 | `↑` `↓` | Navigate list |
 | `Enter` | Play track / Open folder |

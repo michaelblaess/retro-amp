@@ -112,7 +112,7 @@ retro-amp --version           # Zeigt die Version
 ## Features
 
 - **Ordner-Browser** — Linkes Panel mit Verzeichnisbaum, filtert Audio-Dateien automatisch. Rechtsklick öffnet ein Kontextmenü: bei Ordnern Abspielen, Aus-/Einklappen, **Alles einklappen**, zur Playlist hinzufügen, als Musikbibliothek setzen, umbenennen und löschen - bei Dateien zusätzlich Favorit und automatische Titelergänzung
-- **Quick-Jump-Sidebar** — Oben im Dateien-Tab: Home, Musik (= konfigurierte Bibliothek), XDG-Ordner (Downloads, Desktop, Dokumente, Bilder, Videos) und verfügbare Laufwerke. Klick auf einen Eintrag wechselt den Tree-Root *temporär* — die persistierte Bibliothek bleibt unverändert, das freundliche Label (z.B. `💾 C:\`, `📁 Downloads`) erscheint auch als Wurzel im Baum
+- **Quick-Jump-Sidebar** — Oben im Dateien-Tab: Home, Musik (= konfigurierte Bibliothek), XDG-Ordner (Downloads, Desktop, Dokumente, Bilder, Videos) und verfügbare Laufwerke. Klick auf einen Eintrag wechselt den Tree-Root *temporär* — die persistierte Bibliothek bleibt unverändert, das freundliche Label (z.B. `💾 C:\`, `📁 Downloads`) erscheint auch als Wurzel im Baum. Die Sidebar startet eingeklappt als eine Zeile `▸ Schnellzugriff` - Klick darauf oder `O` klappt sie auf, der Zustand bleibt gespeichert
 - **Favoriten-Ansicht** — Alle Favoriten als Baumstruktur, mit TAB umschalten
 - **Kontextmenüs überall** — Rechtsklick auf einen Eintrag in Favoriten, Verlauf, Suche, Playlists oder in der Datei-Tabelle: Abspielen, Favorit setzen oder entfernen, zur Playlist hinzufügen und "Im Ordner-Baum zeigen" (wechselt in den Dateien-Tab und markiert die Datei dort). In der Datei-Tabelle zusätzlich Umbenennen, Löschen und Titel automatisch ergänzen, im Playlist-Baum "Playlist abspielen" und "Aus Playlist entfernen". Auf Gruppen-Knoten Aus-/Einklappen und **Alles einklappen**. Einträge, deren Datei verschwunden ist, sind ausgegraut
 - **Playlist-Ansicht** — Playlists als Baumstruktur, Songs direkt abspielen oder entfernen
@@ -123,7 +123,8 @@ retro-amp --version           # Zeigt die Version
 - **Synced Lyrics** — Zeitgestempelte Lyrics von [lrclib.net](https://lrclib.net), farbig synchronisiert (gespielt/aktuell/kommend), Click-to-Seek auf jede Zeile, Auto-Scroll mit 3s Timeout nach manuellem Scrollen
 - **Liner Notes** — Wikipedia-Info zum aktuellen Artist (Taste I), automatisch gecached
 - **Album Cover Art** — Eingebettete Cover aus Audio-Tags (ID3, FLAC, MP4) oder Bilddateien im Ordner (cover.jpg, folder.jpg, etc.), gerendert als Unicode Half-Blocks via [Pillow](https://pillow.readthedocs.io/)
-- **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Einträge gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach übergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal.
+- **Globale Suche mit Verlauf** — Dateien in der gesamten Bibliothek suchen; Klick ins Suchfeld zeigt die letzten 20 Suchanfragen, beim Tippen werden passende Einträge gefiltert und Treffer hervorgehoben (Persistenz in SQLite). Treffer erscheinen im Tab "Suche" links als Baum, gruppiert nach übergeordnetem Verzeichnis — bei mehreren Treffern im selben Album-Ordner steht der Pfad nur einmal. Die Suche ignoriert Akzente und Sonderzeichen: `eternita` findet `Eternità`, `gruen` und `grun` finden `Grün`, `dont stop` findet `Don't Stop`, `ac dc` findet `AC/DC`
+- **Cloud-Dateien** - Liegt eine Datei nur online (Dropbox oder OneDrive "nur online") und lässt sich nicht nachladen, sagt retro-amp das, statt irreführend "corrupt mp3 file" zu melden
 - **Playlists** — In der SQLite-Datenbank gespeichert, Standard-Playlist "Favoriten". Markdown-Playlists älterer Versionen werden beim Start einmalig übernommen.
 - **Shuffle & Repeat** — Shuffle-Modus (X) und Repeat Off/All/One (R), kombinierbar
 - **38 Retro-Themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp und 80s-pastel Palettes (siehe [textual-themes](https://github.com/michaelblaess/textual-themes))
@@ -160,6 +161,7 @@ weil das System mehrere F-Tasten selbst belegt, überall sonst die F-Tasten.
 | `Z` `V` `B` | Vorheriger Titel / Stop / Nächster Titel |
 | `<` `>` | 5 Sekunden zurück / vor |
 | `/` | Globale Suche |
+| `O` | Schnellzugriff auf- / zuklappen |
 | `TAB` | Ansicht wechseln: Dateien → Favoriten → Playlists → Verlauf |
 | `↑` `↓` | Navigation in der Liste |
 | `Enter` | Song abspielen / Ordner öffnen |
