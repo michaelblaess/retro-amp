@@ -48,6 +48,7 @@ from .domain.models import (
     TitleProposal,
     VisualizerMode,
 )
+from .domain.search_text import matches
 from .i18n import current_language, t
 from .infrastructure.acoustid_client import AcoustIDClient
 from .infrastructure.audio_player import PygameAudioPlayer
@@ -1752,7 +1753,6 @@ class RetroAmpApp(CrashGuard, App):
         library = self._music_library
         return library if library.is_dir() else self._tree_root
 
-    _SEPARATOR_RE = re.compile(r"[.\-_]")
     _MAX_SEARCH_RESULTS = 200
 
     def _do_file_search(
@@ -1766,12 +1766,11 @@ class RetroAmpApp(CrashGuard, App):
             Liste von ``(absoluter Pfad, is_dir)``-Tuples — der SearchTree
             generiert daraus selbst die Anzeige (gruppiert nach Parent).
         """
-        query_norm = self._SEPARATOR_RE.sub(" ", query.lower())
         results: list[tuple[Path, bool]] = []
         audio_exts = AudioFormat.supported_extensions()
         try:
             for p in sorted(root.rglob("*")):
-                if query_norm in self._SEPARATOR_RE.sub(" ", p.name.lower()):
+                if matches(p.name, query):
                     if p.is_dir():
                         results.append((p, True))
                     elif p.suffix.lower() in audio_exts:

@@ -2,22 +2,15 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from rich.text import Text
 from textual.message import Message
 from textual.widgets import Tree
 
+from ..domain.search_text import find_spans
 from ..i18n import t
 from .path_context_tree import PathContextTree
-
-_SEPARATOR_RE = re.compile(r"[.\-_]")
-
-
-def _normalize(s: str) -> str:
-    """Trennzeichen durch Leerzeichen ersetzen — flexible Suche."""
-    return _SEPARATOR_RE.sub(" ", s)
 
 
 class SearchTree(PathContextTree[Path | None]):
@@ -126,17 +119,8 @@ class SearchTree(PathContextTree[Path | None]):
         offset: int,
     ) -> None:
         """Markiert Treffer-Stellen im Datei-/Ordnername fett in Akzentfarbe."""
-        norm_name = _normalize(name.lower())
-        norm_query = _normalize(query.lower())
-        if not norm_query:
-            return
-        start = 0
-        while True:
-            idx = norm_name.find(norm_query, start)
-            if idx < 0:
-                break
-            label.stylize(f"bold {accent}", offset + idx, offset + idx + len(norm_query))
-            start = idx + len(norm_query)
+        for start, end in find_spans(name, query):
+            label.stylize(f"bold {accent}", offset + start, offset + end)
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Treffer-Knoten ausgewaehlt — Path-Daten weitergeben."""
