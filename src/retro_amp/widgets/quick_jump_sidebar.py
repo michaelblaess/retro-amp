@@ -78,6 +78,52 @@ class QuickJumpSection(Static):
     """
 
 
+class QuickJumpHeader(Static):
+    """Einzeilige Kopfzeile ueber dem Schnellzugriff - Klick klappt ihn auf/zu.
+
+    Der Header entscheidet nichts selbst: er meldet den Klick per
+    ``ToggleRequested``, die App schaltet um und merkt sich den Zustand. So
+    wirken Klick und Tastenkuerzel ueber denselben Weg.
+    """
+
+    DEFAULT_CSS = """
+    QuickJumpHeader {
+        width: 100%;
+        height: 1;
+        padding: 0 1;
+        color: $text;
+        background: $primary 25%;
+        text-style: bold;
+    }
+    QuickJumpHeader:hover {
+        background: $primary 50%;
+    }
+    """
+
+    class ToggleRequested(Message):
+        """Kopfzeile geklickt - Handler: ``on_quick_jump_header_toggle_requested``."""
+
+    def __init__(self, collapsed: bool = True, id: str | None = None) -> None:
+        super().__init__(markup=False, id=id)
+        self._collapsed = collapsed
+        self.tooltip = t("sidebar.toggle_tooltip")
+
+    def on_mount(self) -> None:
+        """Erste Beschriftung setzen."""
+        self.set_collapsed(self._collapsed)
+
+    def set_collapsed(self, collapsed: bool) -> None:
+        """Pfeil und Beschriftung an den Zustand anpassen."""
+        self._collapsed = collapsed
+        arrow = "▸" if collapsed else "▾"
+        self.update(f"{arrow} {t('sidebar.title')}")
+
+    def on_click(self, event: Click) -> None:
+        """Klick an die App weiterreichen."""
+        event.stop()
+        self.post_message(self.ToggleRequested())
+
+
 class QuickJumpSidebar(VerticalScroll):
     """Sidebar-Container mit Schnellzugriff-Zeilen.
 

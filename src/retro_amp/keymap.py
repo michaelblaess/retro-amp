@@ -59,6 +59,7 @@ CLASSIC: dict[str, KeyBinding] = {
     "seek_backward": KeyBinding(("comma",), show=False, priority=True),
     "seek_forward": KeyBinding(("full_stop",), show=False, priority=True),
     "focus_search": KeyBinding(("slash",), show=False, priority=True),
+    "toggle_quick_jump": KeyBinding(("o",), show=False, priority=True),
     # Uebersicht der geltenden Belegung. Im Terminal die gelaeufige Taste dafuer.
     "keymap_overview": KeyBinding(("question_mark",), show=False, priority=True),
 }
@@ -93,6 +94,7 @@ LABEL_KEYS: dict[str, str] = {
     "seek_backward": "binding.seek_back",
     "seek_forward": "binding.seek_fwd",
     "focus_search": "binding.search",
+    "toggle_quick_jump": "binding.quick_jump",
     "keymap_overview": "binding.keymap_overview",
 }
 """Aktion auf den i18n-Schluessel ihrer Footer-Beschriftung."""
@@ -121,6 +123,7 @@ TOOLTIP_KEYS: dict[str, str] = {
     "seek_backward": "tooltip.seek_backward",
     "seek_forward": "tooltip.seek_forward",
     "focus_search": "tooltip.focus_search",
+    "toggle_quick_jump": "tooltip.quick_jump",
     "keymap_overview": "tooltip.keymap_overview",
 }
 """Aktion auf den i18n-Schluessel ihres Footer-Tooltips."""

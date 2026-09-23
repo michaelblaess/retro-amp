@@ -17,6 +17,7 @@ _DEFAULTS: dict[str, object] = {
     "volume": 0.8,
     "last_path": "",
     "music_library": "",
+    "quick_jump_collapsed": True,  # Schnellzugriff im Dateien-Tab eingeklappt
     "cover_renderer": "halfblock",  # halfblock | graphics (TGP/Sixel)
     # Tastenbelegung. Leer heisst "noch nicht entschieden" - dann entscheidet
     # die Plattform (siehe keymap.style_from_settings).

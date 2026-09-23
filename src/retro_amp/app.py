@@ -93,7 +93,7 @@ from .widgets.info_panel import InfoPanel
 from .widgets.lyrics_panel import LyricLine, LyricsPanel
 from .widgets.path_context_tree import PathContextTree
 from .widgets.playlist_tree import PlaylistTree
-from .widgets.quick_jump_sidebar import QuickJumpSidebar
+from .widgets.quick_jump_sidebar import QuickJumpHeader, QuickJumpSidebar
 from .widgets.search_tree import SearchTree
 from .widgets.translation_panel import TranslationPanel
 from .widgets.transport_bar import TransportBar
@@ -401,8 +401,9 @@ class RetroAmpApp(CrashGuard, App):
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"), TabbedContent(id="left-tabs"):
                 with TabPane(t("tab.browser"), id="tab-browser"), Vertical(id="browser-pane"):
+                    yield QuickJumpHeader(id="quick-jump-header")
                     yield QuickJumpSidebar(self._music_library, id="quick-jump")
-                    yield HorizontalSplitter(target_id="quick-jump", min_size=3, max_size=20)
+                    yield HorizontalSplitter(id="quick-jump-splitter", target_id="quick-jump", min_size=3, max_size=20)
                     yield FolderBrowser(str(self._tree_root), id="folder-browser")
                 with TabPane(t("tab.favorites"), id="tab-favorites"):
                     yield FavoritesTree(id="favorites-tree")
@@ -468,6 +469,7 @@ class RetroAmpApp(CrashGuard, App):
 
         # Gespeicherte Splitter-Groessen anwenden (linkes Panel + File-Table)
         self._restore_pane_sizes()
+        self._apply_quick_jump_collapsed(bool(self._settings_store.load().get("quick_jump_collapsed", True)))
 
         # Fokus auf Verzeichnisbaum statt Suchfeld (zeigt alle Bindings im Footer)
         self.query_one("#folder-browser", FolderBrowser).focus()
@@ -1002,6 +1004,24 @@ class RetroAmpApp(CrashGuard, App):
             self._refresh_history_tree()
             self.query_one("#history-tree", HistoryTree).focus()
             self._write_log(t("log.view_history"))
+
+    def action_toggle_quick_jump(self) -> None:
+        """Schnellzugriff im Dateien-Tab auf-/zuklappen und den Zustand merken."""
+        settings = self._settings_store.load()
+        collapsed = not bool(settings.get("quick_jump_collapsed", True))
+        settings["quick_jump_collapsed"] = collapsed
+        self._settings_store.save(settings)
+        self._apply_quick_jump_collapsed(collapsed)
+
+    def on_quick_jump_header_toggle_requested(self, event: QuickJumpHeader.ToggleRequested) -> None:
+        """Klick auf die Kopfzeile des Schnellzugriffs."""
+        self.action_toggle_quick_jump()
+
+    def _apply_quick_jump_collapsed(self, collapsed: bool) -> None:
+        """Blendet Liste und Splitter aus - die Kopfzeile bleibt als eine Zeile stehen."""
+        self.query_one("#quick-jump-header", QuickJumpHeader).set_collapsed(collapsed)
+        self.query_one("#quick-jump", QuickJumpSidebar).display = not collapsed
+        self.query_one("#quick-jump-splitter", HorizontalSplitter).display = not collapsed
 
     def action_toggle_log(self) -> None:
         """Debug-Log ein-/ausblenden."""
