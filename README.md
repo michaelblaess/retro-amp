@@ -19,7 +19,7 @@
 [![Last Commit](https://img.shields.io/github/last-commit/michaelblaess/retro-amp?logo=git&logoColor=white&color=3b82f6)](https://github.com/michaelblaess/retro-amp/commits/main)
 [![License](https://img.shields.io/badge/license-Apache_2.0-3b82f6)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-3b82f6?logo=python&logoColor=white)](https://www.python.org/)
-[![Themes](https://img.shields.io/badge/themes-38-fbbf24)](https://github.com/michaelblaess/textual-themes)
+[![Themes](https://img.shields.io/badge/themes-41-fbbf24)](https://github.com/michaelblaess/textual-themes)
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
 
@@ -127,7 +127,7 @@ retro-amp --version           # Show version
 - **Cloud files** - If a file is only stored online (Dropbox or OneDrive "online only") and cannot be fetched, retro-amp says so instead of reporting a misleading "corrupt mp3 file"
 - **Playlists** — Stored in the SQLite database, default playlist "Favorites". Markdown playlists from older versions are imported once at startup.
 - **Shuffle & repeat** — Shuffle mode (X) and Repeat Off/All/One (R), combinable
-- **38 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
+- **41 retro themes** — vintage 8-bit, terminal, Unix workstation, watch, comic-pulp and 80s-pastel palettes (see [textual-themes](https://github.com/michaelblaess/textual-themes))
 - **Settings dialog** — tabbed settings (key S): library default directory, cover renderer, visualizer mode, database journal mode, history, auto-title (MusicBrainz / AcoustID API key), language, plus a storage tab that opens the data folders (settings.json, database, caches)
 - **Footer tooltips** — hover over any key in the footer to see a full description of what the command does
 - **Clickable links** — links in the About dialog, Wikipedia source and YouTube panel open on a normal click (no Ctrl needed) and highlight on hover
@@ -259,7 +259,7 @@ Press `T` to cycle through themes, or use the theme picker (`Ctrl+P` → "theme"
 
 retro-amp registers all themes from the
 [textual-themes](https://github.com/michaelblaess/textual-themes) package
-(38 themes — dark + light, from 8-bit through terminal phosphor to
+(41 themes — dark + light, from 8-bit through terminal phosphor to
 80s-pastel and comic-pulp). The full gallery with a live carousel:
 **[michaelblaess.github.io/textual-themes](https://michaelblaess.github.io/textual-themes/)**.
 
