@@ -10,9 +10,10 @@ from textual.widgets import Tree
 
 from ..i18n import t
 from .path_context_tree import PathContextTree
+from .playing_marker import PlayingMarkerMixin
 
 
-class PlaylistTree(PathContextTree[Path | str | None]):
+class PlaylistTree(PlayingMarkerMixin, PathContextTree[Path | str | None]):
     """Baum-Ansicht fuer Playlists, gruppiert nach Playlist-Name."""
 
     DEFAULT_CSS = """
@@ -26,7 +27,6 @@ class PlaylistTree(PathContextTree[Path | str | None]):
         Binding("delete", "remove_track", "DEL", key_display="DEL"),
     ]
 
-    ICON_MUSIC = "\u266a "
     ICON_PLAYLIST = "\U0001f3b5 "
 
     class TrackSelected(Message):
@@ -89,13 +89,36 @@ class PlaylistTree(PathContextTree[Path | str | None]):
             label = f"{self.ICON_PLAYLIST}{name} ({track_count})"
             playlist_node = self.root.add(label, data=name)
             for track in tracks:
-                playlist_node.add_leaf(
-                    f"{self.ICON_MUSIC}{track.name}",
-                    data=track,
-                )
+                playlist_node.add_leaf(self.track_label(track), data=track)
             playlist_node.expand()
 
         self.root.expand()
+
+    def track_paths(self, playlist_name: str) -> list[Path]:
+        """Titel einer Playlist in der angezeigten Reihenfolge."""
+        return [
+            path for leaf, path in self.track_leaves() if leaf.parent is not None and leaf.parent.data == playlist_name
+        ]
+
+    def highlight_path(self, target: Path, playlist_name: str) -> bool:
+        """Setzt den Cursor auf einen Titel der genannten Playlist und scrollt dorthin.
+
+        ``move_cursor`` statt ``select_node``, damit kein ``TrackSelected``
+        entsteht - sonst wuerde das Markieren den Titel neu starten. Der Name
+        gehoert dazu, weil derselbe Titel in mehreren Playlists stehen kann.
+
+        Returns:
+            True wenn der Titel in dieser Playlist steht.
+        """
+        for leaf, path in self.track_leaves():
+            parent = leaf.parent
+            if path == target and parent is not None and parent.data == playlist_name:
+                # Eingeklappte Playlist oeffnen, sonst gaebe es keine Zeile zum Markieren
+                parent.expand()
+                self.move_cursor(leaf)
+                self.scroll_to_node(leaf)
+                return True
+        return False
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Track-Node ausgewaehlt — abspielen."""

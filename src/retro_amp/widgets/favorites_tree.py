@@ -10,9 +10,10 @@ from textual.widgets import Tree
 
 from ..i18n import t
 from .path_context_tree import PathContextTree
+from .playing_marker import PlayingMarkerMixin
 
 
-class FavoritesTree(PathContextTree[Path | None]):
+class FavoritesTree(PlayingMarkerMixin, PathContextTree[Path | None]):
     """Baum-Ansicht fuer Favoriten, gruppiert nach Ordner."""
 
     DEFAULT_CSS = """
@@ -26,7 +27,6 @@ class FavoritesTree(PathContextTree[Path | None]):
         Binding("delete", "remove_favorite", "DEL", key_display="DEL"),
     ]
 
-    ICON_MUSIC = "\u266a "
     ICON_FOLDER = "\U0001f4c1 "
 
     class TrackSelected(Message):
@@ -90,17 +90,34 @@ class FavoritesTree(PathContextTree[Path | None]):
                 data=None,
             )
             for track in sorted(tracks, key=lambda p: p.name.lower()):
-                folder_node.add_leaf(
-                    f"{self.ICON_MUSIC}{track.name}",
-                    data=track,
-                )
+                folder_node.add_leaf(self.track_label(track), data=track)
             folder_node.expand()
 
         self.root.expand()
 
-    def track_paths(self) -> list[Path]:
-        """Alle Favoriten in der angezeigten Reihenfolge, von oben nach unten."""
-        return [leaf.data for folder in self.root.children for leaf in folder.children if isinstance(leaf.data, Path)]
+    def track_paths(self, folder: Path | None = None) -> list[Path]:
+        """Favoriten in der angezeigten Reihenfolge, von oben nach unten.
+
+        Mit ``folder`` nur die Favoriten dieser Gruppe, also dieses Ordners.
+        """
+        return [path for _, path in self.track_leaves() if folder is None or path.parent == folder]
+
+    @property
+    def menu_node_is_root(self) -> bool:
+        """True wenn der letzte Rechtsklick die Wurzel traf."""
+        return self._menu_node is self.root
+
+    def menu_node_tracks(self) -> list[Path]:
+        """Favoriten unter dem zuletzt per Rechtsklick getroffenen Knoten.
+
+        Wurzel: alle. Gruppe: die Titel dieses Ordners. Sonst leer.
+        """
+        node = self._menu_node
+        if node is None:
+            return []
+        if node is self.root:
+            return self.track_paths()
+        return [leaf.data for leaf in node.children if isinstance(leaf.data, Path)]
 
     def highlight_path(self, target: Path) -> bool:
         """Setzt den Cursor auf einen Favoriten und scrollt dorthin.
@@ -111,14 +128,14 @@ class FavoritesTree(PathContextTree[Path | None]):
         Returns:
             True wenn der Pfad unter den Favoriten steht.
         """
-        for folder in self.root.children:
-            for leaf in folder.children:
-                if leaf.data == target:
-                    # Eingeklappte Gruppe oeffnen, sonst gaebe es keine Zeile zum Markieren
-                    folder.expand()
-                    self.move_cursor(leaf)
-                    self.scroll_to_node(leaf)
-                    return True
+        for leaf, path in self.track_leaves():
+            if path == target:
+                # Eingeklappte Gruppe oeffnen, sonst gaebe es keine Zeile zum Markieren
+                if leaf.parent is not None:
+                    leaf.parent.expand()
+                self.move_cursor(leaf)
+                self.scroll_to_node(leaf)
+                return True
         return False
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:

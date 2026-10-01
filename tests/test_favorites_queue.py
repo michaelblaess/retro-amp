@@ -1,8 +1,8 @@
-"""Wiedergabe aus den Favoriten laeuft in den Favoriten weiter.
+"""Wiedergabe aus Favoriten und Playlists laeuft in der jeweiligen Liste weiter.
 
 Vorher uebernahm der Ordner des gewaehlten Titels die Abspiel-Reihenfolge:
 nach einem Favoriten kam der naechste Titel aus dessen Album statt der
-naechste Favorit.
+naechste Favorit. Fuer Playlists galt dasselbe.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from textual.pilot import Pilot
 from retro_amp.app import RetroAmpApp
 from retro_amp.domain.models import PlaybackState
 from retro_amp.widgets.favorites_tree import FavoritesTree
+from retro_amp.widgets.playlist_tree import PlaylistTree
 
 from .conftest import MockAudioPlayer
 
@@ -170,3 +171,121 @@ class TestFavoritenReihenfolge:
             await _titel_zu_ende(anwendung, pilot)
 
             assert _laeuft(anwendung) == "b-album.mp3"
+
+
+def _beschriftungen(baum: FavoritesTree | PlaylistTree) -> dict[str, str]:
+    """Dateiname auf das Zeichen, das im Baum davorsteht."""
+    return {pfad.name: str(blatt.label)[0] for blatt, pfad in baum.track_leaves()}
+
+
+class TestLaufenderTitelIstGekennzeichnet:
+    async def test_zeichen_steht_am_laufenden_titel_und_wandert_mit(self, musik: Path) -> None:
+        erster = musik / "Alben" / "a-favorit.mp3"
+        zweiter = musik / "Singles" / "c-favorit.mp3"
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            await _starte_favorit(anwendung, pilot, [erster, zweiter], erster)
+            baum = anwendung.query_one("#favorites-tree", FavoritesTree)
+            assert _beschriftungen(baum) == {"a-favorit.mp3": "▶", "c-favorit.mp3": "♪"}
+
+            await _titel_zu_ende(anwendung, pilot)
+
+            assert _beschriftungen(baum) == {"a-favorit.mp3": "♪", "c-favorit.mp3": "▶"}
+
+    async def test_zeichen_ueberlebt_das_neuladen(self, musik: Path) -> None:
+        erster = musik / "Alben" / "a-favorit.mp3"
+        zweiter = musik / "Singles" / "c-favorit.mp3"
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            await _starte_favorit(anwendung, pilot, [erster, zweiter], zweiter)
+            baum = anwendung.query_one("#favorites-tree", FavoritesTree)
+
+            anwendung._refresh_favorites_tree()
+            await pilot.pause()
+
+            assert _beschriftungen(baum) == {"a-favorit.mp3": "♪", "c-favorit.mp3": "▶"}
+
+
+class TestFavoritenGruppeAbspielen:
+    """ "Abspielen" im Kontextmenue der Wurzel und einer Gruppe."""
+
+    async def _menue_abspielen(self, anwendung: RetroAmpApp, pilot: Pilot[None], gruppe: str | None) -> None:
+        baum = anwendung.query_one("#favorites-tree", FavoritesTree)
+        knoten = baum.root if gruppe is None else next(k for k in baum.root.children if gruppe in str(k.label))
+        # So hinterlaesst es der Rechtsklick: Knoten gemerkt, kein Pfad
+        baum._menu_node = knoten
+        anwendung._list_menu_path = None
+        anwendung._on_favorites_menu_action("play")
+        await _setzen_lassen(anwendung, pilot)
+
+    async def test_gruppe_spielt_nur_ihren_ordner(self, musik: Path) -> None:
+        favoriten = [
+            musik / "Alben" / "a-favorit.mp3",
+            musik / "Alben" / "b-album.mp3",
+            musik / "Singles" / "c-favorit.mp3",
+        ]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[2])
+
+            await self._menue_abspielen(anwendung, pilot, "Alben")
+            assert _laeuft(anwendung) == "a-favorit.mp3"
+
+            await _titel_zu_ende(anwendung, pilot)
+            assert _laeuft(anwendung) == "b-album.mp3"
+
+            # Die Gruppe ist zu Ende - c-favorit.mp3 aus der naechsten Gruppe kommt nicht
+            await _titel_zu_ende(anwendung, pilot)
+            assert _laeuft(anwendung) == "b-album.mp3"
+            assert anwendung._player_service.state.is_stopped
+
+    async def test_wurzel_spielt_alle_von_oben(self, musik: Path) -> None:
+        favoriten = [musik / "Alben" / "a-favorit.mp3", musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[1])
+
+            await self._menue_abspielen(anwendung, pilot, None)
+            assert _laeuft(anwendung) == "a-favorit.mp3"
+
+            await _titel_zu_ende(anwendung, pilot)
+            assert _laeuft(anwendung) == "c-favorit.mp3"
+
+
+class TestPlaylistReihenfolge:
+    async def _starte_playlist(self, anwendung: RetroAmpApp, pilot: Pilot[None], titel: list[Path]) -> PlaylistTree:
+        anwendung._player_service._player = MockAudioPlayer()
+        anwendung._load_tabs_for_track = lambda track: None  # type: ignore[method-assign]
+        for pfad in titel:
+            anwendung._playlist_service.add_to_playlist("Abends", pfad)
+        anwendung._refresh_playlist_tree()
+        baum = anwendung.query_one("#playlist-tree", PlaylistTree)
+        baum.post_message(PlaylistTree.TrackSelected(titel[0], "Abends"))
+        await _setzen_lassen(anwendung, pilot)
+        return baum
+
+    async def test_nach_einem_playlist_titel_kommt_der_naechste_der_playlist(self, musik: Path) -> None:
+        # Bewusst nicht alphabetisch: die Playlist hat ihre eigene Reihenfolge
+        titel = [musik / "Singles" / "c-favorit.mp3", musik / "Alben" / "a-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            baum = await self._starte_playlist(anwendung, pilot, titel)
+            assert _laeuft(anwendung) == "c-favorit.mp3"
+
+            await _titel_zu_ende(anwendung, pilot)
+
+            # Nicht d-album.mp3 aus demselben Ordner
+            assert _laeuft(anwendung) == "a-favorit.mp3"
+            assert baum.cursor_node is not None and baum.cursor_node.data == titel[1]
+            assert _beschriftungen(baum) == {"c-favorit.mp3": "♪", "a-favorit.mp3": "▶"}
+
+    async def test_am_ende_der_playlist_ist_schluss(self, musik: Path) -> None:
+        titel = [musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test() as pilot:
+            await self._starte_playlist(anwendung, pilot, titel)
+
+            await _titel_zu_ende(anwendung, pilot)
+
+            assert _laeuft(anwendung) == "c-favorit.mp3"
+            assert anwendung._player_service.state.is_stopped

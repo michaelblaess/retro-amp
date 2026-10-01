@@ -18,6 +18,22 @@ logger = logging.getLogger(__name__)
 # damit es sich nicht mit dem Gedaechtnis eines Ordners mischt.
 _QUEUE_SHUFFLE_KEY = "<queue>"
 
+
+@dataclasses.dataclass(frozen=True)
+class PlayQueue:
+    """Liste, aus der gerade gespielt wird (Favoriten, eine Playlist).
+
+    Beides als Funktion statt als fester Wert: der Baum wird neu aufgebaut,
+    wenn ein Eintrag dazukommt oder verschwindet, und die Liste soll dem folgen.
+    """
+
+    paths: Callable[[], list[Path]]
+    """Liefert die Titel in der angezeigten Reihenfolge."""
+
+    highlight: Callable[[Path], object]
+    """Zieht den Cursor im zugehoerigen Baum auf den laufenden Titel nach."""
+
+
 import contextlib
 
 from rich.errors import MarkupError
@@ -287,10 +303,10 @@ class RetroAmpApp(CrashGuard, App):
         # Aktuelle Tracks im rechten Panel
         self._current_tracks: list[AudioTrack] = []
 
-        # Liste, aus der gerade gespielt wird (Favoriten). Solange sie gesetzt ist,
+        # Liste, aus der gerade gespielt wird (Favoriten, Playlist). Solange sie gesetzt ist,
         # bestimmt sie den naechsten Titel - nicht der Ordner des laufenden Titels.
         # Als Funktion, damit ein inzwischen entfernter Favorit nicht mehr drankommt.
-        self._queue_source: Callable[[], list[Path]] | None = None
+        self._queue_source: PlayQueue | None = None
 
         # Shuffle-Modus
         self._shuffle_mode: bool = False
@@ -1367,7 +1383,7 @@ class RetroAmpApp(CrashGuard, App):
         self._save_last_path(folder)
         self._scan_directory(folder)
 
-    def _play_path(self, path: Path, queue: Callable[[], list[Path]] | None = None) -> None:
+    def _play_path(self, path: Path, queue: PlayQueue | None = None) -> None:
         """Spielt eine Datei ab und aktualisiert die Tabelle auf ihren Ordner.
 
         ``queue`` liefert die Liste, in der danach weitergespielt wird. Ohne sie
@@ -1430,8 +1446,11 @@ class RetroAmpApp(CrashGuard, App):
         action_id: str,
         tree: PathContextTree[Any],
         path: Path | None,
+        queue: PlayQueue | None = None,
     ) -> bool:
         """Aktionen, die alle Listen-Baeume teilen.
+
+        ``queue`` ist die Liste, in der nach "Abspielen" weitergespielt wird.
 
         Returns:
             True wenn die Aktion hier behandelt wurde.
@@ -1445,7 +1464,6 @@ class RetroAmpApp(CrashGuard, App):
         elif path is None:
             return False
         elif action_id == "play":
-            queue = self._favorite_queue if isinstance(tree, FavoritesTree) else None
             self._play_existing_path(path, queue=queue)
         elif action_id == "playlist":
             self._add_paths_to_playlist(path, is_dir=False)
@@ -1457,7 +1475,7 @@ class RetroAmpApp(CrashGuard, App):
             return False
         return True
 
-    def _play_existing_path(self, path: Path, queue: Callable[[], list[Path]] | None = None) -> None:
+    def _play_existing_path(self, path: Path, queue: PlayQueue | None = None) -> None:
         """Spielt eine Datei ab — meldet fehlende Dateien, statt still zu scheitern."""
         if not path.is_file():
             self.notify(t("notify.file_not_found"), severity="warning")
@@ -1466,9 +1484,31 @@ class RetroAmpApp(CrashGuard, App):
 
     # --- Weiterspielen in einer Liste statt im Ordner ---
 
-    def _favorite_queue(self) -> list[Path]:
-        """Favoriten in der Reihenfolge, in der der Baum sie zeigt."""
-        return self.query_one("#favorites-tree", FavoritesTree).track_paths()
+    def _favorites_queue(self, folder: Path | None = None) -> PlayQueue:
+        """Favoriten in der Reihenfolge des Baums - mit ``folder`` nur dessen Gruppe."""
+        tree = self.query_one("#favorites-tree", FavoritesTree)
+        return PlayQueue(paths=lambda: tree.track_paths(folder), highlight=tree.highlight_path)
+
+    def _playlist_queue(self, playlist_name: str) -> PlayQueue | None:
+        """Titel einer Playlist in der Reihenfolge des Baums."""
+        if not playlist_name:
+            return None
+        tree = self.query_one("#playlist-tree", PlaylistTree)
+        return PlayQueue(
+            paths=lambda: tree.track_paths(playlist_name),
+            highlight=lambda path: tree.highlight_path(path, playlist_name),
+        )
+
+    def _play_favorites_group(self) -> None:
+        """Spielt die Favoriten unter dem Menue-Knoten ab: Wurzel alle, Gruppe ihren Ordner."""
+        tree = self.query_one("#favorites-tree", FavoritesTree)
+        tracks = tree.menu_node_tracks()
+        start = next((path for path in tracks if path.is_file()), None)
+        if start is None:
+            self.notify(t("notify.file_not_found"), severity="warning")
+            return
+        folder = None if tree.menu_node_is_root else tracks[0].parent
+        self._play_path(start, queue=self._favorites_queue(folder))
 
     def _active_queue(self) -> list[Path] | None:
         """Liste, aus der gerade gespielt wird - None, wenn keine gilt.
@@ -1479,7 +1519,7 @@ class RetroAmpApp(CrashGuard, App):
         if self._queue_source is None:
             return None
         current = self._player_service.state.current_track
-        paths = self._queue_source()
+        paths = self._queue_source.paths()
         if current is None or current.path not in paths:
             self._queue_source = None
             return None
@@ -1545,6 +1585,15 @@ class RetroAmpApp(CrashGuard, App):
         self._list_menu_path = event.path
         if event.path is None:
             items = self._tree_group_items(event.is_expanded)
+            tracks = self.query_one("#favorites-tree", FavoritesTree).menu_node_tracks()
+            if tracks:
+                # Wurzel: alle Favoriten, Gruppe: die Titel dieses Ordners
+                playable = any(path.is_file() for path in tracks)
+                items = [
+                    ContextMenuItem("play", t("treemenu.play"), enabled=playable),
+                    ContextMenuItem.separator(),
+                    *items,
+                ]
         else:
             exists = event.path.is_file()
             items = [
@@ -1566,9 +1615,11 @@ class RetroAmpApp(CrashGuard, App):
             return
         tree = self.query_one("#favorites-tree", FavoritesTree)
         path = self._list_menu_path
-        if self._handle_common_tree_action(action_id, tree, path):
+        if self._handle_common_tree_action(action_id, tree, path, queue=self._favorites_queue()):
             return
-        if action_id == "remove_favorite" and path is not None:
+        if action_id == "play" and path is None:
+            self._play_favorites_group()
+        elif action_id == "remove_favorite" and path is not None:
             self._remove_favorite(path)
 
     def on_history_tree_context_menu_requested(
@@ -1692,7 +1743,7 @@ class RetroAmpApp(CrashGuard, App):
         tree = self.query_one("#playlist-tree", PlaylistTree)
         path = self._list_menu_path
         name = self._menu_playlist_name
-        if self._handle_common_tree_action(action_id, tree, path):
+        if self._handle_common_tree_action(action_id, tree, path, queue=self._playlist_queue(name)):
             return
         if action_id == "play_playlist" and name:
             self._play_playlist(name)
@@ -1760,6 +1811,9 @@ class RetroAmpApp(CrashGuard, App):
         if not playlist_name or not paths:
             return
         added = sum(1 for path in paths if self._playlist_service.add_to_playlist(playlist_name, path))
+        if added:
+            # Der Baum ist die Abspiel-Reihenfolge, wenn aus der Playlist gespielt wird
+            self._refresh_playlist_tree()
         if added == 0:
             self.notify(t("notify.already_in_playlist", playlist=playlist_name), severity="information")
         elif len(paths) == 1:
@@ -2256,6 +2310,8 @@ class RetroAmpApp(CrashGuard, App):
             # Track zur gewaehlten Playlist hinzufuegen
             added = self._playlist_service.add_to_playlist(playlist_name, track.path)
             if added:
+                # Der Baum ist die Abspiel-Reihenfolge, wenn aus der Playlist gespielt wird
+                self._refresh_playlist_tree()
                 self.notify(t("notify.added_to_playlist", track=track.display_name, playlist=playlist_name))
             else:
                 self.notify(t("notify.already_in_playlist", playlist=playlist_name), severity="information")
@@ -2323,7 +2379,7 @@ class RetroAmpApp(CrashGuard, App):
         event: FavoritesTree.TrackSelected,
     ) -> None:
         """Favoriten-Track ausgewaehlt — abspielen, danach geht es in den Favoriten weiter."""
-        self._play_existing_path(event.path, queue=self._favorite_queue)
+        self._play_existing_path(event.path, queue=self._favorites_queue())
 
     def on_favorites_tree_track_remove_requested(
         self,
@@ -2369,8 +2425,8 @@ class RetroAmpApp(CrashGuard, App):
         self,
         event: PlaylistTree.TrackSelected,
     ) -> None:
-        """Playlist-Track ausgewaehlt — navigieren und abspielen."""
-        self._play_existing_path(event.path)
+        """Playlist-Track ausgewaehlt — abspielen, danach geht es in der Playlist weiter."""
+        self._play_existing_path(event.path, queue=self._playlist_queue(event.playlist_name))
 
     def on_playlist_tree_track_remove_requested(
         self,
@@ -2519,7 +2575,7 @@ class RetroAmpApp(CrashGuard, App):
         track = self._metadata_service.read_track(path)
         self._play_track(track)
 
-    def _play_track(self, track: AudioTrack, queue: Callable[[], list[Path]] | None = None) -> None:
+    def _play_track(self, track: AudioTrack, queue: PlayQueue | None = None) -> None:
         """Spielt einen Track ab und aktualisiert UI.
 
         ``queue`` ist die Liste, in der danach weitergespielt wird. Jeder Start
@@ -2568,17 +2624,21 @@ class RetroAmpApp(CrashGuard, App):
             folder_browser = self.query_one("#folder-browser", FolderBrowser)
             folder_browser.highlight_path(track.path)
             self._highlight_in_queue_tree()
+        # Das Zeichen am laufenden Titel gilt immer, auch bei Wiedergabe aus einem Ordner
+        playing = track.path if track else None
+        self.query_one("#favorites-tree", FavoritesTree).mark_playing(playing)
+        self.query_one("#playlist-tree", PlaylistTree).mark_playing(playing)
 
     def _highlight_in_queue_tree(self) -> None:
-        """Zieht den Cursor im Favoriten-Baum auf den laufenden Titel nach.
+        """Zieht den Cursor im Baum der aktiven Liste auf den laufenden Titel nach.
 
-        Nur solange aus den Favoriten gespielt wird. Laeuft etwas aus einem
+        Nur solange aus einer Liste gespielt wird. Laeuft etwas aus einem
         Ordner, bleibt der Cursor dort, wo der Benutzer ihn hingesetzt hat.
         """
         track = self._player_service.state.current_track
         if track is None or self._queue_source is None:
             return
-        self.query_one("#favorites-tree", FavoritesTree).highlight_path(track.path)
+        self._queue_source.highlight(track.path)
 
     def _tick_position(self) -> None:
         """Timer-Callback: Position aktualisieren."""
@@ -3176,6 +3236,9 @@ class RetroAmpApp(CrashGuard, App):
             tracks = self._playlist_service.load_playlist_tracks(name)
             playlists[name] = tracks
         pl_tree.load_playlists(playlists)
+        # Neu laden setzt den Cursor zurueck - den laufenden Titel wieder markieren.
+        # Erst nach dem Refresh: vorher hat der neue Baum noch keine Zeilen.
+        self.call_after_refresh(self._highlight_in_queue_tree)
 
     def _refresh_history_tree(self) -> None:
         """Aktualisiert den Verlauf-Baum mit aktuellen Daten."""
