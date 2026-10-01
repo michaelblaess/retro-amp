@@ -22,6 +22,9 @@
 [![Themes](https://img.shields.io/badge/themes-41-fbbf24)](https://github.com/michaelblaess/textual-themes)
 
 A terminal music player with retro charm — built with Python and [Textual](https://textual.textualize.io/).
+The themes come from [textual-themes](https://github.com/michaelblaess/textual-themes), the dialogs and widgets from
+[textual-widgets](https://github.com/michaelblaess/textual-widgets). Both are separate libraries you can use in your own
+Textual app.
 
 ![retro-amp — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
@@ -78,6 +81,14 @@ sudo apt install ffmpeg
 
 # macOS
 brew install ffmpeg
+```
+
+### Run without installing (uv)
+
+With [uv](https://docs.astral.sh/uv/) installed, one line fetches and starts it:
+
+```bash
+uvx --from git+https://github.com/michaelblaess/retro-amp retro-amp ~/Music
 ```
 
 ### Manual (Python >= 3.12)
