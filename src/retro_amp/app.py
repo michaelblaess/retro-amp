@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 # damit es sich nicht mit dem Gedaechtnis eines Ordners mischt.
 _QUEUE_SHUFFLE_KEY = "<queue>"
 
+# Zeichen vor dem Listennamen in der Transportleiste. Einfach breit, wie alles dort.
+_ICON_FAVORITES = "\u2605"
+_ICON_PLAYLIST = "\u266b"
+
 
 @dataclasses.dataclass(frozen=True)
 class PlayQueue:
@@ -32,6 +36,12 @@ class PlayQueue:
 
     highlight: Callable[[Path], object]
     """Zieht den Cursor im zugehoerigen Baum auf den laufenden Titel nach."""
+
+    label: str
+    """Name fuer die Transportleiste, etwa ``★ Favoriten``. Ohne breite Zeichen."""
+
+    icon: str
+    """Zeichen allein, fuer die Kurzform in einem schmalen Fenster."""
 
 
 import contextlib
@@ -1487,7 +1497,12 @@ class RetroAmpApp(CrashGuard, App):
     def _favorites_queue(self, folder: Path | None = None) -> PlayQueue:
         """Favoriten in der Reihenfolge des Baums - mit ``folder`` nur dessen Gruppe."""
         tree = self.query_one("#favorites-tree", FavoritesTree)
-        return PlayQueue(paths=lambda: tree.track_paths(folder), highlight=tree.highlight_path)
+        return PlayQueue(
+            paths=lambda: tree.track_paths(folder),
+            highlight=tree.highlight_path,
+            label=t("favorites.title") if folder is None else f"{_ICON_FAVORITES} {folder.name}",
+            icon=_ICON_FAVORITES,
+        )
 
     def _playlist_queue(self, playlist_name: str) -> PlayQueue | None:
         """Titel einer Playlist in der Reihenfolge des Baums."""
@@ -1497,7 +1512,27 @@ class RetroAmpApp(CrashGuard, App):
         return PlayQueue(
             paths=lambda: tree.track_paths(playlist_name),
             highlight=lambda path: tree.highlight_path(path, playlist_name),
+            label=f"{_ICON_PLAYLIST} {playlist_name}",
+            icon=_ICON_PLAYLIST,
         )
+
+    def _queue_hint(self) -> tuple[str, str]:
+        """Hinweis fuer die Transportleiste: Liste und Stelle darin.
+
+        Lange und kurze Form, etwa ``★ Favoriten 3/19`` und ``★ 3/19``. Beide
+        leer, wenn der Ordner die Reihenfolge bestimmt. Laeuft jede halbe
+        Sekunde mit dem Positions-Timer und veraendert deshalb nichts - das
+        Beenden einer Liste bleibt bei ``_active_queue``.
+        """
+        queue = self._queue_source
+        current = self._player_service.state.current_track
+        if queue is None or current is None:
+            return "", ""
+        paths = queue.paths()
+        if current.path not in paths:
+            return "", ""
+        place = f"{paths.index(current.path) + 1}/{len(paths)}"
+        return f"{queue.label} {place}", f"{queue.icon} {place}"
 
     def _play_favorites_group(self) -> None:
         """Spielt die Favoriten unter dem Menue-Knoten ab: Wurzel alle, Gruppe ihren Ordner."""
@@ -2801,7 +2836,7 @@ class RetroAmpApp(CrashGuard, App):
     def _update_transport(self) -> None:
         """Transport-Leiste und Control-Panel mit aktuellem State aktualisieren."""
         transport = self.query_one("#transport", TransportBar)
-        transport.update_state(self._player_service.state)
+        transport.update_state(self._player_service.state, *self._queue_hint())
         self._update_control_panel()
 
     def _update_control_panel(self) -> None:

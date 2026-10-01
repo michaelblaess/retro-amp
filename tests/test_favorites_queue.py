@@ -14,8 +14,10 @@ from textual.pilot import Pilot
 
 from retro_amp.app import RetroAmpApp
 from retro_amp.domain.models import PlaybackState
+from retro_amp.i18n import t
 from retro_amp.widgets.favorites_tree import FavoritesTree
 from retro_amp.widgets.playlist_tree import PlaylistTree
+from retro_amp.widgets.transport_bar import TransportBar
 
 from .conftest import MockAudioPlayer
 
@@ -253,14 +255,20 @@ class TestFavoritenGruppeAbspielen:
 
 
 class TestPlaylistReihenfolge:
-    async def _starte_playlist(self, anwendung: RetroAmpApp, pilot: Pilot[None], titel: list[Path]) -> PlaylistTree:
+    async def _starte_playlist(
+        self,
+        anwendung: RetroAmpApp,
+        pilot: Pilot[None],
+        titel: list[Path],
+        name: str = "Abends",
+    ) -> PlaylistTree:
         anwendung._player_service._player = MockAudioPlayer()
         anwendung._load_tabs_for_track = lambda track: None  # type: ignore[method-assign]
         for pfad in titel:
-            anwendung._playlist_service.add_to_playlist("Abends", pfad)
+            anwendung._playlist_service.add_to_playlist(name, pfad)
         anwendung._refresh_playlist_tree()
         baum = anwendung.query_one("#playlist-tree", PlaylistTree)
-        baum.post_message(PlaylistTree.TrackSelected(titel[0], "Abends"))
+        baum.post_message(PlaylistTree.TrackSelected(titel[0], name))
         await _setzen_lassen(anwendung, pilot)
         return baum
 
@@ -289,3 +297,102 @@ class TestPlaylistReihenfolge:
 
             assert _laeuft(anwendung) == "c-favorit.mp3"
             assert anwendung._player_service.state.is_stopped
+
+
+# Bei 200 Spalten ist die Transportleiste breit genug fuer die lange Form,
+# bei den ueblichen 80 des Testlaufs nicht einmal fuer die kurze.
+BREIT = (200, 40)
+MITTEL = (150, 40)
+
+
+def _leiste(anwendung: RetroAmpApp) -> str:
+    """Erste Zeile der Transportleiste als Klartext."""
+    return anwendung.query_one("#transport", TransportBar).render().plain.splitlines()[0]
+
+
+class TestHinweisInDerTransportleiste:
+    """Ohne den Hinweis ist nicht zu sehen, warum als Naechstes kein Album-Titel kommt."""
+
+    async def test_favoriten_mit_stelle_in_der_liste(self, musik: Path) -> None:
+        favoriten = [musik / "Alben" / "a-favorit.mp3", musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=BREIT) as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[0])
+            assert _leiste(anwendung).endswith(f"  {t('favorites.title')} 1/2")
+
+            await _titel_zu_ende(anwendung, pilot)
+
+            assert _leiste(anwendung).endswith(f"  {t('favorites.title')} 2/2")
+
+    async def test_gruppe_traegt_den_ordnernamen(self, musik: Path) -> None:
+        favoriten = [
+            musik / "Alben" / "a-favorit.mp3",
+            musik / "Alben" / "b-album.mp3",
+            musik / "Singles" / "c-favorit.mp3",
+        ]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=BREIT) as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[2])
+            await TestFavoritenGruppeAbspielen()._menue_abspielen(anwendung, pilot, "Alben")
+
+            assert _leiste(anwendung).endswith("  \u2605 Alben 1/2")
+
+    async def test_playlist_traegt_ihren_namen(self, musik: Path) -> None:
+        titel = [musik / "Singles" / "c-favorit.mp3", musik / "Alben" / "a-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=BREIT) as pilot:
+            await TestPlaylistReihenfolge()._starte_playlist(anwendung, pilot, titel)
+
+            assert _leiste(anwendung).endswith("  \u266b Abends 1/2")
+
+    async def test_kein_hinweis_bei_wiedergabe_aus_dem_ordner(self, musik: Path) -> None:
+        favoriten = [musik / "Alben" / "a-favorit.mp3", musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=BREIT) as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[0])
+            assert "1/2" in _leiste(anwendung)
+            album = {titel.path.name: titel for titel in anwendung._current_tracks}
+
+            anwendung._play_track(album["b-album.mp3"])
+            await _setzen_lassen(anwendung, pilot)
+
+            assert _leiste(anwendung).endswith("]")
+
+    async def test_mittlere_breite_zeigt_die_kurzform(self, musik: Path) -> None:
+        titel = [musik / "Singles" / "c-favorit.mp3", musik / "Alben" / "a-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=MITTEL) as pilot:
+            # Ein langer Playlist-Name passt hier nicht mehr neben den Titel
+            await TestPlaylistReihenfolge()._starte_playlist(
+                anwendung, pilot, titel, name="Abends am Kamin mit Rotwein"
+            )
+
+            assert _leiste(anwendung).endswith("  \u266b 1/2")
+
+    async def test_schmales_fenster_laesst_den_hinweis_weg_statt_den_titel(self, musik: Path) -> None:
+        favoriten = [musik / "Alben" / "a-favorit.mp3", musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=(120, 40)) as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[0])
+
+            mit_liste = _leiste(anwendung)
+            assert anwendung._queue_hint() != ("", "")
+            assert "1/2" not in mit_liste
+
+            # Der Titel ist genauso lang wie ohne Liste - der Hinweis nimmt ihm nichts weg
+            leiste = anwendung.query_one("#transport", TransportBar)
+            leiste.update_state(anwendung._player_service.state)
+            assert _leiste(anwendung) == mit_liste
+
+    async def test_hinweis_steht_wirklich_im_bild(self, musik: Path) -> None:
+        """``render()`` allein beweist es nicht: eine umbrochene Zeile faellt unten heraus."""
+        favoriten = [musik / "Alben" / "a-favorit.mp3", musik / "Singles" / "c-favorit.mp3"]
+        anwendung = RetroAmpApp()
+        async with anwendung.run_test(size=BREIT) as pilot:
+            await _starte_favorit(anwendung, pilot, favoriten, favoriten[0])
+            await pilot.pause(0.2)
+            leiste = anwendung.query_one("#transport", TransportBar)
+            streifen = anwendung.screen._compositor.render_strips()[leiste.region.y]
+            zeile = "".join(segment.text for segment in streifen._segments)
+
+            assert f"{t('favorites.title')} 1/2" in zeile

@@ -20,6 +20,9 @@ HANDLE = chr(0x2590)  # Griff an der Abspielstelle
 
 _VOL_BAR_WIDTH = 10
 _PADDING_LEFT = 2
+# So viel Titel muss neben dem Listen-Hinweis uebrig bleiben. Reicht es fuer
+# die lange Form nicht, kommt die kurze, reicht es auch dafuer nicht, keine.
+_MIN_TITLE_WITH_HINT = 20
 
 
 class TransportBar(PaletteSource, Widget):
@@ -50,15 +53,25 @@ class TransportBar(PaletteSource, Widget):
     def __init__(self, **kwargs: object) -> None:
         super().__init__(**kwargs)
         self._state = PlayerState()
+        self._queue_hint: str = ""
+        self._queue_hint_short: str = ""
         self._vol_line: int = -1
         self._vol_col: int = -1
         self._bar_line: int = -1
         self._bar_col: int = 0
         self._bar_width: int = 30
 
-    def update_state(self, state: PlayerState) -> None:
-        """Aktualisiert den angezeigten Status."""
+    def update_state(self, state: PlayerState, queue_hint: str = "", queue_hint_short: str = "") -> None:
+        """Aktualisiert den angezeigten Status.
+
+        ``queue_hint`` sagt, aus welcher Liste gespielt wird, etwa
+        ``★ Favoriten 3/19``, ``queue_hint_short`` dasselbe ohne Namen
+        (``★ 3/19``) fuer schmale Fenster. Beide leer, wenn der Ordner die
+        Reihenfolge bestimmt.
+        """
         self._state = state
+        self._queue_hint = queue_hint
+        self._queue_hint_short = queue_hint_short
         self.refresh()
 
     def render(self) -> Text:
@@ -100,14 +113,27 @@ class TransportBar(PaletteSource, Widget):
                 info_parts.append(track.bitrate_display)
             format_suffix = f"  [{' | '.join(info_parts)}]" if info_parts else ""
 
-            # Verfuegbare Breite fuer den Titel: inner - icon (3) - format - 1 Puffer
-            title_max = max(10, inner_width - 3 - len(format_suffix) - 1)
+            # Der Hinweis auf die Liste weicht zuerst, wenn es eng wird: der Titel
+            # ist wichtiger als die Angabe, woraus er kommt. Er steht in Zeile 1,
+            # weil nur sie nie umbricht - in die dritte Zeile rutscht bei
+            # schmalem Fenster die Lautstaerke.
+            title_room = inner_width - 3 - len(format_suffix) - 1
+            queue_suffix = ""
+            for hint in (self._queue_hint, self._queue_hint_short):
+                if hint and title_room - len(hint) - 2 >= _MIN_TITLE_WITH_HINT:
+                    queue_suffix = f"  {hint}"
+                    break
+
+            # Verfuegbare Breite fuer den Titel: inner - icon (3) - format - Hinweis - 1 Puffer
+            title_max = max(10, title_room - len(queue_suffix))
             if len(display) > title_max:
                 display = display[: max(title_max - 3, 5)] + "..."
 
             text.append(display, style="bold")
             if format_suffix:
                 text.append(format_suffix, style="dim")
+            if queue_suffix:
+                text.append(queue_suffix, style=colors.accent_on)
 
             text.append("\n")
 
