@@ -13,9 +13,10 @@ import pytest
 from textual.pilot import Pilot
 
 from retro_amp.app import RetroAmpApp
-from retro_amp.domain.models import PlaybackState
+from retro_amp.domain.models import AudioTrack, PlaybackState
 from retro_amp.i18n import t
 from retro_amp.widgets.favorites_tree import FavoritesTree
+from retro_amp.widgets.file_table import FileTable
 from retro_amp.widgets.playlist_tree import PlaylistTree
 from retro_amp.widgets.transport_bar import TransportBar
 
@@ -31,32 +32,76 @@ def musik(isolierte_ablage: Path) -> Path:
     return wurzel
 
 
-async def _starte_favorit(anwendung: RetroAmpApp, pilot: Pilot[None], favoriten: list[Path], start: Path) -> None:
-    """Traegt Favoriten ein und waehlt einen davon im Favoriten-Baum."""
+SCANS: list[str] = []
+"""Mitschnitt der angewandten Ordner-Scans des laufenden Tests, fuer die Fehlermeldung."""
+
+
+def _vorbereiten(anwendung: RetroAmpApp) -> None:
+    """Macht die App testbar: kein Ton, kein Netz, und die Scans werden mitgeschrieben."""
     anwendung._player_service._player = MockAudioPlayer()
     # Lyrics, Cover und Begleittext gingen sonst ins Netz
     anwendung._load_tabs_for_track = lambda track: None  # type: ignore[method-assign]
+
+    SCANS.clear()
+    original = anwendung._apply_scan_result
+
+    def mitschreiben(tracks: list[AudioTrack], directory: Path) -> None:
+        SCANS.append(f"{directory.name}:{len(tracks)}")
+        original(tracks, directory)
+
+    anwendung._apply_scan_result = mitschreiben  # type: ignore[method-assign]
+
+
+def _lage(anwendung: RetroAmpApp) -> str:
+    """Zustand der App in einer Zeile - steht in jeder Fehlermeldung dieser Datei."""
+    titel = anwendung._player_service.state.current_track
+    tabelle = anwendung.query_one("#file-table", FileTable)
+    arbeiter = [f"{w.name}/{w.group}/{w.state.name}" for w in anwendung.workers if w.group == "scan"]
+    return (
+        f"laeuft={titel.path.name if titel else None} "
+        f"tabelle={tabelle._current_path.name if tabelle._current_path else None} "
+        f"titel_in_tabelle={[t_.path.name for t_ in anwendung._current_tracks]} "
+        f"scans={SCANS} arbeiter={arbeiter}"
+    )
+
+
+async def _starte_favorit(anwendung: RetroAmpApp, pilot: Pilot[None], favoriten: list[Path], start: Path) -> None:
+    """Traegt Favoriten ein und waehlt einen davon im Favoriten-Baum."""
+    _vorbereiten(anwendung)
     for pfad in favoriten:
         anwendung._playlist_service.add_to_favorites(pfad)
     anwendung._refresh_favorites_tree()
     baum = anwendung.query_one("#favorites-tree", FavoritesTree)
     baum.post_message(FavoritesTree.TrackSelected(start))
-    await _setzen_lassen(anwendung, pilot)
+    await _setzen_lassen(anwendung, pilot, laeuft=start)
 
 
-async def _setzen_lassen(anwendung: RetroAmpApp, pilot: Pilot[None]) -> None:
-    """Wartet, bis der Ordner-Scan durch ist - erst er kippte frueher die Reihenfolge.
+async def _setzen_lassen(anwendung: RetroAmpApp, pilot: Pilot[None], laeuft: Path | None = None) -> None:
+    """Wartet, bis Wiedergabe und Ordner-Scan angekommen sind.
+
+    Der Scan laeuft in einem Thread und kippte frueher die Reihenfolge - erst
+    danach sagt ein Test etwas aus. Gewartet wird auf einen Zustand, nicht auf
+    eine Zeitspanne: die Datei-Tabelle zeigt den Ordner des laufenden Titels,
+    und kein Scan laeuft mehr. ``laeuft`` nennt den erwarteten Titel, wenn der
+    Start ueber eine Message kommt und deshalb noch gar nicht verarbeitet ist.
+    Ohne das kehrte die Hilfe auf dem Windows-Runner zurueck, bevor der Scan
+    ueberhaupt begonnen hatte.
 
     Nicht ``workers.wait_for_complete()``: der Lader des Ordner-Baums ist ein
     Worker, der nie endet.
     """
-    for _ in range(300):
+    tabelle = anwendung.query_one("#file-table", FileTable)
+    for _ in range(1000):
         await pilot.pause(0.01)
-        if not any(worker.group == "scan" and not worker.is_finished for worker in anwendung.workers):
-            # Das Ergebnis kommt per call_from_thread - noch einmal Luft holen
-            await pilot.pause(0.05)
-            return
-    raise AssertionError("Ordner-Scan wurde nicht fertig")
+        titel = anwendung._player_service.state.current_track
+        if laeuft is not None and (titel is None or titel.path != laeuft):
+            continue
+        if any(worker.group == "scan" and not worker.is_finished for worker in anwendung.workers):
+            continue
+        if titel is not None and tabelle._current_path != titel.path.parent:
+            continue
+        return
+    raise AssertionError(f"Wiedergabe oder Ordner-Scan kamen nicht an: {_lage(anwendung)}")
 
 
 async def _titel_zu_ende(anwendung: RetroAmpApp, pilot: Pilot[None]) -> None:
@@ -162,7 +207,7 @@ class TestFavoritenReihenfolge:
         async with anwendung.run_test() as pilot:
             await _starte_favorit(anwendung, pilot, [weiterer, favorit], weiterer)
             album = {titel.path.name: titel for titel in anwendung._current_tracks}
-            assert set(album) == {"a-favorit.mp3", "b-album.mp3"}
+            assert set(album) == {"a-favorit.mp3", "b-album.mp3"}, _lage(anwendung)
 
             # Derselbe Titel waere binnen 2 s ein Dedup - also den anderen waehlen
             anwendung._play_track(album["b-album.mp3"])
@@ -262,14 +307,13 @@ class TestPlaylistReihenfolge:
         titel: list[Path],
         name: str = "Abends",
     ) -> PlaylistTree:
-        anwendung._player_service._player = MockAudioPlayer()
-        anwendung._load_tabs_for_track = lambda track: None  # type: ignore[method-assign]
+        _vorbereiten(anwendung)
         for pfad in titel:
             anwendung._playlist_service.add_to_playlist(name, pfad)
         anwendung._refresh_playlist_tree()
         baum = anwendung.query_one("#playlist-tree", PlaylistTree)
         baum.post_message(PlaylistTree.TrackSelected(titel[0], name))
-        await _setzen_lassen(anwendung, pilot)
+        await _setzen_lassen(anwendung, pilot, laeuft=titel[0])
         return baum
 
     async def test_nach_einem_playlist_titel_kommt_der_naechste_der_playlist(self, musik: Path) -> None:
