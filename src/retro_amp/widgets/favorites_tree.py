@@ -98,6 +98,29 @@ class FavoritesTree(PathContextTree[Path | None]):
 
         self.root.expand()
 
+    def track_paths(self) -> list[Path]:
+        """Alle Favoriten in der angezeigten Reihenfolge, von oben nach unten."""
+        return [leaf.data for folder in self.root.children for leaf in folder.children if isinstance(leaf.data, Path)]
+
+    def highlight_path(self, target: Path) -> bool:
+        """Setzt den Cursor auf einen Favoriten und scrollt dorthin.
+
+        ``move_cursor`` statt ``select_node``, damit kein ``TrackSelected``
+        entsteht - sonst wuerde das Markieren den Titel neu starten.
+
+        Returns:
+            True wenn der Pfad unter den Favoriten steht.
+        """
+        for folder in self.root.children:
+            for leaf in folder.children:
+                if leaf.data == target:
+                    # Eingeklappte Gruppe oeffnen, sonst gaebe es keine Zeile zum Markieren
+                    folder.expand()
+                    self.move_cursor(leaf)
+                    self.scroll_to_node(leaf)
+                    return True
+        return False
+
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         """Track-Node ausgewaehlt — abspielen."""
         if event.node.data and isinstance(event.node.data, Path):

@@ -215,6 +215,8 @@
   "log.shuffle_off": "Shuffle deaktiviert",
   "log.shuffle_play": "⇄ Shuffle: {name}",
   "log.shuffle_all_played": "Shuffle: Alle Tracks im Ordner gespielt",
+  "log.queue_next": "Weiter in der Liste: {name}",
+  "log.queue_finished": "Liste zu Ende gespielt",
   "log.session_restored": "Session wiederhergestellt: {name} (bei {pos}s)",
   "log.repeat_off": "Repeat deaktiviert",
   "log.repeat_all": "Repeat: Alle Tracks wiederholen",
