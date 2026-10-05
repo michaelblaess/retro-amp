@@ -26,6 +26,12 @@ The themes come from [textual-themes](https://github.com/michaelblaess/textual-t
 [textual-widgets](https://github.com/michaelblaess/textual-widgets). Both are separate libraries you can use in your own
 Textual app.
 
+<p align="center">
+  <a href="https://youtu.be/CUD5f7TyIMk"><img src="docs/teaser.jpg" width="640" alt="Watch the retro-amp teaser on YouTube"></a>
+  <br>
+  <sub><a href="https://youtu.be/CUD5f7TyIMk">Watch the teaser on YouTube</a></sub>
+</p>
+
 ![retro-amp — Pixel-perfect cover rendering](docs/screenshots/00-cover-rendering.png)
 *Pixel-perfect cover rendering via TGP / Sixel — in the terminal.*
 
