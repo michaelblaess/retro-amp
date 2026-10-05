@@ -11,6 +11,7 @@ import platform
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from rich.markup import escape
 from rich.text import Text
@@ -73,7 +74,7 @@ class _PathLink(Static, can_focus=True):
     }
     """
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._path: Path | None = None
 
@@ -130,7 +131,7 @@ class DetailsPanel(Widget):
     }
     """
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         # Lazy-Loading: pending = vom App-Layer angeforderter Track,
         # loaded = aktuell im UI dargestellter Track.

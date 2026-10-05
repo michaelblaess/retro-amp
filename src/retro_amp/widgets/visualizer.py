@@ -16,6 +16,7 @@ from __future__ import annotations
 import random
 import time
 from collections.abc import Callable
+from typing import Any
 
 from rich.text import Text
 from textual.events import Click
@@ -152,7 +153,7 @@ class Visualizer(PaletteSource, Widget):
         self,
         mode: VisualizerMode = VisualizerMode.BARS,
         rainbow: bool = False,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         # Anzeigewerte in Stufen 0.._MAX_LEVEL - nur fuers Zeichnen. Das

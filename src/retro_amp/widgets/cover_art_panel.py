@@ -6,7 +6,7 @@ import contextlib
 import io
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -80,14 +80,15 @@ def _render_half_blocks(
     if new_h % 2 != 0:
         new_h += 1
 
-    img = img.resize((new_w, new_h), PILImage.LANCZOS)
+    img = img.resize((new_w, new_h), PILImage.Resampling.LANCZOS)
 
     lines: list[Text] = []
     for y in range(0, new_h, 2):
         line = Text()
         for x in range(new_w):
-            top_r, top_g, top_b = img.getpixel((x, y))
-            bot_r, bot_g, bot_b = img.getpixel((x, y + 1))
+            # RGB-Bild: getpixel liefert immer ein 3-Tupel
+            top_r, top_g, top_b = cast("tuple[int, int, int]", img.getpixel((x, y)))
+            bot_r, bot_g, bot_b = cast("tuple[int, int, int]", img.getpixel((x, y + 1)))
             line.append(
                 _UPPER_HALF_BLOCK,
                 style=f"rgb({top_r},{top_g},{top_b}) on rgb({bot_r},{bot_g},{bot_b})",

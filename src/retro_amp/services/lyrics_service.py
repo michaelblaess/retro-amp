@@ -318,7 +318,7 @@ class LyricsService:
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 data = json.loads(resp.read())
                 status = data.get("responseStatus", 0)
-                result = data.get("responseData", {}).get("translatedText", "")
+                result: str = data.get("responseData", {}).get("translatedText", "")
 
                 # 429 als responseStatus (innerhalb JSON)
                 if status == 429:

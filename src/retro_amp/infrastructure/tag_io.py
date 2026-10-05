@@ -54,9 +54,9 @@ class MutagenTagIO:
         if path.suffix.lower() not in _WRITABLE_EXTENSIONS:
             raise UnsupportedTagFormatError(path.suffix)
 
-        import mutagen
+        from .mutagen_file import open_audio_file
 
-        audio = mutagen.File(str(path), easy=True)
+        audio = open_audio_file(str(path), easy=True)
         if audio is None:
             raise UnsupportedTagFormatError(path.suffix)
         if audio.tags is None:
@@ -68,9 +68,9 @@ class MutagenTagIO:
     def _read_easy_key(path: Path, key: str) -> str:
         """Liest einen Easy-Tag-Schluessel als String (leer bei Fehler/Fehlen)."""
         try:
-            import mutagen
+            from .mutagen_file import open_audio_file
 
-            audio = mutagen.File(str(path), easy=True)
+            audio = open_audio_file(str(path), easy=True)
             if audio is None:
                 return ""
             value = audio.get(key)

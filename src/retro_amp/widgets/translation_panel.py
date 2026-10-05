@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.widget import Widget
@@ -32,7 +34,7 @@ class TranslationPanel(Widget):
     }
     """
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._artist: str = ""
         self._title: str = ""

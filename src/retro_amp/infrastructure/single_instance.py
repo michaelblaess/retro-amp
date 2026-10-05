@@ -31,7 +31,7 @@ def _is_process_alive(pid: int) -> bool:
         # WAIT_TIMEOUT (258) = Prozess laeuft, WAIT_OBJECT_0 (0) = beendet.
         import ctypes
 
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        kernel32 = ctypes.windll.kernel32
         SYNCHRONIZE = 0x00100000
         handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
         if not handle:
@@ -39,7 +39,7 @@ def _is_process_alive(pid: int) -> bool:
         WAIT_TIMEOUT = 258
         result = kernel32.WaitForSingleObject(handle, 0)
         kernel32.CloseHandle(handle)
-        return result == WAIT_TIMEOUT
+        return bool(result == WAIT_TIMEOUT)
     # Unix: Signal 0 prueft nur ob der Prozess existiert
     try:
         os.kill(pid, 0)

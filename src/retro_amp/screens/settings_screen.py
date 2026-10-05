@@ -40,7 +40,7 @@ _VISUALIZER_MODES: tuple[VisualizerMode, ...] = (
 _DATA_DIR = Path.home() / ".retro-amp"
 
 
-class SettingsScreen(BaseSettingsScreen):  # type: ignore[misc]
+class SettingsScreen(BaseSettingsScreen):
     """retro-amp Settings-Dialog auf Basis von ``BaseSettingsScreen``.
 
     Das uebergebene ``settings``-Dict (settings.json) wird mit den

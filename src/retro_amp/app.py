@@ -10,7 +10,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ INPUT_EIGENE_TASTEN: frozenset[str] = frozenset(
 )
 
 
-class RetroAmpApp(CrashGuard, App):
+class RetroAmpApp(CrashGuard, App[object]):
     """retro-amp — Terminal-Musikplayer mit Retro-Charme."""
 
     CSS_PATH = "app.tcss"
@@ -170,7 +170,7 @@ class RetroAmpApp(CrashGuard, App):
 
         # Die Tastenbelegung braucht die Einstellungen und wird deshalb erst
         # weiter unten gebunden, sobald der Einstellungsspeicher steht.
-        self._keymap: dict[str, KeyBinding] = {}
+        self._action_keymap: dict[str, KeyBinding] = {}
         self._keymap_problems: tuple[KeymapProblem, ...] = ()
 
         # Retro-Themes registrieren
@@ -230,7 +230,8 @@ class RetroAmpApp(CrashGuard, App):
 
         # Settings laden
         settings = self._settings_store.load()
-        self._player_service.set_volume(float(settings.get("volume", 0.8)))
+        # JSON-Wert: float() wirft bei ungueltigem Typ wie bisher
+        self._player_service.set_volume(float(cast("str | float", settings.get("volume", 0.8))))
 
         # Tastenbelegung binden. Erst hier, weil Stil, Vim-Schalter und eigene
         # Belegungen aus den Einstellungen kommen.
@@ -386,7 +387,7 @@ class RetroAmpApp(CrashGuard, App):
 
         aufgeloest = keymap.resolve(settings)
         self._keymap_problems = aufgeloest.problems
-        self._keymap = dict(aufgeloest.bindings)
+        self._action_keymap = dict(aufgeloest.bindings)
 
         for action, binding in aufgeloest.bindings.items():
             self._bindings.bind(
@@ -827,7 +828,7 @@ class RetroAmpApp(CrashGuard, App):
     def action_keymap_overview(self) -> None:
         """Zeigt die Uebersicht der geltenden Tastenbelegung.
 
-        Sie wird bei jedem Aufruf frisch aufgeloest und nicht aus `self._keymap`
+        Sie wird bei jedem Aufruf frisch aufgeloest und nicht aus `self._action_keymap`
         gelesen: so stimmt sie auch dann, wenn der Anwender den Stil in den
         Einstellungen gerade umgestellt hat.
         """
@@ -977,7 +978,7 @@ class RetroAmpApp(CrashGuard, App):
             with contextlib.suppress(TypeError, ValueError):
                 self._database.set_int_setting(
                     "history_limit",
-                    int(new_db_settings["history_limit"]),
+                    int(cast("str | float", new_db_settings["history_limit"])),
                 )
         # Tab neu rendern (Hinweis/Eintraege umschalten)
         with contextlib.suppress(Exception):
@@ -2049,7 +2050,7 @@ class RetroAmpApp(CrashGuard, App):
         playing = self._player_service.state.current_track
         # Pruefen ob der gespielte Track von der Umbenennung betroffen ist
         is_playing_target = (
-            playing
+            playing is not None
             and not self._player_service.state.is_stopped
             and (playing.path == target or str(playing.path).startswith(f"{target}\\"))
         )
@@ -2283,7 +2284,7 @@ class RetroAmpApp(CrashGuard, App):
 
         playing = self._player_service.state.current_track
         is_playing_target = (
-            playing
+            playing is not None
             and not self._player_service.state.is_stopped
             and (playing.path == target or str(playing.path).startswith(f"{target}\\"))
         )
@@ -2964,7 +2965,8 @@ class RetroAmpApp(CrashGuard, App):
             clear_session()
             return
 
-        position = float(session.get("position_seconds", 0.0))
+        # JSON-Wert: float() wirft bei ungueltigem Typ wie bisher
+        position = float(cast("str | float", session.get("position_seconds", 0.0)))
         track = self._metadata_service.read_track(track_path)
 
         # Ordner laden und Baum aufklappen

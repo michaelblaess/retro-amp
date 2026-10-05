@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import io
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -181,9 +182,10 @@ class DetailsService:
             return result
 
         try:
-            import mutagen
+            from mutagen import File  # type: ignore[attr-defined]
 
-            audio = mutagen.File(str(path))
+            # mutagen.File ist nicht annotiert und nicht explizit exportiert
+            audio = cast("Callable[..., Any]", File)(str(path))
             if audio is None:
                 return result
 

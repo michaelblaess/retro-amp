@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from ..domain.models import AudioTrack
 
@@ -160,9 +162,9 @@ class MutagenMetadataReader:
             return track
 
         try:
-            import mutagen
+            from .mutagen_file import open_audio_file
 
-            audio = mutagen.File(str(path))
+            audio = open_audio_file(str(path))
             if audio is None:
                 return track
 
@@ -223,9 +225,9 @@ class MutagenMetadataReader:
         if path.suffix.lower() in _HEADER_EXTENSIONS:
             return None
         try:
-            import mutagen
+            from .mutagen_file import open_audio_file
 
-            audio = mutagen.File(str(path))
+            audio = open_audio_file(str(path))
             if audio is None:
                 return None
 
@@ -235,17 +237,17 @@ class MutagenMetadataReader:
                     if key.startswith("APIC"):
                         tag = audio.tags[key]
                         if hasattr(tag, "data") and tag.data:
-                            return tag.data  # type: ignore[return-value]
+                            return cast(bytes, tag.data)
 
             # FLAC: eingebettete Pictures
             if hasattr(audio, "pictures"):
-                for pic in audio.pictures:  # type: ignore[union-attr]
+                for pic in audio.pictures:
                     if pic.data:
-                        return pic.data  # type: ignore[return-value]
+                        return cast(bytes, pic.data)
 
             # MP4/M4A: covr-Tag
             if hasattr(audio, "get"):
-                covr = audio.get("covr")  # type: ignore[union-attr]
+                covr = audio.get("covr")
                 if covr and isinstance(covr, list) and covr[0]:
                     return bytes(covr[0])
 
@@ -255,11 +257,12 @@ class MutagenMetadataReader:
 
                 from mutagen.flac import Picture
 
-                pics = audio.get("metadata_block_picture")  # type: ignore[union-attr]
+                pics = audio.get("metadata_block_picture")
                 if pics and isinstance(pics, list):
-                    pic = Picture(base64.b64decode(pics[0]))
+                    # mutagen.flac.Picture ist nicht annotiert
+                    pic = cast("Callable[..., Any]", Picture)(base64.b64decode(pics[0]))
                     if pic.data:
-                        return pic.data
+                        return cast(bytes, pic.data)
 
         except Exception:
             logger.debug("Cover-Art konnte nicht gelesen werden: %s", path)
@@ -306,16 +309,16 @@ class MutagenMetadataReader:
         # Versuch ueber get() (Vorbis, FLAC, MP4)
         if hasattr(audio, "get"):
             for name in tag_names:
-                value = audio.get(name)  # type: ignore[union-attr]
+                value = audio.get(name)
                 if value:
                     if isinstance(value, list):
                         return str(value[0]) if value else ""
                     return str(value)
 
         # Versuch ueber tags (ID3)
-        if hasattr(audio, "tags") and audio.tags is not None:  # type: ignore[union-attr]
+        if hasattr(audio, "tags") and audio.tags is not None:
             for name in tag_names:
-                tag = audio.tags.get(name)  # type: ignore[union-attr]
+                tag = audio.tags.get(name)
                 if tag:
                     if hasattr(tag, "text") and tag.text:
                         return str(tag.text[0])

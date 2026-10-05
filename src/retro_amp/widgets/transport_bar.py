@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.text import Text
 from textual.events import Click
 from textual.message import Message
@@ -50,7 +52,7 @@ class TransportBar(PaletteSource, Widget):
             super().__init__()
             self.position = position
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._state = PlayerState()
         self._queue_hint: str = ""

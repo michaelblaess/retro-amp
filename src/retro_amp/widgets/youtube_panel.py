@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import urllib.parse
 import webbrowser
+from typing import Any
 
 from rich.markup import escape
 from textual.app import ComposeResult
@@ -34,7 +35,7 @@ class _YTLink(Static, can_focus=True):
         ("enter", "open_link", "Enter"),
     ]
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._url: str = ""
 

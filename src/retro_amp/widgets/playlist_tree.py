@@ -121,7 +121,7 @@ class PlaylistTree(PlayingMarkerMixin, PathContextTree[Path | str | None]):
                 return True
         return False
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+    def on_tree_node_selected(self, event: Tree.NodeSelected[Path | str | None]) -> None:
         """Track-Node ausgewaehlt — abspielen."""
         node = event.node
         if node.data and isinstance(node.data, Path):

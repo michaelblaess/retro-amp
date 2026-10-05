@@ -175,7 +175,7 @@ class TestUebersicht:
             await pilot.press("question_mark")
             await pilot.pause()
             tabelle = anwendung.screen.query_one("#keymap-table", DataTable)
-            assert tabelle.row_count == len(anwendung._keymap)
+            assert tabelle.row_count == len(anwendung._action_keymap)
 
 
 class TestProblemeImLog:

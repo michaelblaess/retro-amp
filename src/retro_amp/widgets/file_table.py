@@ -9,6 +9,7 @@ from typing import Any
 
 from rich.text import Text
 from textual import on
+from textual.app import ComposeResult
 from textual.events import Click
 from textual.message import Message
 from textual.widget import Widget
@@ -162,7 +163,7 @@ class FileTable(PaletteSource, Widget):
             super().__init__()
             self.tracks = tracks
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._tracks: list[AudioTrack] = []
         self._filtered_tracks: list[AudioTrack] = []
@@ -174,7 +175,7 @@ class FileTable(PaletteSource, Widget):
         self._sort_col: int | None = None
         self._sort_desc: bool = False
 
-    def compose(self):  # type: ignore[override]
+    def compose(self) -> ComposeResult:
         yield Static("", id="file-info")
         yield FileDataTable(id="file-data", cursor_type="row", zebra_stripes=True)
 

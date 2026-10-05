@@ -122,7 +122,7 @@ class SearchTree(PathContextTree[Path | None]):
         for start, end in find_spans(name, query):
             label.stylize(f"bold {accent}", offset + start, offset + end)
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+    def on_tree_node_selected(self, event: Tree.NodeSelected[Path | None]) -> None:
         """Treffer-Knoten ausgewaehlt — Path-Daten weitergeben."""
         path = event.node.data
         if not isinstance(path, Path):

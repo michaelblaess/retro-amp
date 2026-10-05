@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from textual.events import Click
 from textual.message import Message
@@ -48,7 +48,7 @@ class PathContextTree(VimTreeNavigation, Tree[TreeDataType]):
             self.is_expanded = is_expanded
             self.at = at
 
-    def __init__(self, label: str, **kwargs: object) -> None:
+    def __init__(self, label: str, **kwargs: Any) -> None:
         super().__init__(label, **kwargs)
         # Knoten des zuletzt geoeffneten Kontextmenues. Gruppen-Knoten haben
         # keinen Pfad, ueber den die App sie wiederfinden koennte — deshalb

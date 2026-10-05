@@ -104,7 +104,7 @@ class HistoryTree(PathContextTree[Path | None]):
 
         self.root.expand()
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+    def on_tree_node_selected(self, event: Tree.NodeSelected[Path | None]) -> None:
         """Track-Node ausgewaehlt — abspielen."""
         if event.node.data and isinstance(event.node.data, Path):
             self.post_message(self.TrackSelected(event.node.data))

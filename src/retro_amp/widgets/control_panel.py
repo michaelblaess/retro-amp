@@ -20,6 +20,8 @@ der Tastenkappen zerreissen.
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.text import Text
 from textual.app import RenderResult
 from textual.events import Click, Leave, MouseMove
@@ -72,7 +74,7 @@ class ControlPanel(PaletteSource, Widget):
             super().__init__()
             self.action = action
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._is_playing = False
         self._is_paused = False

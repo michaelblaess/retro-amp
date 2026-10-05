@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
@@ -42,7 +43,7 @@ class LyricLine(Static, can_focus=False):
             super().__init__()
             self.timestamp = timestamp
 
-    def __init__(self, text: str, timestamp: float, **kwargs: object) -> None:
+    def __init__(self, text: str, timestamp: float, **kwargs: Any) -> None:
         super().__init__(text, **kwargs)
         self.timestamp = timestamp
 
@@ -57,7 +58,7 @@ class LyricLine(Static, can_focus=False):
 class LyricsScroll(VerticalScroll):
     """VerticalScroll mit Erkennung von manuellem Scrolling."""
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._last_manual_scroll: float = 0.0
 
@@ -95,7 +96,7 @@ class LyricsPanel(Widget):
     }
     """
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._synced_lines: list[tuple[float, str]] = []
         self._current_line_index: int = -1

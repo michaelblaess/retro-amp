@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Self
 
 from rich.style import Style
-from rich.text import Text
+from rich.text import Text, TextType
 from textual.events import Click
 from textual.message import Message
 from textual.widgets import DirectoryTree
@@ -94,16 +95,16 @@ class FolderBrowser(VimTreeNavigation, DirectoryTree):
                 return found
         return None
 
-    def reset_node(  # type: ignore[override]
+    def reset_node(
         self,
         node: TreeNode[DirEntry],
-        label: object,
+        label: TextType,
         data: DirEntry | None = None,
-    ) -> FolderBrowser:
+    ) -> Self:
         """``DirectoryTree``-Hook: setzt unsere Root-Label-Override durch."""
         if node is self.root and self._root_label_override is not None:
             label = self._root_label_override
-        return super().reset_node(node, label, data)  # type: ignore[return-value]
+        return super().reset_node(node, label, data)
 
     def filter_paths(self, paths: list[Path]) -> list[Path]:  # type: ignore[override]
         """Filtert: nur Ordner und Audio-Dateien anzeigen."""

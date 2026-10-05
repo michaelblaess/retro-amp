@@ -11,6 +11,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
+from textual.widgets.input import Selection
 
 from ..i18n import t
 
@@ -81,7 +82,7 @@ class RenameScreen(ModalScreen[Path | None]):
         name_input.focus()
         # Nur den Dateinamen ohne Extension selektieren
         stem = self._file_path.stem
-        name_input.selection = (0, len(stem))
+        name_input.selection = Selection(0, len(stem))
 
     @on(Input.Submitted, "#new-name")
     def _on_input_submitted(self, event: Input.Submitted) -> None:
