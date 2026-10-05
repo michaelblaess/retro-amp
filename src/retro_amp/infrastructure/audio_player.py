@@ -18,6 +18,7 @@ import logging
 import shutil
 import struct
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pygame
@@ -108,11 +109,31 @@ def _decode_sid_to_wav(path: Path, duration: int = 180) -> io.BytesIO | None:
         logger.warning("sidplayfp nicht gefunden — SID-Playback nicht verfuegbar")
         return None
 
+    # sidplayfp kennt keine Ausgabe nach stdout: "--wav=-" legt eine Datei "=-.wav"
+    # im Arbeitsordner an (belegt mit sidplayfp 3.2.1). Deshalb in eine temporaere
+    # Datei schreiben, "-w<datei>" verstehen Version 2 und 3.
+    with tempfile.TemporaryDirectory(prefix="retro-amp-sid-") as ordner:
+        ziel = Path(ordner) / "sid.wav"
+        return _run_sidplayfp(sid_bin, path, ziel, duration)
+
+
+def _run_sidplayfp(sid_bin: str, path: Path, ziel: Path, duration: int) -> io.BytesIO | None:
+    """Ruft sidplayfp auf und liest die erzeugte WAV-Datei.
+
+    Args:
+        sid_bin: Pfad zu sidplayfp
+        path: Pfad zur SID-Datei
+        ziel: Pfad der WAV-Datei, die sidplayfp schreiben soll
+        duration: Maximale Spieldauer in Sekunden
+
+    Returns:
+        WAV-Stream oder None bei einem Fehler
+    """
     try:
         result = subprocess.run(
             [
                 sid_bin,
-                "--wav=-",  # WAV nach stdout
+                f"-w{ziel}",  # WAV-Datei
                 f"-t{duration}",  # Maximale Dauer
                 "-f44100",  # Sample Rate
                 str(path),
@@ -120,11 +141,10 @@ def _decode_sid_to_wav(path: Path, duration: int = 180) -> io.BytesIO | None:
             capture_output=True,
             timeout=duration + 10,
         )
-        if result.returncode != 0 or len(result.stdout) < 44:
+        if result.returncode != 0 or not ziel.is_file() or ziel.stat().st_size < 44:
             logger.warning("sidplayfp Fehler fuer %s: %s", path, result.stderr[:200])
             return None
-        wav = io.BytesIO(result.stdout)
-        return wav
+        return io.BytesIO(ziel.read_bytes())
     except FileNotFoundError:
         logger.warning("sidplayfp nicht gefunden")
         return None
