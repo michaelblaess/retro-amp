@@ -26,14 +26,9 @@ Die Themes stammen aus [textual-themes](https://github.com/michaelblaess/textual
 [textual-widgets](https://github.com/michaelblaess/textual-widgets). Beides sind eigene Bibliotheken, die Du in Deiner
 eigenen Textual-App verwenden kannst.
 
-<p align="center">
-  <a href="https://youtu.be/CUD5f7TyIMk"><img src="docs/teaser.jpg" width="640" alt="Den Teaser zu retro-amp auf YouTube ansehen"></a>
-  <br>
-  <sub><a href="https://youtu.be/CUD5f7TyIMk">Teaser auf YouTube ansehen</a></sub>
-</p>
+https://github.com/user-attachments/assets/68465a19-9eee-4d31-a176-7576425cf1c8
 
-![retro-amp — Pixel-perfektes Cover-Rendering](docs/screenshots/00-cover-rendering.png)
-*Pixel-perfektes Cover-Rendering via TGP / Sixel — im Terminal.*
+<p align="center"><sub><a href="https://youtu.be/CUD5f7TyIMk">Auch auf YouTube</a></sub></p>
 
 ![BeBox Theme](docs/screenshots/01-main.png)
 *BeBox Theme — Ordner-Browser, Datei-Tabelle, Lyrics, Spektral-Visualizer*
