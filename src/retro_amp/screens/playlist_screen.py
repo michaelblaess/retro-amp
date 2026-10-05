@@ -10,6 +10,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, Label
 
 from ..i18n import t
+from ..services.playlist_service import display_playlist_name
 
 
 class PlaylistScreen(ModalScreen[str | None]):
@@ -110,7 +111,7 @@ class PlaylistScreen(ModalScreen[str | None]):
             table = self.query_one("#playlist-table", DataTable)
             table.add_columns(t("playlist_screen.column"))
             for name in self._playlists:
-                table.add_row(name, key=name)
+                table.add_row(display_playlist_name(name), key=name)
         except Exception:
             pass  # Keine Tabelle wenn keine Playlists
 

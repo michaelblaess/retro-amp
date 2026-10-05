@@ -6,8 +6,23 @@ from pathlib import Path
 
 from ..domain.models import Playlist
 from ..domain.protocols import PlaylistRepository
+from ..i18n import t
 
+# Speicherschluessel in der Datenbank - bleibt deutsch, sonst waeren bestehende
+# Favoriten weg. Angezeigt wird er ueber display_playlist_name() in der UI-Sprache.
 FAVORITES_NAME = "Favoriten"
+
+
+def display_playlist_name(name: str) -> str:
+    """Anzeigename einer Playlist: die Favoriten in der UI-Sprache, sonst der Name.
+
+    Args:
+        name: gespeicherter Playlist-Name
+
+    Returns:
+        Name fuer die Anzeige
+    """
+    return t("tab.favorites") if name == FAVORITES_NAME else name
 
 
 class PlaylistService:

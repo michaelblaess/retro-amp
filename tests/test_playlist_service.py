@@ -103,3 +103,25 @@ class TestPlaylistServicePlaylists:
         assert len(tracks) == 2
         assert Path("/music/a.mp3") in tracks
         assert Path("/music/b.ogg") in tracks
+
+
+class TestFavoritenAnzeigename:
+    """Der Speicherschluessel "Favoriten" erscheint in der UI-Sprache."""
+
+    def test_englisch(self) -> None:
+        from retro_amp.i18n import load_locale
+        from retro_amp.services.playlist_service import FAVORITES_NAME, display_playlist_name
+
+        load_locale("en")
+        try:
+            assert display_playlist_name(FAVORITES_NAME) == "Favorites"
+            assert display_playlist_name("Sunday Records") == "Sunday Records"
+        finally:
+            load_locale("de")
+
+    def test_deutsch(self) -> None:
+        from retro_amp.i18n import load_locale
+        from retro_amp.services.playlist_service import FAVORITES_NAME, display_playlist_name
+
+        load_locale("de")
+        assert display_playlist_name(FAVORITES_NAME) == "Favoriten"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "retro-amp"
-version = "0.35.1"
+version = "0.35.2"
 description = "Retro music player for the terminal - MP3, FLAC, OGG, M4A, tracker modules (MOD, S3M) and SID, with lyrics, visualizers and 41 vintage themes"
 readme = "README.md"
 license = "Apache-2.0"

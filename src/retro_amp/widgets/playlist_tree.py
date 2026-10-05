@@ -9,6 +9,7 @@ from textual.message import Message
 from textual.widgets import Tree
 
 from ..i18n import t
+from ..services.playlist_service import display_playlist_name
 from .path_context_tree import PathContextTree
 from .playing_marker import PlayingMarkerMixin
 
@@ -86,7 +87,7 @@ class PlaylistTree(PlayingMarkerMixin, PathContextTree[Path | str | None]):
         for name in sorted(playlists.keys()):
             tracks = playlists[name]
             track_count = len(tracks)
-            label = f"{self.ICON_PLAYLIST}{name} ({track_count})"
+            label = f"{self.ICON_PLAYLIST}{display_playlist_name(name)} ({track_count})"
             playlist_node = self.root.add(label, data=name)
             for track in tracks:
                 playlist_node.add_leaf(self.track_label(track), data=track)

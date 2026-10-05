@@ -19,6 +19,7 @@ import shutil
 import struct
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 import pygame
@@ -87,6 +88,14 @@ def _decode_opus_to_wav(path: Path) -> io.BytesIO:
     wav.write(pcm)
     wav.seek(0)
     return wav
+
+
+# SID startet zweistufig: erst ein kurzer Anfang (sidplayfp braucht dafuer gut eine
+# Sekunde), die volle Laenge dekodiert ein Hintergrund-Thread und wird dann an der
+# aktuellen Stelle eingewechselt. Volle 180 s dauern sonst rund 8 s, in denen nichts
+# spielt (gemessen mit sidplayfp 3.2.1).
+_SID_PREVIEW_SECONDS = 15
+_SID_FULL_SECONDS = 180
 
 
 def _find_sidplayfp() -> str | None:
@@ -223,6 +232,14 @@ class PygameAudioPlayer:
     SID-Dateien werden per sidplayfp Subprocess dekodiert (falls installiert).
     """
 
+    # Zustand des zweistufigen SID-Starts. Als Klassenwerte, damit auch ein per
+    # __new__ gebauter Player (Tests) sie hat. Es gibt genau einen Player je App,
+    # das geteilte Lock ist deshalb unkritisch.
+    _sid_generation: int = 0
+    _sid_pending: bool = False
+    _paused: bool = False
+    _sid_lock = threading.Lock()
+
     def __init__(self, frequency: int = 44100, buffer_size: int = 8192) -> None:
         self._initialized = False
         self._frequency = frequency
@@ -257,17 +274,17 @@ class PygameAudioPlayer:
             return
 
         try:
+            self._cancel_sid_upgrade()
             self._opus_wav = None
             self._sid_wav = None
             self._ffmpeg_wav = None
+            self._paused = False
             ext = path.suffix.lower()
 
             if ext == ".sid":
-                self._sid_wav = _decode_sid_to_wav(path)
-                if self._sid_wav is None:
-                    raise RuntimeError("sidplayfp nicht gefunden — SID-Playback nicht verfuegbar")
-                pygame.mixer.music.load(self._sid_wav)
-            elif ext in _OGG_EXTENSIONS and _is_opus(path):
+                self._play_sid(path)
+                return
+            if ext in _OGG_EXTENSIONS and _is_opus(path):
                 self._opus_wav = _decode_opus_to_wav(path)
                 pygame.mixer.music.load(self._opus_wav)
             elif ext in _FFMPEG_FORMATS:
@@ -293,25 +310,98 @@ class PygameAudioPlayer:
         except Exception:
             logger.exception("Fehler beim Abspielen von %s", path)
 
+    def _play_sid(self, path: Path) -> None:
+        """Startet eine SID-Datei mit kurzem Anfang und wechselt spaeter auf die volle Laenge.
+
+        Args:
+            path: Pfad zur SID-Datei
+
+        Raises:
+            RuntimeError: wenn sidplayfp fehlt oder nichts liefert
+        """
+        with self._sid_lock:
+            self._sid_generation += 1
+            generation = self._sid_generation
+            self._sid_pending = True
+        threading.Thread(
+            target=self._upgrade_sid,
+            args=(path, generation),
+            name="retro-amp-sid-full",
+            daemon=True,
+        ).start()
+
+        # Der Hintergrund-Thread wechselt erst, wenn der Anfang laeuft - das Lock
+        # haelt ihn bis dahin auf, auch wenn er schneller fertig ist
+        with self._sid_lock:
+            preview = _decode_sid_to_wav(path, duration=_SID_PREVIEW_SECONDS)
+            if preview is None:
+                self._sid_generation += 1
+                self._sid_pending = False
+                raise RuntimeError("sidplayfp nicht gefunden - SID-Playback nicht verfuegbar")
+            self._sid_wav = preview
+            pygame.mixer.music.load(preview)
+            pygame.mixer.music.play()
+            self._current_path = path
+            self._seek_offset = 0.0
+
+    def _upgrade_sid(self, path: Path, generation: int) -> None:
+        """Dekodiert die volle Laenge im Hintergrund und wechselt an der aktuellen Stelle.
+
+        Args:
+            path: Pfad zur SID-Datei
+            generation: Zaehlerstand beim Start - ist er inzwischen weiter, wurde
+                ein anderer Titel gestartet oder gestoppt und der Wechsel entfaellt
+        """
+        full = _decode_sid_to_wav(path, duration=_SID_FULL_SECONDS)
+        with self._sid_lock:
+            if generation != self._sid_generation:
+                return
+            self._sid_pending = False
+            if full is None:
+                logger.warning("Volle SID-Dekodierung fehlgeschlagen, es bleibt beim Anfang: %s", path)
+                return
+            try:
+                # Ist der Anfang schon ausgelaufen, liefert pygame keine Position mehr
+                ended = not pygame.mixer.music.get_busy() and not self._paused
+                position = float(_SID_PREVIEW_SECONDS) if ended else self.get_position()
+                self._sid_wav = full
+                pygame.mixer.music.load(full)
+                pygame.mixer.music.play(start=position)
+                self._seek_offset = position
+                if self._paused:
+                    pygame.mixer.music.pause()
+            except Exception:
+                logger.exception("Wechsel auf die volle SID-Fassung fehlgeschlagen: %s", path)
+
+    def _cancel_sid_upgrade(self) -> None:
+        """Verwirft einen noch laufenden Wechsel auf die volle SID-Fassung."""
+        with self._sid_lock:
+            self._sid_generation += 1
+            self._sid_pending = False
+
     def pause(self) -> None:
         """Pausiert die Wiedergabe."""
         if self._initialized:
+            self._paused = True
             pygame.mixer.music.pause()
 
     def unpause(self) -> None:
         """Setzt die Wiedergabe fort."""
         if self._initialized:
+            self._paused = False
             pygame.mixer.music.unpause()
 
     def stop(self) -> None:
         """Stoppt die Wiedergabe."""
         if self._initialized:
+            self._cancel_sid_upgrade()
             pygame.mixer.music.stop()
             self._current_path = None
 
     def unload(self) -> None:
         """Entlaedt die aktuelle Datei und gibt den File-Handle frei."""
         if self._initialized:
+            self._cancel_sid_upgrade()
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
             self._current_path = None
@@ -348,7 +438,9 @@ class PygameAudioPlayer:
         """Prueft ob gerade abgespielt wird."""
         if not self._initialized:
             return False
-        return pygame.mixer.music.get_busy()
+        # Waehrend die volle SID-Fassung noch dekodiert wird, ist der Titel nicht zu
+        # Ende, auch wenn der kurze Anfang schon ausgelaufen ist
+        return pygame.mixer.music.get_busy() or self._sid_pending
 
     def cleanup(self) -> None:
         """Raumt pygame.mixer auf."""
