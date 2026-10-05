@@ -88,14 +88,20 @@ brew install ffmpeg
 With [uv](https://docs.astral.sh/uv/) installed, one line fetches and starts it:
 
 ```bash
-uvx --from git+https://github.com/michaelblaess/retro-amp retro-amp ~/Music
+uvx retro-amp ~/Music
 ```
 
 ### Manual (Python >= 3.12)
 
 ```bash
-pip install git+https://github.com/michaelblaess/retro-amp.git
+pip install retro-amp
 retro-amp
+```
+
+The latest state of `main`, before the next release:
+
+```bash
+uvx --from git+https://github.com/michaelblaess/retro-amp retro-amp ~/Music
 ```
 
 ### From Source

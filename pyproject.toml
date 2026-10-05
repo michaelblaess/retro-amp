@@ -1,12 +1,26 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "retro-amp"
-version = "0.35.0"
-description = "Terminal-Musikplayer mit Retro-Charme - 41 Vintage-Themes via textual-themes"
+version = "0.35.1"
+description = "Retro music player for the terminal - MP3, FLAC, OGG, M4A, tracker modules (MOD, S3M) and SID, with lyrics, visualizers and 41 vintage themes"
+readme = "README.md"
 license = "Apache-2.0"
+authors = [
+    { name = "Michael Blaess" },
+]
+keywords = ["music", "player", "terminal", "tui", "textual", "chiptune", "sid", "mod", "retro"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio :: Players",
+]
 requires-python = ">=3.12"
 dependencies = [
     "textual>=8.2.6",
@@ -16,8 +30,8 @@ dependencies = [
     "mutagen>=1.47.0",
     "pyogg>=0.6.14a1",
     "miniaudio>=1.61",
-    "textual-themes @ git+https://github.com/michaelblaess/textual-themes.git",
-    "textual-widgets @ git+https://github.com/michaelblaess/textual-widgets.git",
+    "textual-themes[textual]>=0.15.1",
+    "textual-widgets>=0.32.1",
     "textual-image[textual]>=0.12.0",
     "Pillow>=10.0",
 ]
@@ -36,6 +50,11 @@ dev = [
 [project.scripts]
 retro-amp = "retro_amp.__main__:main"
 
+[project.urls]
+Homepage = "https://github.com/michaelblaess/retro-amp"
+Repository = "https://github.com/michaelblaess/retro-amp"
+Issues = "https://github.com/michaelblaess/retro-amp/issues"
+
 [tool.poe.tasks]
 run = { cmd = "python -m retro_amp", help = "Startet retro-amp" }
 test = { cmd = "pytest", help = "Tests sequentiell (schnell bei Unit-Tests)" }
@@ -50,7 +69,7 @@ fix = { cmd = "ruff check --fix .", help = "Ruff Auto-Fix" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-retro_amp = ["locale/*.json"]
+retro_amp = ["locale/*.json", "*.tcss"]
 
 [tool.mypy]
 python_version = "3.12"
