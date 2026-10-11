@@ -22,6 +22,6 @@ def open_audio_file(path: str, *, easy: bool = False) -> Any:
     """
     # Lazy Import wie an den bisherigen Aufrufstellen (Startzeit). Oeffentliche
     # Funktion statt mutagen._file, mutagen exportiert sie nur nicht explizit.
-    from mutagen import File  # type: ignore[attr-defined]
+    from mutagen import File
 
     return cast("Callable[..., Any]", File)(path, easy=easy)

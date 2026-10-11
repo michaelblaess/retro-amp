@@ -182,7 +182,7 @@ class DetailsService:
             return result
 
         try:
-            from mutagen import File  # type: ignore[attr-defined]
+            from mutagen import File
 
             # mutagen.File ist nicht annotiert und nicht explizit exportiert
             audio = cast("Callable[..., Any]", File)(str(path))
