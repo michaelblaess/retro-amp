@@ -10,6 +10,7 @@ import pytest
 
 from retro_amp.domain.models import AudioTrack, Playlist
 from retro_amp.infrastructure import playlist_store as playlist_modul
+from retro_amp.infrastructure import remote_bridge as bruecke_modul
 from retro_amp.infrastructure import session as session_modul
 from retro_amp.infrastructure import settings as settings_modul
 from retro_amp.infrastructure import single_instance as lock_modul
@@ -19,7 +20,7 @@ from retro_amp.infrastructure import single_instance as lock_modul
 def isolierte_ablage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """Legt ``~/.retro-amp`` fuer die Dauer eines Tests in ein Temp-Verzeichnis.
 
-    Vier Module berechnen ihren Pfad schon beim Import, die Datenbank fragt
+    Fuenf Module berechnen ihren Pfad schon beim Import, die Datenbank fragt
     `Path.home()` erst beim Erzeugen - deshalb beides. Ohne das schriebe der
     Test in die echte Ablage des Anwenders.
     """
@@ -47,6 +48,8 @@ def isolierte_ablage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     monkeypatch.setattr(lock_modul, "_LOCK_FILE", ablage / "instance.lock")
     monkeypatch.setattr(lock_modul, "_PLAY_REQUEST", ablage / "play_request")
     monkeypatch.setattr(playlist_modul, "_PLAYLISTS_DIR", ablage / "playlists")
+    monkeypatch.setattr(bruecke_modul, "_STATUS_FILE", ablage / "now-playing.json")
+    monkeypatch.setattr(bruecke_modul, "_CONTROL_FILE", ablage / "control")
     yield heim
 
 

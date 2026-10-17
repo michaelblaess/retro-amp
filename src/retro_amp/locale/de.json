@@ -222,6 +222,7 @@
   "log.repeat_all": "Repeat: Alle Tracks wiederholen",
   "log.repeat_one": "Repeat: Track wiederholen",
   "log.stop": "■ Wiedergabe gestoppt",
+  "log.remote_command": "↪ Befehl von außen: {command}",
   "log.library_changed": "Bibliothek gewechselt: {path}",
   "log.tree_root_changed": "Verzeichniswechsel: {path}",
   "log.spectrum_failed": "[!] Kein Spektrum für {name} - der Visualizer zeigt solange Zufallswerte.",

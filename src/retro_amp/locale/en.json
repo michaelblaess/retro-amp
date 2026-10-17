@@ -222,6 +222,7 @@
   "log.repeat_all": "Repeat: All tracks",
   "log.repeat_one": "Repeat: Single track",
   "log.stop": "■ Playback stopped",
+  "log.remote_command": "↪ Remote command: {command}",
   "log.library_changed": "Library changed: {path}",
   "log.tree_root_changed": "Directory changed: {path}",
   "log.spectrum_failed": "[!] No spectrum for {name} - the visualizer shows random values instead.",

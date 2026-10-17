@@ -90,6 +90,7 @@ from .infrastructure.database import Database
 from .infrastructure.metadata_reader import MutagenMetadataReader
 from .infrastructure.musicbrainz_client import MusicBrainzClient
 from .infrastructure.playlist_migration import migrate_markdown_playlists
+from .infrastructure.remote_bridge import RemoteBridge, status_from_state
 from .infrastructure.session import clear_session, load_session, save_session
 from .infrastructure.settings import JsonSettingsStore
 from .infrastructure.single_instance import acquire_lock, read_play_request, release_lock
@@ -197,6 +198,7 @@ class RetroAmpApp(CrashGuard, App[object]):
         self._player_service = PlayerService(self._audio_player)
         self._metadata_service = MetadataService(self._metadata_reader)
         self._musicbrainz_client = MusicBrainzClient(__version__, on_log=self._log_from_thread)
+        self._remote_bridge = RemoteBridge(__version__)
         self._acoustid_client = AcoustIDClient(
             key_provider=self._acoustid_api_key,
             on_log=self._log_from_thread,
@@ -497,6 +499,7 @@ class RetroAmpApp(CrashGuard, App[object]):
         acquire_lock()
         self._position_timer = self.set_interval(0.5, self._tick_position)
         self.set_interval(0.5, self._check_play_request)
+        self.set_interval(0.5, self._sync_remote_bridge)
         self._player_service.set_callbacks(
             on_finished=self._on_track_finished,
             on_error=self._on_playback_error,
@@ -2611,6 +2614,31 @@ class RetroAmpApp(CrashGuard, App[object]):
         track = self._metadata_service.read_track(path)
         self._play_track(track)
 
+    def _sync_remote_bridge(self) -> None:
+        """Timer: Befehl von aussen ausfuehren, dann den Status fuer Leser schreiben."""
+        command = self._remote_bridge.take_command()
+        if command is not None:
+            self._run_remote_command(command)
+        self._remote_bridge.publish(status_from_state(self._player_service.state))
+
+    def _run_remote_command(self, command: str) -> None:
+        """Fuehrt einen Befehl aus der Steuer-Datei aus, wie der passende Knopf."""
+        state = self._player_service.state
+        if command == "play" and state.is_playing:
+            return
+        if command == "pause" and not state.is_playing:
+            return
+        actions = {
+            "play_pause": self.action_toggle_pause,
+            "play": self.action_toggle_pause,
+            "pause": self.action_toggle_pause,
+            "next": self.action_next_track,
+            "previous": self.action_previous_track,
+            "stop": self.action_stop,
+        }
+        self._write_log(t("log.remote_command", command=command))
+        actions[command]()
+
     def _play_track(self, track: AudioTrack, queue: PlayQueue | None = None) -> None:
         """Spielt einen Track ab und aktualisiert UI.
 
@@ -3333,4 +3361,5 @@ class RetroAmpApp(CrashGuard, App[object]):
         with contextlib.suppress(Exception):
             self._database.close()
         clear_session()  # Sauberer Exit → Session loeschen
+        self._remote_bridge.shutdown()
         release_lock()

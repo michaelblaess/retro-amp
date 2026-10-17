@@ -271,6 +271,26 @@ register-file-types.bat
 
 Doppelklick auf eine Audio-Datei startet retro-amp. Bei laufender Instanz wird der neue Track automatisch übernommen (Single-Instance).
 
+## Fernsteuerung
+
+Andere Programme können sehen, was retro-amp gerade spielt, und es steuern, zum Beispiel
+der [Turbo-MOD](https://github.com/michaelblaess/turbo-mod) für Claude Code. Dafür gibt
+es keinen Port und kein Netzwerk, nur zwei Dateien in `~/.retro-amp/`:
+
+| Datei | Wer sie schreibt | Inhalt |
+|---|---|---|
+| `now-playing.json` | retro-amp | Zustand (`playing`, `paused`, `stopped`), Titel, Interpret, Album, Position, Länge, Zeitstempel |
+| `control` | das andere Programm | ein Wort: `play_pause`, `play`, `pause`, `next`, `previous` oder `stop` |
+
+- retro-amp schreibt den Status sofort, wenn sich Zustand oder Titel ändern, und
+  solange es läuft alle 5 Sekunden. Ein Leser rechnet die Zeit seit `updated` selbst
+  auf die Position.
+- Die laufende Instanz sieht jede halbe Sekunde nach `control`, führt den Befehl aus
+  wie der passende Knopf und löscht die Datei. Unbekannte Wörter werden verworfen und
+  ins Log geschrieben.
+- Beim Beenden bleibt die Datei mit `"running": false` liegen, damit ein Leser den
+  letzten Titel anzeigen kann. Ein Dateipfad steht nicht im Status.
+
 ## Themes
 
 Mit `T` durch die Themes wechseln, oder per Theme-Picker (`Ctrl+P` → "theme").
